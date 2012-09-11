@@ -15,8 +15,8 @@
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
 
-@version:	    1.6
-Last Revision:  23 October 2012
+@version:	    2.0
+Last Revision:  12 September 2014
 '''
 # BODY
 
@@ -24,6 +24,7 @@ import numpy, math, time, copy
 
 import packages.nima.robotics.kinematics.kinematicpy.forward_kinematics as fklib 
 import packages.nima.robotics.kinematics.task_space.endeffector as eflib 
+import packages.nima.mathematics.vectors_and_matrices as vecmat
 
 from packages.nima.mathematics import rotation
 from packages.nima.mathematics import polynomials
@@ -51,6 +52,8 @@ class Inverse_Kinematics_Settings():
         
         self.number_of_steps      = num_steps
         self.step_size            = step_size
+        self.method               = "Jacobian Pseudo-Inverse"
+        # self.method               = "Jacobian Transpose"
 
         self.representation_of_orientation_for_binary_run = representation_of_orientation_for_binary_run
         self.include_current_config = True
@@ -138,10 +141,25 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         '''
         super( Inverse_Kinematics, self ).take_to_random_configuration()
         self.endeffector.update(self)
+    
+    def joint_speed(self):
+        # Pose Error is multiplied by step_size
+        # err = - self.endeffector.pose_error + numpy.dot(self.endeffector.TJ, self.endeffector.vd)
+        err = - self.endeffector.pose_error
+        # Error jacobian is placed in Je
+        Je  = self.endeffector.EJ
+        # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
+        #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
+        Je_dagger = numpy.linalg.pinv(Je)
+        # Joint Correction is calculated
+        q_dot = numpy.dot(Je_dagger, err)
+        
+        return vecmat.collapse(q_dot, 0.1)
+
 
     def update_rule_nul_space(self, step_size):
         '''
-        In this update rule the nul space of jacobian is used to keep the joints in their feasible range. Should be used with no Mapping
+        In this update rule the null space of jacobian is used to keep the joints in their feasible range. Should be used with no Mapping
         '''
             
         A    = numpy.zeros((self.configuration.DOF))
@@ -173,21 +191,33 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         num_iter_til_now += 1
         self.log_info = (time_til_now, num_iter_til_now )
         
+    def ik_direction(self):
+        '''
+        Returns the joint direction (joint update correction) expected to lead the endeffector closer to the target.
+        This direction should be multiplied by a proper stepsize to ensure that the pose error norm is reduced.
+        '''        
+        # Pose Error is multiplied by step_size
+        err = self.endeffector.pose_error
+        # Error jacobian is placed in Je
+        Je  = self.endeffector.EJ
+        # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
+        #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
+        if self.settings.method == "Jacobian Pseudo-Inverse":
+            Je_dagger = numpy.linalg.pinv(Je)
+        elif self.settings.method == "Jacobian Transpose":
+            Je_dagger = Je.T
+        # Joint Correction is calculated
+        delta_qs = - numpy.dot(Je_dagger, err)
+        return delta_qs       
+
     def update_step(self, step_size):
         '''
         Implements an update rule for the joint configuration. This function performs one iteration of the algorithm.
         '''
         start_kinematic_inversion = time.time()
 
-        # Pose Error is multiplied by step_size
-        err = step_size * self.endeffector.pose_error
-        # Error jacobian is placed in Je
-        Je  = self.endeffector.EJ
-        # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
-        #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
-        Je_dagger = numpy.linalg.pinv(Je)
-        # Joint Correction is calculated
-        delta_qs = - numpy.dot(Je_dagger, err)
+
+        delta_qs = step_size*self.ik_direction()
 
         self.configuration.grow_qstar(delta_qs)
         
@@ -244,6 +274,9 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
             not_yet = not self.endeffector.in_target
             have_time = (counter < self.settings.number_of_steps)
             err_reduced = (self.endeffector.error_norm < min_config.endeffector.error_norm)
+            if not err_reduced:
+                print "Current Error     : ", self.endeffector.error_norm
+                print "Min Error Achieved: ", min_config.endeffector.error_norm
     
             if err_reduced:
                 min_config  = copy.deepcopy(self)
