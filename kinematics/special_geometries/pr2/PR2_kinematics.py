@@ -14,8 +14,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.3
-Last Revision:  7 November 2012
+@version:	    0.4
+Last Revision:  13 November 2012
 References:     
                 [1] Jabref Key: 2008_arti_Shimizu.Kakuya.ea_Analyticala
 '''
@@ -258,7 +258,7 @@ class PR2_ARM():
         print
 
         if len(sol) > 0:
-            (theta0_ref, theta1_ref) = sol[1]
+            (theta0_ref, theta1_ref) = sol[0]
 
         c0 = math.cos(theta0_ref)
         s0 = math.sin(theta0_ref)
@@ -476,19 +476,12 @@ class PR2_ARM():
 
 
     """
-    def solve_inverse_kinematics(self, T_d, theta0): 
-            
-
-
-       
+    def solve_inverse_kinematics(self, T_d, tt0): 
+     
         '''
         Provides a solution set for SRS arm for the desired pose given by T_d
         phi is the redundancy parameter and can be arbitrary chosen.
         ''' 
-        sol   = []
-        solset = [[],[]]
-        complete_solset = [[],[]]    
-        solution = []
         solution_set = []
 
         x_d = T_d[0:3,3]
@@ -497,7 +490,7 @@ class PR2_ARM():
         l_se = [0.0, - self.d2, 0.0]
         l_ew = [0.0, 0.0, self.d4]
 
-        x_sw = x_d - [self.a0*math.cos(theta0), self.a0*math.sin(theta0), 0]  
+        x_sw = x_d - [self.a0*math.cos(tt0), self.a0*math.sin(tt0), 0]  
 
         u    = x_sw/numpy.linalg.norm(x_sw)
         u_X  = vecmat.skew(u)
@@ -510,149 +503,145 @@ class PR2_ARM():
         z0 = x_sw[2] 
 
         A  = self.d2 + c3*self.d4
-        for i in range(0,2):
-            solset[i] = []
+
+        i = 0
+        while i < 2:
             theta3 = (2*i-1)*trig.arccos(c3)
 
             B = self.d4*math.sin( theta3)
-            sol = trig.solve_system(1, A, B, x0, y0, z0)
-            if len(sol) > 0:
-                (theta0_ref, theta1_ref) = sol[0]
+            sol1 = trig.solve_system(1, A, B, x0, y0, z0)
+            j = 0
+            while j < len(sol1):
+                (theta0_ref, theta1_ref) = sol1[j]
                 c0_ref = math.cos(theta0_ref)
                 s0_ref = math.sin(theta0_ref)
                 c1_ref = math.cos(theta1_ref)
                 s1_ref = math.sin(theta1_ref)
-            else:
-                print "No solution exists"
-                print
-                return sol
             
-            T01_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0    ,   theta0_ref)
-            T12_ref = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0        ,   theta1_ref)
-            T23_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2    ,   0         )
+                T01_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0     ,   theta0_ref)
+                T12_ref = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta1_ref)
+                T23_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2 ,   0         )
 
-            R01_ref = T01_ref[0:3,0:3]
-            R12_ref = T12_ref[0:3,0:3]
-            R23_ref = T23_ref[0:3,0:3]
+                R01_ref = T01_ref[0:3,0:3]
+                R12_ref = T12_ref[0:3,0:3]
+                R23_ref = T23_ref[0:3,0:3]
 
-            R03_ref = numpy.dot(numpy.dot(R01_ref,R12_ref),R23_ref)
+                R03_ref = numpy.dot(numpy.dot(R01_ref,R12_ref),R23_ref)
 
-            As = numpy.dot(u_X, R03_ref)
-            Bs = - numpy.dot(numpy.dot(u_X, u_X), R03_ref)
-            Cs =   - Bs + R03_ref
+                As = numpy.dot(u_X, R03_ref)
+                Bs = - numpy.dot(numpy.dot(u_X, u_X), R03_ref)
+                Cs =   - Bs + R03_ref
 
-            #finding phi according to the given theta0
-            s00 = math.sin(theta0)
-            c00 = math.cos(theta0)
+                #finding phi according to the given theta0
+                s00 = math.sin(tt0)
+                c00 = math.cos(tt0)
 
-            AA = As[0,1]*s00 - As[1,1]*c00
-            BB = Bs[0,1]*s00 - Bs[1,1]*c00         
-            CC = Cs[0,1]*s00 - Cs[1,1]*c00         
+                AA = As[0,1]*s00 - As[1,1]*c00
+                BB = Bs[0,1]*s00 - Bs[1,1]*c00         
+                CC = Cs[0,1]*s00 - Cs[1,1]*c00         
 
-            sol = trig.solve_equation(1, [BB,AA,CC])  # returns the solution set for phi
+                sol2 = trig.solve_equation(1, [BB,AA,CC])  # returns the solution set for phi
+                k = 0
+                while k < len(sol2):
+                    phi = sol2[k]
 
-            if len(sol) > 0:
-                phi = sol[1]
-                print "I found phi = ", phi
-            else:
-                print "No solution exeists"
-                return []
-            
+                    R_sai = numpy.eye(3) + math.sin(phi)*u_X + (1 - math.cos(phi))*numpy.dot(u_X, u_X)  
+                    R03 = numpy.dot(R_sai, R03_ref)
 
-            R_sai = numpy.eye(3) + math.sin(phi)*u_X + (1 - math.cos(phi))*numpy.dot(u_X, u_X)  
-            R03 = numpy.dot(R_sai, R03_ref)
+                    t0 = R03[1,1]/R03[0,1]    
+                    c1 = - R03[2,1]
+                    t2 = - R03[2,2]/R03[2,0]
+                
+                    l = 0
+                    while l < 1:
+                        theta0 = math.atan(t0) + l*math.pi
+                        theta0 = tt0 
+                        s0 = math.sin(theta0)
+                        c0 = math.cos(theta0)
+                        m = 0
+                        while m < 2:
+                            theta1 = (2*m - 1)*math.acos(c1) 
+                            s1    = math.sin(theta1)
+                            s10   = s1*s0  
+                            c1    = math.cos(theta1)
+                            c10   = c1*c0
+                            c0s1  = c0*s1
 
-            t0 = R03[1,1]/R03[0,1]    
-            c1 = - R03[2,1]
-            t2 = - R03[2,2]/R03[2,0]
-            
-            for j in range(0,2):
-                theta0 = math.atan(t0) + j*math.pi
-                for k in range(0,2):
-                    theta1 = (2*k - 1)*math.acos(c1) 
-                    for t in range(0,2):
-                        theta2 = math.atan(t2) + t*math.pi
+                            n = 0
+                            while n < 2:
+                                theta2 = math.atan(t2) + n*math.pi
+                                s2    = math.sin(theta2)
+                                s20   = s2*s0
+                                s21   = s2*s1
+                                c2    = math.cos(theta2)
+                                c20   = c2*c0
+                                c21   = c2*c1
+                                c210  = c21*c0
 
-                        T01 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0   ,   theta0)
-                        T12 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   theta1)
-                        T23 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2   ,   theta2)
-
-                        R01 = T01[0:3,0:3]
-                        R12 = T12[0:3,0:3]
-                        R23 = T23[0:3,0:3]
-
-                        R03_2 = numpy.dot(numpy.dot(R01,R12),R23)
-
-                        print
-                        print 'theta0 = ',  theta0
-                        print 'theta1 = ',  theta1
-                        print 'theta2 = ',  theta2
-                        print
-                        print "R03 = ", R03_2
-
-                        print "R03 = ", R03
-                        print
-                        
-                        if vecmat.equal(R03, R03_2):
-                            solset[i] = []
-                            solset[i].append([theta0,theta1,theta2,theta3])    
-                            #solset[i] = [theta0,theta1,theta2,theta3]
-            
-            print "solset[i] = ", solset[i]
-            # Finding the next joint angles (theta4, theta5 and theta6)
-            
-            T34 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta3)
-            R34 = T34[0:3,0:3]
-
-            Aw = numpy.dot(numpy.dot(R34.T, As.T), R_d)
-            Bw = numpy.dot(numpy.dot(R34.T, Bs.T), R_d)
-            Cw = numpy.dot(numpy.dot(R34.T, Cs.T), R_d)
-
-            R47 = math.sin(phi)*Aw + math.cos(phi)*Bw + Cw
-
-            t4 = R47[1,2]/ R47[0,2]
-            c5 = R47[2,2]
-            t6 = - R47[2,1]/R47[2,0]
-
-            for n in range(0,len(solset[i])):
-                for j in range(0,2):
-                    for k in range(0,2):
-                        for t in range(0,2):
-                            theta4 = math.atan(t4) + j*math.pi
-                            theta5 = (2*k - 1)*math.acos(c5) 
-                            theta6 = math.atan(t6) + t*math.pi
-
-                            #Check Ref.1.eq.11
-
-                            T45 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4 ,   theta4)
-                            T56 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta5)
-                            T67 = transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0 ,   theta6)
-
-                            R45 = T45[0:3,0:3]
-                            R56 = T56[0:3,0:3]
-                            R67 = T67[0:3,0:3]
-
-                            R47_2 = numpy.dot(numpy.dot(R45, R56), R67)
-
-                            if vecmat.equal(R47, R47_2) :
-                                print "solset[i] = ", solset[i]
-                                solution = solset[i][n]
-                                print " Now solution is: " , solution
-                                solution.append(theta4)
-                                solution.append(theta5)
-                                solution.append(theta6)
-                                complete_solset[i].append(solution)
+                                c0s2  = c0*s2
+                                c10s2 = c10*s2
+                                c1s20 = c1*s20
+                                c2s0  = c2*s0
+                                c2s1  = c2*s1
+                                c21s0 = c21*s0
                             
+                                R03_2 = numpy.array([[-s20 + c210  , -c0s1 , -c2s0 - c10s2],
+                                                     [ c0s2 + c21s0, -s10  ,  c20 - c1s20 ],
+                                                     [ -c2s1       , -c1   ,  s21         ]])    
 
-        return complete_solset
-        '''
-        if len(complete_solset) > 1:
-            return complete_solset[0]+complete_solset[1]
-        elif len(complete_solset) > 0:
-            return complete_solset[0]+complete_solset[1]
-        else:
-            return []
-        '''
+
+                                if vecmat.equal(R03, R03_2):
+                                    T34 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta3)
+                                    R34 = T34[0:3,0:3]
+
+                                    Aw = numpy.dot(numpy.dot(R34.T, As.T), R_d)
+                                    Bw = numpy.dot(numpy.dot(R34.T, Bs.T), R_d)
+                                    Cw = numpy.dot(numpy.dot(R34.T, Cs.T), R_d)
+                                    R47 = math.sin(phi)*Aw + math.cos(phi)*Bw + Cw
+
+                                    t4 = R47[1,2]/ R47[0,2]
+                                    c5 = R47[2,2]
+                                    t6 = - R47[2,1]/R47[2,0]
+                                    o = 0
+                                else:
+                                    o = 2
+
+                                while o < 2:
+                                    theta4 = math.atan(t4) + o*math.pi
+                                    p = 0
+                                    while p < 2:
+                                        theta5 = (2*p - 1)*math.acos(c5) 
+                                        q = 0
+                                        while q < 2:
+                                            theta6 = math.atan(t6) + q*math.pi 
+    
+                                            #Check Ref.1.eq.11
+
+                                            T45 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4 ,   theta4)
+                                            T56 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta5)
+                                            T67 = transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0 ,   theta6)
+
+                                            R45 = T45[0:3,0:3]
+                                            R56 = T56[0:3,0:3]
+                                            R67 = T67[0:3,0:3]
+
+                                            R47_2 = numpy.dot(numpy.dot(R45, R56), R67)
+
+                                            if vecmat.equal(R47, R47_2) :
+                                                solution_set.append([theta0, theta1, theta2, theta3, theta4, theta5, theta6])
+
+                                            q = q + 1
+                                        p = p + 1
+                                    o = o + 1
+                                n = n + 1
+                            m = m + 1
+                        l = l + 1
+                    k = k + 1
+                j = j + 1
+            i = i + 1    
+
+        return solution_set
+
 
     def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321):
 
@@ -805,9 +794,8 @@ def symbolic_help(code):
         print 'Cs[2,0] = ', Cs[2,0]
 
     if code == 3:
-
         
-        
+       
         x70 = [arm.x7[i].subs('c0*c1*c2','c210').subs('c0*c3*s1','c30s1').subs('s0*s2','s20').subs('c1*s0*s3','c1s30') for i in range(0,3)]
         x71 = [x70[i].subs('c2*s0','c2s0').subs('c0*c1*c2','c210').subs('c0*c3*s1','c30s1').subs('s0*s2','s20') for i in range(0,3)]
         x72 = [x71[i].subs('c1*s0*s3','c1s30').subs('c1*c2s0','c21s0').subs('c3*s0*s1','c3s10').subs('c1*c2s0','c21s0') for i in range(0,3)]
@@ -845,6 +833,89 @@ def symbolic_help(code):
 
         '''
 
+
+    if code == 4:
+        '''
+        We try to find the formulations for R03 and x03, R47 and x47
+        '''
+        T03 = arm.T[2]
+        R03 = T03[0:3,0:3]
+        x03 = T03[0:3,3]
+
+        print 'X = ', x03[0]
+        print
+        print 'Y = ', x03[1]
+        print
+        print 'Z = ', x03[2]
+        print
+        '''
+        For X03 The output must be:
+        
+        X =  a0*c0 + c0*d2*s1
+
+        Y =  a0*s0 + d2*s0*s1
+
+        Z =  c1*d2
+
+
+        And for R03 we have:
+        '''
+
+        print 'R03[0,0] = ', R03[0,0]
+        print 'R03[0,1] = ', R03[0,1]
+        print 'R03[0,2] = ', R03[0,2]
+        print 
+        print 'R03[1,0] = ', R03[1,0]
+        print 'R03[1,1] = ', R03[1,1]
+        print 'R03[1,2] = ', R03[1,2]
+        print 
+        print 'R03[2,0] = ', R03[2,0]
+        print 'R03[2,1] = ', R03[2,1]
+        print 'R03[2,2] = ', R03[2,2]
+
+
+        '''
+        For R03 The output must be simplified to:
+        
+        R03[0,0] =  -s20 + c210
+        R03[0,1] =  -c0s1
+        R03[0,2] =  -c2s0 - c10s2
+
+        R03[1,0] =  c0s2 + c21s0
+        R03[1,1] =  -s10
+        R03[1,2] =  c20 - c1s20
+
+        R03[2,0] =  -c2s1
+        R03[2,1] =  -c1
+        R03[2,2] =  s21
+        '''    
+
+        """
+        '''
+        Now we simplify them:
+        '''
+        x76 = [simplify(x75[i]) for i in range(0,3)]
+
+        print 'X = ', x76[0]
+        print
+        print 'Y = ', x76[1]
+        print
+        print 'Z = ', x76[2]
+
+        '''
+        Formulations are finally simplified to:
+
+        X =  c0*a0 + c0s1*d2 + (c30s1 + c210s3 - s320)*d4
+
+        Y =  s0*a0 + s10*d2 + (c3s10 + c0s32 + c21s30)*d4
+
+        Z =  c1*d2 + (c31 - c2s31)*d4
+        
+
+        '''
+        """
+
+
 def main():
 
     srs = PR2_ARM(a0=0)
@@ -878,11 +949,11 @@ def main_2():
     end_right_arm = numpy.copy(srs.end_right_arm)
 
 
-    all_solutions = srs.solve_inverse_kinematics(srs.end_right_arm, theta0 = 20*drc)
+    all_solutions = srs.solve_inverse_kinematics(srs.end_right_arm, tt0 = 20*drc)
 
-    for i in range(0 ,4):
-        print all_solutions[0][i]
-        srs.qr = all_solutions[0][i]
+    for i in range(0 ,len(all_solutions)):
+        print all_solutions[i]
+        srs.qr = all_solutions[i]
 
         srs.forward_update()
         print 
@@ -899,7 +970,7 @@ def main_2():
             print "Failed :-("
 
 def main_3():
-    symbolic_help(3)    
+    symbolic_help(4)    
      
 if __name__ == "__main__" :
     
