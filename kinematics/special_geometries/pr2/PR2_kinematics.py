@@ -14,8 +14,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.4
-Last Revision:  13 November 2012
+@version:	    0.5
+Last Revision:  14 November 2012
 References:     
                 [1] Jabref Key: 2008_arti_Shimizu.Kakuya.ea_Analyticala
 '''
@@ -95,6 +95,7 @@ def rot_z(q):
                         [  0,  0, 1, 0 ],
                         [  0,  0, 0, 1 ]])
 
+
 class PR2_ARM():
 
     def forward_update(self):        
@@ -124,371 +125,30 @@ class PR2_ARM():
         
         self.end_right_arm = numpy.copy(T)
 
-    def solve_inverse_kinematics_explained(self, T_d, theta0):        
+
+    def inverse_update(self, T_d):
         '''
-        Provides a solution set for SRS arm for the desired pose given by T_d
-        phi is the redundancy parameter and can be arbitrary chosen.
-        This function is the explained version. To implement a fast IK solver,
-        run solve_inverse_kinematics() which is the same function without explanation
-        ''' 
-    
-        x_d = T_d[0:3,3]
-        R_d = T_d[0:3,0:3]
-
-        l_se = [0.0, - self.d2, 0.0]
-        l_ew = [0.0, 0.0, self.d4]
-
-        x_sw = x_d - [self.a0*math.cos(theta0), self.a0*math.sin(theta0), 0]
-        
-        print "R_d  = ",
-        print R_d
-        print "x_d  = ", x_d
-        print "x_sw = ", x_sw
-    
-        #Check ref.1.eq.1
-
-        T47 = numpy.dot(numpy.dot(self.A[4], self.A[5]), self.A[6])  
-        R47 = T47[0:3,0:3]   
-        T34 = self.A[3]
-        R34 = T34[0:3,0:3]  
-        T03 = numpy.dot(numpy.dot(self.A[0], self.A[1]), self.A[2])  
-        R03 = T03[0:3,0:3]   
-
-        x7 = numpy.dot(R03, l_se + numpy.dot(R34, l_ew))
-        x7 = l_bs + numpy.dot(R03, l_se + numpy.dot(R34, l_ew + numpy.dot(R47,l_wt)))
-
-        print
-        print "Checking Ref.1.eq.1:"
-        print
-        print 'x7  = ',x7
-        print 'x_d = ',x_d
-        print
-        if vecmat.equal(x7, x_d): 
-            print "Successfully Checked :-)"
-        else:
-            print "Check Failed :-("
-            assert False
-        print
-        
-        #Check ref.1.eq.12
-        
-        c3 = (numpy.linalg.norm(x_sw)**2 - self.d2**2 - self.d4**2)/(2*self.d2*self.d4) # According to: ref[1].eq.12
-        s3 = math.sqrt(1 - c3**2)
-
-        print
-        print "Checking Ref.1.eq.12:"
-        print
-        print "c3 = ", c3
-        print "c3 = ", math.cos(self.qr[3])
-        print "s3 = ", s3
-        print "s3 = ", math.sin(self.qr[3])
-        print
-
-        if vecmat.equal(c3, math.cos(self.qr[3])) :
-            print "Successfully Checked :-)"
-        else:
-            print "Check Failed :-("
-        print
-
-
+        Corrects the joint angles to fulfil kinematic constraints (T6 = T_d) 
+        The new joint angles will be as close as possible to the current joint angles: (self.qr)
         '''
-        Here we want to find a formula from which we can obtain the angles of theta0 and theta1 in the reference posture 
-        where theta2 is set to zero.(Ref.[1].eq.14)
-        This part of code don't need to be implemented, So it is commented by default. 
-        Function symbolic_help() , uses sympy to represent equation in terms of our known parameters.
-        The code specifies which formulations are required.
-        Code = 1: Helps to find the reference_joint_angles
-        ref[1].eq.14 is simplified and expressed in terms of the DH parameters and Theta3 which is calculated from ref[1].eq.12
-        
-        If you want to know these relationships, uncomment the following code, use appropriate code and see the equations in the terminal.
-        '''
-        symbolic_help(1)
-        
-        '''
-        You should see the following equations:
+        tt0 = self.qr[0] 
+        tt3 = self.qr[3] 
 
-        px - ax*d6  =  -c0*s1*(-d2 - c3*d4) + c0*c1*d4*s3
-        py - ay*d6  =  -s0*s1*(-d2 - c3*d4) + c1*d4*s0*s3
-        pz - az*d6  =  -c1*(-d2 - c3*d4)    - d4*s1*s3
 
-        They can be written in the following form:
 
-        x0 = c0*(A*s1 + B*c1)   (1)
-        y0 = s0*(A*s1 + B*c1)   (2)
-        z0 = -B*s1 + A*c1       (3)
-
-        where:
-
-        A = d2 + c3*d4
-        B = d4*s3
- 
-        and:
-
-        x0 = px - ax*d6
-        y0 = py - ay*d6
-        z0 = pz - az*d6
-
-        Theta0 and theta1 can be found from the first two equations. Then if theta3 is calculated correctly, according to ref[1].eq.12,
-        then the third equation z0 = -B*s1 + A*c1 must hold.
-
-        tg(theta0) = t0 = y0/x0
-        R*cos(theta1 + sai) = x0/c0
-
-        where R = sqrt(A^2+B^2)  and:
-        tg(sai) = A/B    
-
-        also:  sin(theta0 - sai) = z0/R 
-
-        '''
-        
-        # Check eq.(1) 
-
-        A = self.d2 + c3*self.d4
-        B = self.d4*s3
-        
-        # Solving equations (1) & (2) & (3) for theta0_ref and theta1_ref 
-
-        '''
-        Two solutions for theta0_ref1:
-        '''
-
-        sol = trig.solve_system(1, A, B, x_sw[0], x_sw[0], x_sw[0])
-        
-        print 'Solution Set = ', sol
-        print
-
-        if len(sol) > 0:
-            (theta0_ref, theta1_ref) = sol[0]
-
-        c0 = math.cos(theta0_ref)
-        s0 = math.sin(theta0_ref)
-        c1 = math.cos(theta1_ref)
-        s1 = math.sin(theta1_ref)
-
-        assert_equality(x0, -c0*s1*(-self.d2 - c3*self.d4) + c0*c1*self.d4*s3)
-        assert_equality(y0, -s0*s1*(-self.d2 - c3*self.d4) + c1*self.d4*s0*s3)
-        assert_equality(z0, -c1*(-self.d2 - c3*self.d4) - self.d4*s1*s3)
-
-        u    = x_sw/numpy.linalg.norm(x_sw)
-        u_X  = vecmat.skew(u)
-
-        T01_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0   ,   theta0_ref)
-        T12_ref = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta1_ref)
-        T23_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2   ,   0         )
-
-        R01_ref = T01_ref[0:3,0:3]
-        R12_ref = T12_ref[0:3,0:3]
-        R23_ref = T23_ref[0:3,0:3]
-
-        R03_ref = numpy.dot(numpy.dot(R01_ref,R12_ref),R23_ref)
-
-        As = numpy.dot(u_X, R03_ref)
-        Bs = - numpy.dot(numpy.dot(u_X, u_X), R03_ref)
-        Cs =   - Bs + R03_ref
-
-        # Find phi
-
-        s00 = math.sin(theta0)
-        c00 = math.cos(theta0)
-
-        AA = As[0,1]*s00 - As[1,1]*c00
-        BB = Bs[0,1]*s00 - Bs[1,1]*c00         
-        CC = Cs[0,1]*s00 - Cs[1,1]*c00         
-
-        sol = trig.solve_equation(1, [BB,AA,CC])  # returns the solution set for phi
-        if len(sol) > 0:
-            phi = sol[0]
-            print "I found phi = ", phi
-        else:
-            print "No solution exeists"
-            return []
-
-        R_sai = numpy.eye(3) + math.sin(phi)*u_X + (1 - math.cos(phi))*numpy.dot(u_X, u_X)  
-        R03 = numpy.dot(R_sai,R03_ref)
-
-        R03_2 = Cs + math.sin(phi)*As + math.cos(phi)*Bs  
-        
-
-        print "R03 ="
-        print R03
-        
-        print "R03 ="
-        print R03_2
-
-        t0 = R03[1,1]/R03[0,1]    
-        c1 = - R03[2,1]
-        t2 = - R03[2,2]/R03[2,0]
-
-        print "t0 = ", t0
-        print "t0 = ", math.tan(self.qr[0])
-        print "t0 = ", math.tan(theta0)
-
-        print "t2 = ", t2
-        print "t2 = ", math.tan(self.qr[2])
-
-        print "c1 = ", c1
-        print "c1 = ", math.cos(self.qr[1])
-    
-        r2_xz  = u[0]**2 + u[2]**2
-        r2_yz  = u[1]**2 + u[2]**2
-        r2_xy  = u[1]**2 + u[0]**2
-
-        c0 = math.cos(theta0_ref)
-        s0 = math.sin(theta0_ref)
-        c1 = math.cos(theta1_ref)
-        s1 = math.sin(theta1_ref)
-
-        symbolic_help(2)
-      
-        As11 = c1*u[0] - c0*s1*u[2]
-        Bs11 = c1*u[1]*u[2] - s0*s1*r2_xz + c0*s1*u[0]*u[1]        
-        Cs11 = -s0*s1
-        
-        As01 =  -c1*u[1]     + s0*s1*u[2]
-        Bs01 =  -c0*s1*r2_yz + c1*u[0]*u[2] + s0*s1*u[0]*u[1]
-        Cs01 =  -c0*s1
-
-        As21 =   c0*s1*u[1] - s0*s1*u[0]
-        Bs21 =  -c1*r2_xy + c0*s1*u[0]*u[2] + s0*s1*u[1]*u[2]
-        Cs21 =  -c1
-        Cs21 =  c1*(r2_xy - 1) - c0*s1*u[0]*u[2] - s0*s1*u[1]*u[2]
-
-        print "Cs21 = ", Cs21
-        print "Cs21 = ", Cs[2,1]
-
-        print 'R03[1,1] = ', As[1,1]*math.sin(phi) + Bs[1,1]*math.cos(phi) + Cs[1,1]
-        t0   =   (As[1,1]*math.sin(phi) + Bs[1,1]*math.cos(phi) + Cs[1,1]) / (As[0,1]*math.sin(phi) + Bs[0,1]*math.cos(phi) + Cs[0,1])
-        t2   = - (As[2,2]*math.sin(phi) + Bs[2,2]*math.cos(phi) + Cs[2,2]) / (As[2,0]*math.sin(phi) + Bs[2,0]*math.cos(phi) + Cs[2,0])
-
-        print "t0 = ", t0
-        print "t0 = ", math.tan(self.qr[0])
-
-        print "t2 = ", t2
-        print "t2 = ", math.tan(self.qr[2])
-
-        c1   = - (As[2,1]*math.sin(phi) + Bs[2,1]*math.cos(phi) + Cs[2,1])
-
-        print "c1 = ", c1
-        print "c1 = ", math.cos(self.qr[1])
-
-        theta0 = math.atan(t0)
-        theta1 = math.acos(c1)
-        theta2 = math.atan(t2)
-
-        #Check Ref.1.eq.15
-
-        T01 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0   ,   theta0)
-        T12 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta1)
-        T23 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2   ,   theta2)
-
-        R01 = T01[0:3,0:3]
-        R12 = T12[0:3,0:3]
-        R23 = T23[0:3,0:3]
-
-        R03 = numpy.dot(numpy.dot(R01,R12),R23)
-
-        print
-        print "Checking Ref.1.eq.15:"
-        print
-        print "R03 = ", math.sin(phi)*As + math.cos(phi)*Bs + Cs
-
-        print "R03 = ", R03
-        print
-
-        if vecmat.equal(R03, math.sin(phi)*As + math.cos(phi)*Bs + Cs) :
-            print "Successfully Checked :-)"
-        else:
-            print "Check Failed :-("
-        print
-
-
-        # Finding the next joint angles (theta4, theta5 and theta6)
-
-        T34 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   self.qr[3])
-        R34 = T34[0:3,0:3]
-
-        Aw = numpy.dot(numpy.dot(R34.T, As.T), R_d)
-        Bw = numpy.dot(numpy.dot(R34.T, Bs.T), R_d)
-        Cw = numpy.dot(numpy.dot(R34.T, Cs.T), R_d)
-
-        R47 = math.sin(phi)*Aw + math.cos(phi)*Bw + Cw
-
-        #Check Ref.1.eq.11
-
-        T45 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4 ,   self.qr[4])
-        T56 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   self.qr[5])
-        T67 = transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0   ,   self.qr[6])
-
-        R45 = T45[0:3,0:3]
-        R56 = T56[0:3,0:3]
-        R67 = T67[0:3,0:3]
-
-        R47_2 = numpy.dot(numpy.dot(R45, R56), R67)
-
-        print
-        print "Checking Ref.1.eq.11:"
-        print
-        print "R47 = ", R47
-
-        print "R47 = ", R47_2
-        print
-
-        if vecmat.equal(R47, math.sin(phi)*Aw + math.cos(phi)*Bw + Cw) :
-            print "Successfully Checked :-)"
-        else:
-            print "Check Failed :-("
-        print
-
-        
-        t4 = R47[1,2]/ R47[0,2]
-        c5 = R47[2,2]
-        t6 = - R47[2,1]/R47[2,0]
-
-        print        
-        print "t4 = ", t4
-        print "t4 = ", math.tan(self.qr[4])
-
-        print "t6 = ", t6
-        print "t6 = ", math.tan(self.qr[6])
-
-        print "c5 = ", c5
-        print "c5 = ", math.cos(self.qr[5])
-        
-        """
-        R03 = math.sin(phi)*As + math.cos(phi)*Bs + Cs
-        print 
-        print 'R03 = '
-        print R03
-        print 'R03 = '
-        print R03
-        """
-    """
-    def solve_inverse_kinematics(self, T_d, theta0): 
-        
-        srs = SRS_kinematics.SRS_ARM(d_bs = 0.0, d_se = self.d2, d_ew = self.d4, d_wt = 0.00)
-        
-        Td_srs = T_d - numpy.array([ [0,0,0, self.a0*math.cos(theta0)],
-                                     [0,0,0, self.a0*math.sin(theta0)],
-                                     [0,0,0, 0],
-                                     [0,0,0, 0]])
-
-        srs.solve_inverse_kinematics       
-
-
-    """
     def solve_inverse_kinematics(self, T_d, tt0): 
      
         '''
-        Provides a solution set for SRS arm for the desired pose given by T_d
-        phi is the redundancy parameter and can be arbitrary chosen.
+        Finds all the solutions of the Inverse Kinematic problem where theta0 = tt0
+        theta0 is the redundancy parameter
+
+        Provides a solution set for PR2 arm for the desired pose given by T_d
+        tt0 is the redundancy parameter and can be arbitrary chosen.
         ''' 
         solution_set = []
 
         x_d = T_d[0:3,3]
         R_d = T_d[0:3,0:3]
-
-        l_se = [0.0, - self.d2, 0.0]
-        l_ew = [0.0, 0.0, self.d4]
 
         x_sw = x_d - [self.a0*math.cos(tt0), self.a0*math.sin(tt0), 0]  
 
@@ -497,22 +157,17 @@ class PR2_ARM():
 
 
         c3 = (numpy.linalg.norm(x_sw)**2 - self.d2**2 - self.d4**2)/(2*self.d2*self.d4) # According to: ref[1].eq.12
-        
-        x0 = x_sw[0] 
-        y0 = x_sw[1] 
-        z0 = x_sw[2] 
 
         A  = self.d2 + c3*self.d4
 
         i = 0
         while i < 2:
             theta3 = (2*i-1)*trig.arccos(c3)
-
-            B = self.d4*math.sin( theta3)
-            sol1 = trig.solve_system(1, A, B, x0, y0, z0)
-            j = 0
-            while j < len(sol1):
-                (theta0_ref, theta1_ref) = sol1[j]
+            s3     = math.sin( theta3)
+            B = self.d4*s3
+            sol1 = trig.solve_system(1, A, B, x_sw[0], x_sw[1], x_sw[2])
+            if len(sol1) > 0:
+                (theta0_ref, theta1_ref) = sol1[0]
                 c0_ref = math.cos(theta0_ref)
                 s0_ref = math.sin(theta0_ref)
                 c1_ref = math.cos(theta1_ref)
@@ -552,92 +207,108 @@ class PR2_ARM():
                     c1 = - R03[2,1]
                     t2 = - R03[2,2]/R03[2,0]
                 
-                    l = 0
-                    while l < 1:
-                        theta0 = math.atan(t0) + l*math.pi
-                        theta0 = tt0 
-                        s0 = math.sin(theta0)
-                        c0 = math.cos(theta0)
-                        m = 0
-                        while m < 2:
-                            theta1 = (2*m - 1)*math.acos(c1) 
-                            s1    = math.sin(theta1)
-                            s10   = s1*s0  
-                            c1    = math.cos(theta1)
-                            c10   = c1*c0
-                            c0s1  = c0*s1
+                    theta0 = tt0 
+                    s0 = math.sin(theta0)
+                    c0 = math.cos(theta0)
+                    m = 0
+                    while m < 2:
+                        theta1 = (2*m - 1)*math.acos(c1) 
+                        s1    = math.sin(theta1)
+                        s10   = s1*s0  
+                        c1    = math.cos(theta1)
+                        c10   = c1*c0
+                        c0s1  = c0*s1
 
-                            n = 0
-                            while n < 2:
-                                theta2 = math.atan(t2) + n*math.pi
-                                s2    = math.sin(theta2)
-                                s20   = s2*s0
-                                s21   = s2*s1
-                                c2    = math.cos(theta2)
-                                c20   = c2*c0
-                                c21   = c2*c1
-                                c210  = c21*c0
+                        c30s1 = c3*c0s1 
+                        c31   = c3*c1      
+                        c3s10 = c3*s10
 
-                                c0s2  = c0*s2
-                                c10s2 = c10*s2
-                                c1s20 = c1*s20
-                                c2s0  = c2*s0
-                                c2s1  = c2*s1
-                                c21s0 = c21*s0
-                            
-                                R03_2 = numpy.array([[-s20 + c210  , -c0s1 , -c2s0 - c10s2],
-                                                     [ c0s2 + c21s0, -s10  ,  c20 - c1s20 ],
-                                                     [ -c2s1       , -c1   ,  s21         ]])    
+                        n = 0
+                        while n < 2:
+                            theta2 = math.atan(t2) + n*math.pi
+                            s2     = math.sin(theta2)
+                            s20    = s2*s0
+                            s21    = s2*s1
+                            s320   = s3*s20
 
-
-                                if vecmat.equal(R03, R03_2):
-                                    T34 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta3)
-                                    R34 = T34[0:3,0:3]
-
-                                    Aw = numpy.dot(numpy.dot(R34.T, As.T), R_d)
-                                    Bw = numpy.dot(numpy.dot(R34.T, Bs.T), R_d)
-                                    Cw = numpy.dot(numpy.dot(R34.T, Cs.T), R_d)
-                                    R47 = math.sin(phi)*Aw + math.cos(phi)*Bw + Cw
-
-                                    t4 = R47[1,2]/ R47[0,2]
-                                    c5 = R47[2,2]
-                                    t6 = - R47[2,1]/R47[2,0]
-                                    o = 0
-                                else:
-                                    o = 2
-
-                                while o < 2:
-                                    theta4 = math.atan(t4) + o*math.pi
-                                    p = 0
-                                    while p < 2:
-                                        theta5 = (2*p - 1)*math.acos(c5) 
-                                        q = 0
-                                        while q < 2:
-                                            theta6 = math.atan(t6) + q*math.pi 
+                            c0s2   = c0*s2
+                            c0s32  = c0s2*s3
+                            c10s2  = c10*s2
+                            c1s20  = c1*s20
+                            c2     = math.cos(theta2)
+                            c20    = c2*c0
+                            c21    = c2*c1
+                            c210   = c21*c0
+                            c210s3 = c210*s3
+                            c21s0  = c21*s0
+                            c21s20 = c21*s20
+                            c21s30 = c21s0*s3
+                            c2s0   = c2*s0
+                            c2s1   = c2*s1
+                            c2s31  = c2s1*s3
     
-                                            #Check Ref.1.eq.11
+                            X =  c0*self.a0 + c0s1*self.d2 + (c30s1 + c210s3 - s320)*self.d4
 
-                                            T45 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4 ,   theta4)
-                                            T56 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta5)
-                                            T67 = transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0 ,   theta6)
+                            Y =  s0*self.a0 + s10*self.d2 + (c3s10 + c0s32 + c21s30)*self.d4
 
-                                            R45 = T45[0:3,0:3]
-                                            R56 = T56[0:3,0:3]
-                                            R67 = T67[0:3,0:3]
+                            Z =  c1*self.d2 + (c31 - c2s31)*self.d4
+                                        
+                            '''
+                            R03_2 = numpy.array([[-s20 + c210  , -c0s1 , -c2s0 - c10s2],
+                                                 [ c0s2 + c21s0, -s10  ,  c20 - c1s20 ],
+                                                 [ -c2s1       , -c1   ,  s21         ]])    
 
-                                            R47_2 = numpy.dot(numpy.dot(R45, R56), R67)
+                            if vecmat.equal(R03, R03_2):
 
-                                            if vecmat.equal(R47, R47_2) :
-                                                solution_set.append([theta0, theta1, theta2, theta3, theta4, theta5, theta6])
+                            '''
 
-                                            q = q + 1
-                                        p = p + 1
-                                    o = o + 1
-                                n = n + 1
-                            m = m + 1
-                        l = l + 1
+                            if vecmat.equal([X, Y, Z], x_d):
+                                T34 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta3)
+                                R34 = T34[0:3,0:3]
+
+                                Aw = numpy.dot(numpy.dot(R34.T, As.T), R_d)
+                                Bw = numpy.dot(numpy.dot(R34.T, Bs.T), R_d)
+                                Cw = numpy.dot(numpy.dot(R34.T, Cs.T), R_d)
+                                R47 = math.sin(phi)*Aw + math.cos(phi)*Bw + Cw
+
+                                t4 = R47[1,2]/ R47[0,2]
+                                c5 = R47[2,2]
+                                t6 = - R47[2,1]/R47[2,0]
+                                o = 0
+                            else:
+                                o = 2
+
+                            while o < 2:
+                                theta4 = math.atan(t4) + o*math.pi
+                                p = 0
+                                while p < 2:
+                                    theta5 = (2*p - 1)*math.acos(c5) 
+                                    q = 0
+                                    while q < 2:
+                                        theta6 = math.atan(t6) + q*math.pi 
+
+                                        #Check Ref.1.eq.11
+
+                                        T45 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4 ,   theta4)
+                                        T56 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta5)
+                                        T67 = transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0 ,   theta6)
+
+                                        R45 = T45[0:3,0:3]
+                                        R56 = T56[0:3,0:3]
+                                        R67 = T67[0:3,0:3]
+
+                                        R47_2 = numpy.dot(numpy.dot(R45, R56), R67)
+
+                                        if vecmat.equal(R47, R47_2) :
+                                            solution_set.append([theta0, theta1, theta2, theta3, theta4, theta5, theta6])
+
+                                        q = q + 1
+                                    p = p + 1
+                                o = o + 1
+                            n = n + 1
+                        m = m + 1
                     k = k + 1
-                j = j + 1
+
             i = i + 1    
 
         return solution_set
@@ -655,6 +326,10 @@ class PR2_ARM():
         self.a0 = a0
         self.d2 = d2
         self.d4 = d4
+
+        self.l_se = [0.0, - self.d2, 0.0]
+        self.l_ew = [0.0, 0.0, self.d4]
+
        
 class PR2_Arm_Symbolic():
     def __init__(self):
@@ -938,10 +613,11 @@ def main():
 
 def main_2():
 
-    srs = PR2_ARM(a0 = 0.1, d2 = 0.4, d4 = 0.321)
+    #srs = PR2_ARM(a0 = 0.1, d2 = 0.4, d4 = 0.321)
+    srs = PR2_ARM(a0 = 0.5, d2 = 1.4, d4 = 8.21)
     #srs = SRS_ARM()
 
-    srs.qr = drc*numpy.array([20, 10, 30, 45, -20, 15, -10])
+    srs.qr = drc*numpy.array([45, -10, 30, -45, 20, 15, -10])
     #srs.qr = drc*numpy.array([-45, 7, -51, -22, -90, 80, 15])
     print 'q1 = ', srs.qr
     
@@ -949,7 +625,7 @@ def main_2():
     end_right_arm = numpy.copy(srs.end_right_arm)
 
 
-    all_solutions = srs.solve_inverse_kinematics(srs.end_right_arm, tt0 = 20*drc)
+    all_solutions = srs.solve_inverse_kinematics(srs.end_right_arm, tt0 = 45*drc)
 
     for i in range(0 ,len(all_solutions)):
         print all_solutions[i]
