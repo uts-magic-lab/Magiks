@@ -14,8 +14,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.5
-Last Revision:  14 November 2012
+@version:	    0.6
+Last Revision:  16 November 2012
 References:     
                 [1] Jabref Key: 2008_arti_Shimizu.Kakuya.ea_Analyticala
 '''
@@ -28,6 +28,7 @@ from sympy import Symbol, simplify
 import numpy, math
 import packages.nima.robotics.kinematics.kinematicpy.manipulator_library as mnlib
 import packages.nima.robotics.kinematics.kinematicpy.inverse_kinematics  as iklib 
+import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.trigonometry as trig
 import packages.nima.mathematics.vectors_and_matrices as vecmat
 
@@ -98,6 +99,37 @@ def rot_z(q):
 
 class PR2_ARM():
 
+    def end_right_arm_position(qr):
+
+        s0 = math.sin(qr[0])
+        c0 = math.cos(qr[0])
+        s1 = math.sin(qr[1])
+        c1 = math.cos(qr[1])
+        s2 = math.sin(qr[2])
+        c2 = math.cos(qr[2])
+        s3 = math.sin(qr[3])
+        c3 = math.cos(qr[3])
+
+        s10    = s1*s0
+        c1     = math.cos(theta1)
+        c0s1   = c0*s1
+        c10    = c1*c0
+        c10s3  = c10*s3
+        c30s1  = c30*s1
+        c210s3 = c2*c10s3
+        s320   = s3*s2*s0
+
+        k = k + 1
+        
+        X =  c0*a0 + c0s1*d2 + (c30s1 + c210s3 - s320)*d4
+
+        Y =  s0*a0 + s10*d2 + (c3s10 + c0s32 + c21s30)*d4
+
+        Z =  c1*d2 + (c31 - c2s31)*d4
+        
+        return [x, Y, Z]    
+            
+
     def forward_update(self):        
         self.A = []
         '''        
@@ -134,181 +166,232 @@ class PR2_ARM():
         tt0 = self.qr[0] 
         tt3 = self.qr[3] 
 
+    def test_kinematic_equations(self): 
+        
+        x_e = self.end_right_arm[0:3,3]
 
+        A = self.d2 + math.cos(self.qr[3])*self.d4
+        B = self.d4*math.sin(self.qr[3])
 
-    def solve_inverse_kinematics(self, T_d, tt0): 
+        s0 = math.sin(self.qr[0])
+        c0 = math.cos(self.qr[0])
+        s1 = math.sin(self.qr[1])
+        c1 = math.cos(self.qr[1])
+        s2 = math.sin(self.qr[2])
+        c2 = math.cos(self.qr[2])
+        s3 = math.sin(self.qr[3])
+        c3 = math.cos(self.qr[3])
+
+        xp = x_e[0] - c0*self.a0 
+        yp = x_e[1] - s0*self.a0 
+        zp = x_e[2]
+
+        U    = [xp,yp,zp]/numpy.linalg.norm([xp,yp,zp])
+        U_X  = vecmat.skew(U)
+
+        s22 = s2**2
+        c32 = c3**2
+
+        E = B*s2
+        F = B*c2
+
+        E2 = E**2
+
+        RAB2 = A**2 + B**2
+
+        rxy2  = x_e[0]**2 + x_e[1]**2
+        rxy   = math.sqrt(rxy2)
+        r2    = rxy2 + x_e[2]**2
+        a02   = self.a0**2
+        d42   = self.d4**2
+
+        R2 = r2 - self.d2**2 - self.d4**2 + a02
+        R4 = R2**2
+        Q  = -2*self.d2*self.d4
+        Q2 = Q**2
+        P2 = 4*a02*rxy2
+        T2 = R4 - 4*a02*rxy2
+
+        print " I must be zero (0): ", xp**2 + yp**2 + zp**2 - RAB2
+        print " I must be zero (1): ", 4*a02*E2 + (R2+Q*c3)**2 - P2
+
+        alpha = Q2 - 4*a02*d42*s22
+        betta = 2*Q*R2
+        gamma = R4 + 4*a02*(s22*d42 - rxy2)
+
+        print " I must be zero (2): ", alpha*c32 + betta*c3 + gamma
+
+        print " I must be zero (3): ", T2 + Q2*c32 + 2*R2*Q*c3  + 4*a02*(1-c32)*s22*d42
+        print " I must be zero (4): ", (T2 + Q2*c32 + 2*R2*Q*c3)/(4*a02*(c32 -1)*d42) - s22
+        
+        print " I must be zero (5): ", R2 + Q*c3 - 2*self.a0*(c0*x_e[0]+s0*x_e[1])
+
+        sai = math.atan2(x_e[1],x_e[0]) 
+
+        print " I must be zero (6): ", R2 + Q*c3 - 2*self.a0*rxy*math.sin(self.qr[0] + sai)
+
+        u = math.sin(self.qr[0] + sai)
+        a = - 2*self.a0*rxy
+        b = Q
+        c = R2
+        v = - (c + a*u)/b
+        v2 = v**2
+
+        print 'I must be zero (7):', c3 - v 
+
+        w = math.sqrt((Q2*v2 + 2*R2*Q*v + T2)/(4*a02*(v2 -1)*d42))
+        print 'I must be zero (8):', s2 - w 
+        
+        print 'I must be zero (9):', A*c1 - F*s1 - x_e[2]
+
+    def solve_inverse_kinematics_explained(self, T_d, tt0): 
      
         '''
-        Finds all the solutions of the Inverse Kinematic problem where theta0 = tt0
-        theta0 is the redundancy parameter
+        Finds all the solutions of the Inverse Kinematic problem for given phi
 
+        The code specifies which joint angle must be equal to tt
         Provides a solution set for PR2 arm for the desired pose given by T_d
-        tt0 is the redundancy parameter and can be arbitrary chosen.
+        tt is the redundancy parameter and can be arbitrarily chosen.
         ''' 
         solution_set = []
 
         x_d = T_d[0:3,3]
         R_d = T_d[0:3,0:3]
 
-        x_sw = x_d - [self.a0*math.cos(tt0), self.a0*math.sin(tt0), 0]  
+        rxy2  = x_d[0]**2 + x_d[1]**2
+        rxy   = math.sqrt(rxy2)
+        r2    = rxy2 + x_d[2]**2
+        a02   = self.a0**2
+        d42   = self.d4**2
 
-        u    = x_sw/numpy.linalg.norm(x_sw)
-        u_X  = vecmat.skew(u)
+        r2    = rxy2 + x_d[2]**2
+        a02   = self.a0**2
+        d42   = self.d4**2
 
+        R2 = r2 - self.d2**2 - self.d4**2 + a02
+        R4 = R2**2
+        Q  = -2*self.d2*self.d4
+        Q2 = Q**2
+        P2 = 4*a02*rxy2
+        T2 = R4 - 4*a02*rxy2
 
-        c3 = (numpy.linalg.norm(x_sw)**2 - self.d2**2 - self.d4**2)/(2*self.d2*self.d4) # According to: ref[1].eq.12
+        '''
+        code = 1:  theta0 = tt
+        '''
+        '''
+        a, b, c are selected so that: a*u + b*v + c = 0
+        '''   
+        c0 = math.cos(tt0)
+        s0 = math.sin(tt0)
 
-        A  = self.d2 + c3*self.d4
+ 
+        u  = c0*x_d[0] + s0*x_d[1]
+        a  = - 2*self.a0
+        b  = Q
+        c  = R2
+        v  = - (c + a*u)/b
+        v2 = v**2
+        A  = self.d2 + v*self.d4
+        print " I must be zero (0): ", v - math.cos(self.qr[3])
 
-        i = 0
+        i  = 0
         while i < 2:
-            theta3 = (2*i-1)*trig.arccos(c3)
+            theta3 = (2*i - 1)*trig.arccos(v)
             s3     = math.sin( theta3)
-            B = self.d4*s3
-            sol1 = trig.solve_system(1, A, B, x_sw[0], x_sw[1], x_sw[2])
-            if len(sol1) > 0:
-                (theta0_ref, theta1_ref) = sol1[0]
-                c0_ref = math.cos(theta0_ref)
-                s0_ref = math.sin(theta0_ref)
-                c1_ref = math.cos(theta1_ref)
-                s1_ref = math.sin(theta1_ref)
-            
-                T01_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0     ,   theta0_ref)
-                T12_ref = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta1_ref)
-                T23_ref = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2 ,   0         )
+            c3     = v
+            c30    = c3*c0
+            B      = self.d4*s3
 
-                R01_ref = T01_ref[0:3,0:3]
-                R12_ref = T12_ref[0:3,0:3]
-                R23_ref = T23_ref[0:3,0:3]
+            T34 = link_T( theta3       ,   math.pi/2, 0.0, 0.0       )
+            R34 = T34[0:3,0:3]
 
-                R03_ref = numpy.dot(numpy.dot(R01_ref,R12_ref),R23_ref)
-
-                As = numpy.dot(u_X, R03_ref)
-                Bs = - numpy.dot(numpy.dot(u_X, u_X), R03_ref)
-                Cs =   - Bs + R03_ref
-
-                #finding phi according to the given theta0
-                s00 = math.sin(tt0)
-                c00 = math.cos(tt0)
-
-                AA = As[0,1]*s00 - As[1,1]*c00
-                BB = Bs[0,1]*s00 - Bs[1,1]*c00         
-                CC = Cs[0,1]*s00 - Cs[1,1]*c00         
-
-                sol2 = trig.solve_equation(1, [BB,AA,CC])  # returns the solution set for phi
-                k = 0
-                while k < len(sol2):
-                    phi = sol2[k]
-
-                    R_sai = numpy.eye(3) + math.sin(phi)*u_X + (1 - math.cos(phi))*numpy.dot(u_X, u_X)  
-                    R03 = numpy.dot(R_sai, R03_ref)
-
-                    t0 = R03[1,1]/R03[0,1]    
-                    c1 = - R03[2,1]
-                    t2 = - R03[2,2]/R03[2,0]
-                
-                    theta0 = tt0 
-                    s0 = math.sin(theta0)
-                    c0 = math.cos(theta0)
-                    m = 0
-                    while m < 2:
-                        theta1 = (2*m - 1)*math.acos(c1) 
-                        s1    = math.sin(theta1)
-                        s10   = s1*s0  
-                        c1    = math.cos(theta1)
-                        c10   = c1*c0
-                        c0s1  = c0*s1
-
-                        c30s1 = c3*c0s1 
-                        c31   = c3*c1      
-                        c3s10 = c3*s10
-
-                        n = 0
-                        while n < 2:
-                            theta2 = math.atan(t2) + n*math.pi
-                            s2     = math.sin(theta2)
-                            s20    = s2*s0
-                            s21    = s2*s1
-                            s320   = s3*s20
-
-                            c0s2   = c0*s2
-                            c0s32  = c0s2*s3
-                            c10s2  = c10*s2
-                            c1s20  = c1*s20
-                            c2     = math.cos(theta2)
-                            c20    = c2*c0
-                            c21    = c2*c1
-                            c210   = c21*c0
-                            c210s3 = c210*s3
-                            c21s0  = c21*s0
-                            c21s20 = c21*s20
-                            c21s30 = c21s0*s3
-                            c2s0   = c2*s0
-                            c2s1   = c2*s1
-                            c2s31  = c2s1*s3
+            '''
+            alpha, betta and gamma are selected so that w^2 * (1 - v^2) = alpha*v^2 + betta*v + gamma
+            '''
+            foura02d42 = 4*a02*d42 
+            alpha = - Q2/foura02d42
+            betta = - 2*R2*Q/foura02d42
+            gamma = - T2/foura02d42
     
-                            X =  c0*self.a0 + c0s1*self.d2 + (c30s1 + c210s3 - s320)*self.d4
+            if gen.equal(v2, 1.0):
+                print "Singular Point"
+                return []
+                '''
+                In this case, a singularity happens
+                '''
+            else: 
+                print " I must be zero (1): ", (gamma + alpha*v2 + betta*v)/(1 - v2) - (math.sin(self.qr[2])**2)
+                w2  = (alpha*v2 + betta*v + gamma)/(1 - v2)
+                w   = math.sqrt(w2)
+                s2  = w
+                s20 = s2*s0 
+                c0s2= c0*s2  
 
-                            Y =  s0*self.a0 + s10*self.d2 + (c3s10 + c0s32 + c21s30)*self.d4
+                j = 0
+                while j < 2:
+                    theta2 = math.pi*(1 - j) + (2*j - 1)*trig.arcsin(w)
+                    c2     = math.cos(theta2)
+                    c20    = c2*c0
+                    c2s0   = c2*s0
+                    E      = B*s2
+                    F      = B*c2
+                    R1     = math.sqrt(A**2 + F**2)
+                    sai1   = math.atan2(F,A)
 
-                            Z =  c1*self.d2 + (c31 - c2s31)*self.d4
-                                        
-                            '''
-                            R03_2 = numpy.array([[-s20 + c210  , -c0s1 , -c2s0 - c10s2],
-                                                 [ c0s2 + c21s0, -s10  ,  c20 - c1s20 ],
-                                                 [ -c2s1       , -c1   ,  s21         ]])    
+                    k = 0                
+                    while k < 2:
+                        theta1 = (2*k - 1)*trig.arccos(x_d[2]/R1) - sai1 
+                        s1   = math.sin(theta1)
+                        c1   = math.cos(theta1)
+                        
+                        print " I must be zero (2): ", R1*math.cos(theta1 + sai1) - x_d[2] 
+                        print " I must be zero (3): ", A*c1 - F*s1 - x_d[2] 
 
-                            if vecmat.equal(R03, R03_2):
+                        As1Fc1 = self.a0 + A*s1 + F*c1
+                        X      = c0*As1Fc1 - E*s0
+                        Y      = s0*As1Fc1 + E*c0
+                        Z      = A*c1 - F*s1 
 
-                            '''
+                        if vecmat.equal(x_d, [X,Y,Z]):
+                            R03 = numpy.array([[c20*c1 - s20, -c0*s1, -c2s0 - c1*c0*s2],
+                                               [c0s2 + c1*c2*s0, -s1*s0, c20 - c1*s20],   
+                                               [-c2*s1, -c1, s2*s1 ]])
+                            R04 = numpy.dot(R03, R34)
+                            R47 = numpy.dot(R04.T, R_d)
 
-                            if vecmat.equal([X, Y, Z], x_d):
-                                T34 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0   ,   theta3)
-                                R34 = T34[0:3,0:3]
+                            l = 0
+                            while l < 2:
+                                theta5 = (2*l - 1)*trig.arccos(R47[2,2])
+                                s5     = math.sin(theta5)
+                                c5     = math.cos(theta5)
+                                if gen.equal(s5,0):
+                                    assert gen.equal(R47[2,0], 0)
+                                    print "Singular Point"
+                                    return []
+                                    '''
+                                    In this case, only sum of theta4 + theta6 is known 
+                                    '''
+                                else:
+                                    c6     = - R47[2,0]/s5
+                                    s6     =   R47[2,1]/s5
+                                    c4     =   R47[0,2]/s5
+                                    s4     =   R47[1,2]/s5
 
-                                Aw = numpy.dot(numpy.dot(R34.T, As.T), R_d)
-                                Bw = numpy.dot(numpy.dot(R34.T, Bs.T), R_d)
-                                Cw = numpy.dot(numpy.dot(R34.T, Cs.T), R_d)
-                                R47 = math.sin(phi)*Aw + math.cos(phi)*Bw + Cw
+                                    theta6 =   gen.sign(s6)*trig.arccos(c6)
+                                    assert gen.equal(s6, math.sin(theta6))
 
-                                t4 = R47[1,2]/ R47[0,2]
-                                c5 = R47[2,2]
-                                t6 = - R47[2,1]/R47[2,0]
-                                o = 0
-                            else:
-                                o = 2
+                                    theta4 =   gen.sign(s4)*trig.arccos(c4)
+                                    assert gen.equal(s4, math.sin(theta4))
 
-                            while o < 2:
-                                theta4 = math.atan(t4) + o*math.pi
-                                p = 0
-                                while p < 2:
-                                    theta5 = (2*p - 1)*math.acos(c5) 
-                                    q = 0
-                                    while q < 2:
-                                        theta6 = math.atan(t6) + q*math.pi 
-
-                                        #Check Ref.1.eq.11
-
-                                        T45 = transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4 ,   theta4)
-                                        T56 = transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0     ,   theta5)
-                                        T67 = transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0 ,   theta6)
-
-                                        R45 = T45[0:3,0:3]
-                                        R56 = T56[0:3,0:3]
-                                        R67 = T67[0:3,0:3]
-
-                                        R47_2 = numpy.dot(numpy.dot(R45, R56), R67)
-
-                                        if vecmat.equal(R47, R47_2) :
-                                            solution_set.append([theta0, theta1, theta2, theta3, theta4, theta5, theta6])
-
-                                        q = q + 1
-                                    p = p + 1
-                                o = o + 1
-                            n = n + 1
-                        m = m + 1
-                    k = k + 1
-
+                                    assert gen.equal(R47[1,0] ,  c4*s6 + c5*c6*s4)
+                                    assert gen.equal(R47[1,1] ,  c4*c6 - c5*s4*s6)
+                                    assert gen.equal(R47[0,0] ,  -s4*s6 + c4*c5*c6)
+                                    assert gen.equal(R47[0,1] ,  -c6*s4 - c4*c5*s6)
+    
+                                    solution_set.append([tt0, theta1, theta2, theta3, theta4, theta5, theta6])
+                                l = l + 1
+                        k = k + 1
+                    j = j + 1
             i = i + 1    
 
         return solution_set
@@ -511,18 +594,11 @@ def symbolic_help(code):
 
     if code == 4:
         '''
-        We try to find the formulations for R03 and x03, R47 and x47
+        We try to find the formulations for R04 and x03, R47 and x47
         '''
         T03 = arm.T[2]
         R03 = T03[0:3,0:3]
         x03 = T03[0:3,3]
-
-        print 'X = ', x03[0]
-        print
-        print 'Y = ', x03[1]
-        print
-        print 'Z = ', x03[2]
-        print
         '''
         For X03 The output must be:
         
@@ -548,9 +624,8 @@ def symbolic_help(code):
         print 'R03[2,1] = ', R03[2,1]
         print 'R03[2,2] = ', R03[2,2]
 
-
         '''
-        For R03 The output must be simplified to:
+        For R03 The output can be simplified to:
         
         R03[0,0] =  -s20 + c210
         R03[0,1] =  -c0s1
@@ -563,7 +638,68 @@ def symbolic_help(code):
         R03[2,0] =  -c2s1
         R03[2,1] =  -c1
         R03[2,2] =  s21
-        '''    
+        '''
+    if code == 5:
+        '''
+        We try to find the formulations for R04 and R47 and R04.T*R_d = R47
+        '''
+        T04 = arm.T[3]
+        R04 = T04[0:3,0:3]
+            
+        print
+        print 'R04[0,0] = ', R04[0,0]
+        print 'R04[0,1] = ', R04[0,1]
+        print 'R04[0,2] = ', R04[0,2]
+        print 
+        print 'R04[1,0] = ', R04[1,0]
+        print 'R04[1,1] = ', R04[1,1]
+        print 'R04[1,2] = ', R04[1,2]
+        print 
+        print 'R04[2,0] = ', R04[2,0]
+        print 'R04[2,1] = ', R04[2,1]
+        print 'R04[2,2] = ', R04[2,2]
+        print 
+        '''
+
+        For R04.T*R_d we have:
+        '''
+        R47_2 = numpy.dot(R04.T, arm.R_d)
+
+        print
+        print 'R47[0,0] = ', R47_2[0,0]
+        print 'R47[0,1] = ', R47_2[0,1]
+        print 'R47[0,2] = ', R47_2[0,2]
+        print 
+        print 'R47[1,0] = ', R47_2[1,0]
+        print 'R47[1,1] = ', R47_2[1,1]
+        print 'R47[1,2] = ', R47_2[1,2]
+        print 
+        print 'R47[2,0] = ', R47_2[2,0]
+        print 'R47[2,1] = ', R47_2[2,1]
+        print 'R47[2,2] = ', R47_2[2,2]
+        print 
+        
+        '''
+
+        For R47 we have:
+        '''
+        R47 = numpy.dot(numpy.dot(arm.R[4], arm.R[5]), arm.R[6])
+
+        print
+        print 'R47[0,0] = ', R47[0,0]
+        print 'R47[0,1] = ', R47[0,1]
+        print 'R47[0,2] = ', R47[0,2]
+        print 
+        print 'R47[1,0] = ', R47[1,0]
+        print 'R47[1,1] = ', R47[1,1]
+        print 'R47[1,2] = ', R47[1,2]
+        print 
+        print 'R47[2,0] = ', R47[2,0]
+        print 'R47[2,1] = ', R47[2,1]
+        print 'R47[2,2] = ', R47[2,2]
+        print 
+
+
 
         """
         '''
@@ -617,15 +753,15 @@ def main_2():
     srs = PR2_ARM(a0 = 0.5, d2 = 1.4, d4 = 8.21)
     #srs = SRS_ARM()
 
-    srs.qr = drc*numpy.array([45, -10, 30, -45, 20, 15, -10])
+    srs.qr = drc*numpy.array([45, -10, 40, -45, 20, 15, -10])
     #srs.qr = drc*numpy.array([-45, 7, -51, -22, -90, 80, 15])
     print 'q1 = ', srs.qr
     
     srs.forward_update()
     end_right_arm = numpy.copy(srs.end_right_arm)
+    srs.test_kinematic_equations()
 
-
-    all_solutions = srs.solve_inverse_kinematics(srs.end_right_arm, tt0 = 45*drc)
+    all_solutions = srs.solve_inverse_kinematics_explained(srs.end_right_arm, tt0 = 45*drc)
 
     for i in range(0 ,len(all_solutions)):
         print all_solutions[i]
@@ -646,7 +782,7 @@ def main_2():
             print "Failed :-("
 
 def main_3():
-    symbolic_help(4)    
+    symbolic_help(5)    
      
 if __name__ == "__main__" :
     
