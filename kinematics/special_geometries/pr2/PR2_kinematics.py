@@ -14,8 +14,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.7
-Last Revision:  20 November 2012
+@version:	    0.8
+Last Revision:  22 November 2012
 References:     
                 [1] Jabref Key: 2008_arti_Shimizu.Kakuya.ea_Analyticala
 '''
@@ -37,24 +37,16 @@ epsilon = 0.0000001
 drc     = math.pi/180.00
 
 
-def link_T(theta,alpha,a,d):
-
-    T_theta = numpy.array([ [ math.cos(theta), -math.sin(theta), 0.0, 0.0 ],
-                       [ math.sin(theta),  math.cos(theta), 0.0, 0.0 ],
-                       [    0.0,             0.0,     1.0, 0.0 ],
-                       [    0.0,             0.0,     0.0, 1.0 ] ])
-
-    T_alpha = numpy.array([ [ 1.0,     0.0,            0.0,     0.0 ],
-                       [ 0.0, math.cos(alpha), -math.sin(alpha), 0.0 ],
-                       [ 0.0, math.sin(alpha),  math.cos(alpha), 0.0 ],
-                       [ 0.0,     0.0,            0.0,     1.0 ] ])
-
-    T_trans = numpy.array([ [ 1.0, 0.0, 0.0, a ],
-                       [ 0.0, 1.0, 0.0, 0.0 ],
-                       [ 0.0, 0.0, 1.0, d ],
-                       [ 0.0, 0.0, 0.0, 1.0 ] ])
-
-    return numpy.dot(numpy.dot(T_theta, T_trans), T_alpha)
+def transfer_DH_standard(theta, alpha, a, d, q):
+    s  = math.sin(theta + q)
+    c  = math.cos(theta + q)
+    sa = math.sin(alpha)
+    ca = math.cos(alpha)
+    
+    return numpy.array([[  c, -ca*s,  sa*s, a*c ],
+                        [  s,  ca*c, -sa*c, a*s ],
+                        [  0,  sa  ,  ca  , d   ],
+                        [  0,  0   ,  0   , 1   ]])
 
 
 def round(x):
@@ -68,37 +60,6 @@ def round(x):
     else:
         y = x    
     return y    
-
-def assert_equality(x,y):
-    '''
-    checks if x and y are equal removing the machine error
-    '''
-    assert (abs(x-y) < epsilon)
-
-
-def transfer_DH_standard(theta, alpha, a, d, q):
-    s  = math.sin(theta + q)
-    c  = math.cos(theta + q)
-    sa = math.sin(alpha)
-    ca = math.cos(alpha)
-    
-    return numpy.array([[  c, -ca*s,  sa*s, a*c ],
-                        [  s,  ca*c, -sa*c, a*s ],
-                        [  0,  sa  ,  ca  , d   ],
-                        [  0,  0   ,  0   , 1   ]])
-
-def rot_z(q):
-    # Return a transfer matrix corresponding to rotation around z axis
-    c = math.cos(q)
-    s = math.sin(q)
-    return numpy.array([[  c, -s, 0, 0 ],
-                        [  s,  c, 0, 0 ],
-                        [  0,  0, 1, 0 ],
-                        [  0,  0, 0, 1 ]])
-
-
-
-
 
 class PR2_ARM():
 
@@ -153,8 +114,7 @@ class PR2_ARM():
 
         Z =  c1*self.d2 + (c31 - c2s31)*self.d4
         
-        self.end_right_arm_position = [X, Y, Z]
-
+        self.end_right_arm_position = numpy.array([X, Y, Z])
          
         R03 = numpy.zeros((3,3))      
 
@@ -174,9 +134,9 @@ class PR2_ARM():
         [c54, c5s4, c5s5] = c5*numpy.array([c4, s4, s5])
 
         [s64, s65, c4s6, c5s6, c54s6, s654] = s6*numpy.array([s4, s5, c4, c5, c54, s54])
-        [c64, c65, c6s4, c6s5, c654, C6s54] = s6*numpy.array([s4, s5, c4, c5, c54, s54])
+        [c64, c65, c6s4, c6s5, c654, C6s54] = c6*numpy.array([c4, c5, s4, s5, c54, s54])
 
-        R47 = numpy.zeros((3,3))      
+        R47 = numpy.zeros((3,3))    
 
         R47[0,0] =  -s64 + c654
         R47[0,1] =  -c6s4 - c54s6
@@ -189,13 +149,14 @@ class PR2_ARM():
         R47[2,0] =  -c6s5
         R47[2,1] =  s65
         R47[2,2] =  c5
-        
+
         R34 =  numpy.array([[  c3,     0,     s3 ],
                             [  s3,     0,    -c3 ],
                             [  0,      1,     0  ]])
 
-        self.end_right_arm_orientation = numpy.dot(numpy.dot(R03, R34), R47)
 
+        self.end_right_arm_orientation = numpy.dot(numpy.dot(R03, R34), R47)
+        
         """
         self.b = [s0, c0, c0s0]
         '[s0, c0, c0s0] = b[0:3]'
@@ -227,30 +188,109 @@ class PR2_ARM():
         self.b = self.b + bb
         """
 
+        '''
+        Calculating Function values
+        '''
+
+    def error_jacobian(self, s, c, x_d, R_d):        
+
+        [s0, s1, s2, s3, s4, s5, s6] = s
+        [c0, c1, c2, c3, c4, c5, c6] = c
+
+        [[nx, sx, ax],
+        [ny, sy, ay],
+        [nz, sz, az]] = R_d
 
 
+        s10 = s1*s0
+        [s20,s21, s22, s210]  = s2*numpy.array([s0, s1, s2, s10])
+        [s30, s31, s32, s310, s320, s321, s322]  = s3*numpy.array([s0, s1, s2, s10, s20, s21, s22])
 
+        s332 = s3*s32
 
+        [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32]  = c0*numpy.array([s0,s1,s2,s10,s20,s21,s30,s31,s32])
+        
+        [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30, c1s320]  = c1*numpy.array([c0, s0, s1, s2, s3, s10, s20,s30, s320])
+        [c20,c21,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30, c2s310, c21s30]  = c2*numpy.array([c0, c1, c10, s0, s1, s2, s3, s10, s20, s30, s310, c1s30])
+        [c30,c31,c32,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s30,c310,c320,c321,c3210] = c3*numpy.array([c0,c1,c2,s0,s1,s2,s3,s10,s20,s30,c10,c20,c21,c210])
+
+        [c21s0,c31s0,c321s0]  = s0*numpy.array([c21,c31,c321])
+        [c30s1, c32s1]  = s1*numpy.array([c30, c32])
+        [c10s2,c20s2,c30s2, c32s2]  = s2*numpy.array([c10,c20,c30, c32])
+        [c10s3, c20s3, c30s3, c210s3]  = s3*numpy.array([c10, c20, c30, c210])
+
+        c10s32 = c10*s32
+
+        s54 = s5*s4
+        [c54, c5s4, c5s5] = c5*numpy.array([c4, s4, s5])
+
+        [s64, s65, c4s6, c5s6, c54s6, s654] = s6*numpy.array([s4, s5, c4, c5, c54, s54])
+        [c64, c65, c6s4, c6s5, c654, C6s54] = c6*numpy.array([c4, c5, s4, s5, c54, s54])
+
+        Q  = -2*self.d2*self.d4
+        Q2 = Q**2
+        d42 = self.d4**2
+        a02 = self.a0**2
+
+        rxy2  = x_d[0]**2 + x_d[1]**2
+        rxy   = math.sqrt(rxy2)
+        r2    = rxy2 + x_d[2]**2
+
+        R2 = r2 - self.d2**2 - self.d4**2 + a02
+        R4 = R2**2
+
+        foura02d42 = 4*a02*d42 
+        alpha = - Q2/foura02d42
+        betta = - 2*R2*Q/foura02d42
+
+        F = numpy.zeros((7,7))
+
+        F[1,0] = - 2*self.a0*c0
+        F[1,3] =   2*self.d2*self.d4*s3
+
+        F[2,2] = - 2*c2*s332
+        F[2,3] = - 2*alpha*c3s3 - betta*s3 - 2*c3*s322
+        
+        F[3,1] = - self.d2*s1 - (c3*s1 + c2*c1*s3)*self.d4
+        F[3,2] =   s321*self.d4
+        F[3,3] =   - (c1s3 + c32s1)*self.d4
+        
+        F[4,0] = ax*(- c0s32 - c21s30 - c3s10) + ay*(- s320  + c210s3 + c30s1)  
+        F[4,1] = ax*(- c20*s31 + c310) + ay*(- c2s310 + c31s0) - az*(c3s1 + c21*s3)
+        F[4,2] = - ax*(c2s30 + c10s32) + ay*(c20s3 - c1s320) + az*s321
+
+        F[4,3] = ax*(- c3s20 + c3210 - c0s31) + ay*(c30s2 + c321s0 - s310) + az*(- c1s3 - c32s1)
+        F[4,5] = s5
+
+        F[5,0] = ax*(-c20 + c1s20) - ay*(c2s0 + c10s2)
+        F[5,1] = ax*c0s21 - ay*s210 + az*c1s2
+        F[5,2] = ax*(s20 - c210) - ay*(c0s2 + c21s0) + az*c2s1
+        F[5,4] = - c4*s5
+        F[5,5] = - c5*s4
+
+        J = numpy.zeros(7)
+
+        J[0] =   1.0
+        J[3] = - F[1,0]/F[1,3]
+        J[2] = - F[2,3]*J[3]/F[2,2]
+        J[1] = - (F[3,2]*J[2] + F[3,3]*J[3])/F[3,1]
+
+        J[5] = - numpy.dot(F[4,0:4],J[0:4])/F[4,5]
+        #F40*J0 + F41*J1 + F42*J2 + F43*J3 + F45*J5 = 0 ==> J5 = - (F40 + F41*J1 + F42*J2 + F43*J3)/F45
+        J[4] = - (F[5,0] + F[5,1]*J[1] + F[5,2]*J[2] + F[5,5]*J[5])/F[5,4] 
+        J[6] = - numpy.dot(F[6,0:6],J[0:6])/F[6,6]
+        #F60*J0 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5 + F66*J6 = 0  ==> J6 = - (F60 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5)/ J66
 
     def forward_update_slow(self):        
         self.A = []
-        '''        
-        self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, 0.0, 0.0       ,   self.qr[0]))
+
+        self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, self.a0, 0.0   ,   self.qr[0]))
         self.A.append(transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   self.qr[1]))
         self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2   ,   self.qr[2]))
         self.A.append(transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   self.qr[3]))
         self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4   ,   self.qr[4]))
         self.A.append(transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   self.qr[5]))
         self.A.append(transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0       ,   self.qr[6]))
-        '''        
-
-        self.A.append(link_T( self.qr[0]       , - math.pi/2, self.a0, 0.0 ))
-        self.A.append(link_T( self.qr[1]       ,   math.pi/2, 0.0, 0.0       ))
-        self.A.append(link_T( self.qr[2]       , - math.pi/2, 0.0, self.d2   ))
-        self.A.append(link_T( self.qr[3]       ,   math.pi/2, 0.0, 0.0       ))
-        self.A.append(link_T( self.qr[4]       , - math.pi/2, 0.0, self.d4   ))
-        self.A.append(link_T( self.qr[5]       ,   math.pi/2, 0.0, 0.0       ))
-        self.A.append(link_T( self.qr[6]       ,   0.0      , 0.0, 0.0       ))
 
         T = numpy.eye(4)
         # T Transfer matrix of the Arm (from base of arm to tip)
@@ -259,6 +299,8 @@ class PR2_ARM():
         
         self.end_right_arm = numpy.copy(T)
 
+        self.end_right_arm_position    = self.end_right_arm[0:3,3]
+        self.end_right_arm_orientation = self.end_right_arm[0:3,0:3]
 
     def inverse_update(self, T_d):
         '''
@@ -357,8 +399,8 @@ class PR2_ARM():
         ''' 
         solution_set = []
 
-        x_d = T_d[0:3,3]
-        R_d = T_d[0:3,0:3]
+        x_d = position
+        R_d = orientation
 
         rxy2  = x_d[0]**2 + x_d[1]**2
         rxy   = math.sqrt(rxy2)
@@ -404,7 +446,8 @@ class PR2_ARM():
             c30    = c3*c0
             B      = self.d4*s3
 
-            T34 = link_T( theta3       ,   math.pi/2, 0.0, 0.0       )
+            #T34 = link_T( theta3       ,   math.pi/2, 0.0, 0.0       )
+            T34 = transfer_DH_standard( 0.0 , math.pi/2, 0.0, 0.0, theta3)
             R34 = T34[0:3,0:3]
 
             '''
@@ -723,7 +766,7 @@ def symbolic_help(code):
 
         '''
         For R03 The output can be simplified to:
-        
+
         R03[0,0] =  -s20 + c210
         R03[0,1] =  -c0s1
         R03[0,2] =  -c2s0 - c10s2
@@ -810,9 +853,9 @@ def symbolic_help(code):
         print 
 
         """
-        EQ1:  a*s0 + b*c3 + c = 0
-        EQ2:  alpha*c33 + betta*c3 + gamma - s22*s33 = 0
-        EQ3:  c1*d2 + (c31 - c2s31)*d4 - Z = 0
+        EQ1: a*s0 + b*c3 + c = 0
+        EQ2: alpha*c33 + betta*c3 + gamma - s22*s33 = 0
+        EQ3: c1*d2 + (c31 - c2s31)*d4 - Z = 0
 
         EQ4: ax*(-s320 + c210s3 + c30s1) + ay*(c0s32 + c21s30 + c3s10) + az*(c31 - c2s31) -  c5 = 0
         EQ5: ax*(-c2s0 - c10s2) + ay*(c20 - c1s20) + az*s21 - s54 = 0
@@ -991,7 +1034,9 @@ def main_2():
     print 'q1 = ', srs.qr
     
     srs.forward_update()
+
     era_pos = numpy.copy(srs.end_right_arm_position)
+    era_ori = numpy.copy(srs.end_right_arm_orientation)
     srs.test_kinematic_equations()
 
     all_solutions = srs.solve_inverse_kinematics_explained(srs.end_right_arm_position, srs.end_right_arm_orientation, tt0 = 45*drc)
@@ -1009,7 +1054,7 @@ def main_2():
         print 
         print end_right_arm
         '''
-        if vecmat.equal(srs.end_right_arm_position, era_pos):
+        if vecmat.equal(srs.end_right_arm_position, era_pos) and vecmat.equal(srs.end_right_arm_orientation, era_ori):
             print "Successful :-)"
         else:
             print "Failed :-("
@@ -1017,7 +1062,16 @@ def main_2():
 def main_3():
     symbolic_help(5)    
      
+def main_4():
+    srs = PR2_ARM(a0 = 0.5, d2 = 1.4, d4 = 8.21)
+    srs.forward_update()
+
+    era_pos = numpy.copy(srs.end_right_arm_position)
+    era_ori = numpy.copy(srs.end_right_arm_orientation)
+    
+    srs.error_jacobian(srs.s, srs.c, era_pos, era_ori)    
+
 if __name__ == "__main__" :
     
-    main_2()
+    main_4()
 
