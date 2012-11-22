@@ -14,8 +14,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.8
-Last Revision:  22 November 2012
+@version:	    0.9
+Last Revision:  23 November 2012
 References:     
                 [1] Jabref Key: 2008_arti_Shimizu.Kakuya.ea_Analyticala
 '''
@@ -61,171 +61,198 @@ def round(x):
         y = x    
     return y    
 
-class PR2_ARM():
 
-            
-    def forward_update(self):        
+class PR2_ARM_Configuration():
+
+    def all_joints_in_range(self, qd):
         '''
-        This function, finds all kinematics of the PR2 Arm directly from the formulations
+        Then, if The given joints "qd" are out of the range specified by properties: ql and qh, returns False, otherwise returns True  
+        '''
+        flag = True
+        q = trig.angles_standard_range(qd)
+        for i in range(0, 7):
+            if abs(q[i] - self.ql[i]) < gen.epsilon:
+                q[i] = self.ql[i]
+            if abs(q[i] - self.qh[i]) < gen.epsilon:
+                q[i] = self.qh[i]
+            flag = flag and (q[i] <= self.qh[i]) and (q[i] >= self.ql[i])
+        return flag
+
+    def set_config(self, qd):
+        '''
+        sets the configuration to "qd"
+        This function should not be called by the end user. Use function "set_config" in class PR2_ARM  
+        '''    
+        if self.all_joints_in_range(qd):
+         
+            self.q = qd
+
+            self.c = [math.cos(self.q[i]) for i in range(0,7)]
+            self.s = [math.sin(self.q[i]) for i in range(0,7)]
+
+            [s0, s1, s2, s3, s4, s5, s6] = self.s
+            [c0, c1, c2, c3, c4, c5, c6] = self.c
+
+            self.s1_mult1 = [s1*s0]
+            [s10]         = self.s1_mult1
+
+            self.s2_mult1 = s2*numpy.array([s0, s1, s2, s10])
+            [s20,s21, s22, s210]  = self.s2_mult1
+
+            self.s3_mult1 = s3*numpy.array([s0, s1, s2, s10, s20, s21, s22, s3,s210])
+            [s30, s31, s32, s310, s320, s321, s322, s33,s3210] = self.s3_mult1
+
+            self.c0_mult = c0*numpy.array([s0,s1,s2,s10,s20,s21,s30,s31,s32,s321])
+            [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = self.c0_mult
+
+            self.c1_mult = c1*numpy.array([c0, s0, s1, s2, s3, s10, s20,s30,s32, s320])
+            [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = self.c1_mult
+
+            self.c2_mult = c2*numpy.array([c0,c1,c2,c10,s0,s1,s2,s3,s10,s20,s30,s31,s310, c1s30,c0s31])
+            [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.c2_mult
+
+            self.c3_mult = c3*numpy.array([c0,c1,c2,c3, s0,s1,s2,s3,s10,s20,s21,s30,c10,c20,c21,c210,c2s0,c2s10])
+            [c30,c31,c32,c33,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s21,c3s30,c310,c320,c321,c3210,c32s0,c32s10] = self.c3_mult
+
+            self.s0_mult = s0*numpy.array([c21,c31,c321])
+            [c21s0,c31s0,c321s0]  = self.s0_mult
+
+            self.s1_mult2 = s1*numpy.array([c10,c20,c30, c32,c320])
+            [c10s1,c20s1,c30s1, c32s1,c320s1] = self.s1_mult2
+
+            self.s2_mult2 = s2*numpy.array([c10,c20,c30, c32,c310])
+            [c10s2,c20s2,c30s2, c32s2,c310s2]  = self.s2_mult2
+
+            self.s3_mult2 = s3*numpy.array([c10, c20, c30, c210,s32])
+            [c10s3, c20s3, c30s3, c210s3,s332]  = self.s3_mult2
+
+            self.cs_mult = [c10*s32, c31*s20, s5*s4]
+            [c10s32, c31s20, s54] = self.cs_mult
+
+            self.c5_mult = c5*numpy.array([c4, s4, s5])
+            [c54, c5s4, c5s5] = self.c5_mult
+
+            self.s6_mult = s6*numpy.array([s4, s5, c4, c5, c54, s54])
+            [s64, s65, c4s6, c5s6, c54s6, s654] = self.s6_mult
+
+            self.c6_mult = c6*numpy.array([c4, c5, s4, s5, c54, s54])
+            [c64, c65, c6s4, c6s5, c654, C6s54] = self.c6_mult
+            return True
+        else:
+            return False
+        
+            
+
+    def __init__(self, ql = drc*numpy.array([-130, -30, -224, 0, -180, 0, -180]), qh = drc*numpy.array([40, 80, 44, 130, 180, 130, 180])):
+        '''
+        ql and qh define the lower and higher bounds of the joints
+        
         '''    
 
-        self.c = [math.cos(self.qr[i]) for i in range(0,7)]
-        self.s = [math.sin(self.qr[i]) for i in range(0,7)]
+        assert (len(ql) == 7) and (len(qh) == 7)
 
-        [s0, s1, s2, s3, s4, s5, s6] = self.s
-        [c0, c1, c2, c3, c4, c5, c6] = self.c
+        self.ql = ql
+        self.qh = qh
 
-        [s10, s20, s30] = s0*numpy.array([s1, s2, s3])
-        [c10, c20, c30] = c0*numpy.array([c1, c2, c3])
-        
-        [c1s10, c1s20, c1s30] = c1*numpy.array([s10, s20, s30])
-
-        b = numpy.array([s1, c1])
-        [s21, c1s2] = s2*b
-        [c2s1, c21] = c2*b
-        [s31, c1s3] = s3*b
-        [c3s1, c31] = c3*b
-
-        [c21s0, c21s1, c21s2, c21s3] = c21*numpy.array([s0, s1, s2, s3])
-
-        [s31, s32]    = s3*numpy.array([s1, s2])
-        [c31, c32]    = c3*numpy.array([c1, c2])
-
-        [c0s0, c0s1, c0s2, c0s3, c210] = c0*numpy.array([s0, s1, s2, s3, c21])
-        [c0s30, c0s31, c0s32] = c0*numpy.array([s30, s31, s32])
-
-        b = numpy.array([c10, c20, c30])
-        [c10s0, c20s0, c30s0]  = s0*b
-        [c10s1, c20s1, c30s1]  = s1*b
-        [c10s2, c20s2, c30s2]  = s2*b
-        [c10s3, c20s3, c30s3]  = s3*b
-
-        c30s1  = c30*s1
-        c210s3 = c2*c10s3
-        c21s30  = c21*s30
-        [c2s31, c2s0]  = c2*numpy.array([s31,s0])
-        s320   = s3*s20
-        c3s10  = c3*s10
+        # sets all angles as zero by default
+        self.set_config(numpy.zeros(7))
 
 
-        X =  c0*self.a0 + c0s1*self.d2 + (c30s1 + c210s3 - s320)*self.d4
+class PR2_ARM():
 
-        Y =  s0*self.a0 + s10*self.d2 + (c3s10 + c0s32 + c21s30)*self.d4
-
-        Z =  c1*self.d2 + (c31 - c2s31)*self.d4
-        
-        self.end_right_arm_position = numpy.array([X, Y, Z])
-         
-        R03 = numpy.zeros((3,3))      
-
-        R03[0,0] =  -s20 + c210
-        R03[0,1] =  -c0s1
-        R03[0,2] =  -c2s0 - c10s2
-
-        R03[1,0] =  c0s2 + c21s0
-        R03[1,1] =  -s10
-        R03[1,2] =  c20 - c1s20
-
-        R03[2,0] =  -c2s1
-        R03[2,1] =  -c1
-        R03[2,2] =  s21
-
-        s54 = s5*s4
-        [c54, c5s4, c5s5] = c5*numpy.array([c4, s4, s5])
-
-        [s64, s65, c4s6, c5s6, c54s6, s654] = s6*numpy.array([s4, s5, c4, c5, c54, s54])
-        [c64, c65, c6s4, c6s5, c654, C6s54] = c6*numpy.array([c4, c5, s4, s5, c54, s54])
-
-        R47 = numpy.zeros((3,3))    
-
-        R47[0,0] =  -s64 + c654
-        R47[0,1] =  -c6s4 - c54s6
-        R47[0,2] =  c4*s5
-
-        R47[1,0] =  c4s6 + c65*s4
-        R47[1,1] =  c64 - c5*s64
-        R47[1,2] =  s54
-
-        R47[2,0] =  -c6s5
-        R47[2,1] =  s65
-        R47[2,2] =  c5
-
-        R34 =  numpy.array([[  c3,     0,     s3 ],
-                            [  s3,     0,    -c3 ],
-                            [  0,      1,     0  ]])
-
-
-        self.end_right_arm_orientation = numpy.dot(numpy.dot(R03, R34), R47)
-        
-        """
-        self.b = [s0, c0, c0s0]
-        '[s0, c0, c0s0] = b[0:3]'
-    
-        bb = s1*self.b
-        [s10, c0s1, c0s10] = bb
-        self.b = self.b + bb
-        #[s10, c0s1, c0s10] = b[3:6]
-
-        bb = c1*self.b
-        [c1s0, c10, c10s0, c1s10, c10s1, c10s10] = bb
-        self.b = self.b + bb
-        #[c1s0, c10, c10s0, c1s10, c10s1, c10s10] = b[6:12]
-
-        bb = s2*self.b
-        [s20, c0s2, c0s20, s210, c0s21, c0s210] = bb[0:6]
-        [c1s20, c10s2, c10s20, c1s210, c10s21, c10s210] = bb[6:12]
-        self.b = self.b + bb
-        #[s20, c0s2, c0s20, s210, c0s21, c0s210] = b[12:18]
-        #[c1s20, c10s2, c10s20, c1s210, c10s21, c10s210] = b[18:24]
-
-        bb = c2*self.b
-        [c2s0, c20, c20s0] = bb[0:3]
-        [c2s10, c20s1, c20s10] = bb[3:6]
-        [c21s0, c210, c210s0, c21s10, c210s1, c210s10] = bb[6:12]
-        [c2s20, c20s2, c20s20, c2s210, c20s21, c20s210] = bb[12:18]
-        [c21s20, c210s2, c210s20, c21s210, c210s21, c210s210] = bb[18:24]
-
-        self.b = self.b + bb
-        """
-
+    def set_config(self, qd):
+        if self.config.set_config(qd):
+            self.wrist_position_updated = False
+            self.wrist_orientation_updated = False
+            self.jacobian_updated = False
+        else:
+            print "Given joints out of feasible range"
+            
+    def wrist_position(self):        
         '''
-        Calculating Function values
-        '''
+        Returns the cartesian coordiantes of the origin of the wrist. The origin of the wrist is the wrist joint center 
+        '''    
+        if not self.wrist_position_updated:
+            [s0, s1, s2, s3, s4, s5, s6] = self.config.s
+            [c0, c1, c2, c3, c4, c5, c6] = self.config.c
+            [s10]         = self.config.s1_mult1
+            [s30, s31, s32, s310, s320, s321, s322, s33,s3210] = self.config.s3_mult1
+            [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = self.config.c0_mult
+            [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.config.c2_mult
+            [c30,c31,c32,c33,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s21,c3s30,c310,c320,c321,c3210,c32s0,c32s10] = self.config.c3_mult
+            [c10s1,c20s1,c30s1, c32s1,c320s1] = self.config.s1_mult2
+            [c10s3, c20s3, c30s3, c210s3,s332]  = self.config.s3_mult2
 
-    def error_jacobian(self, s, c, x_d, R_d):        
+            X =  c0*self.a0 + c0s1*self.d2 + (c30s1 + c210s3 - s320)*self.d4
 
-        [s0, s1, s2, s3, s4, s5, s6] = s
-        [c0, c1, c2, c3, c4, c5, c6] = c
+            Y =  s0*self.a0 + s10*self.d2 + (c3s10 + c0s32 + c21s30)*self.d4
+
+            Z =  c1*self.d2 + (c31 - c2s31)*self.d4
+        
+            self.wrist_position = numpy.array([X, Y, Z])
+            self.wrist_position_updated = True
+
+        return self.wrist_position
+
+    def wrist_orientation(self):        
+
+        if not self.wrist_orientation_updated:
+            [s0, s1, s2, s3, s4, s5, s6] = self.config.s
+            [c0, c1, c2, c3, c4, c5, c6] = self.config.c
+            [s10]         = self.config.s1_mult1
+            [s20,s21, s22, s210]  = self.config.s2_mult1
+            [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = self.config.c0_mult
+            [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = self.config.c1_mult
+            [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.config.c2_mult
+            [c21s0,c31s0,c321s0]  = self.config.s0_mult
+            [c10s2,c20s2,c30s2, c32s2,c310s2]  = self.config.s2_mult2
+            [c10s32, c31s20, s54] = self.config.cs_mult
+            [s64, s65, c4s6, c5s6, c54s6, s654] = self.config.s6_mult
+            [c64, c65, c6s4, c6s5, c654, C6s54] = self.config.c6_mult
+
+            R03 = numpy.array([[-s20 + c210, -c0s1, -c2s0 - c10s2],
+                               [c0s2 + c21s0, -s10, c20 - c1s20],                
+                               [-c2s1, -c1, s21]]) 
+
+            R47 = numpy.array([[-s64 + c654, -c6s4 - c54s6, c4*s5],
+                               [c4s6 + c65*s4, c64 - c5*s64, s54],                
+                               [-c6s5, s65, c5]]) 
+
+            R34 =  numpy.array([[  c3,     0,     s3 ],
+                                [  s3,     0,    -c3 ],
+                                [  0,      1,     0  ]])
+
+
+            self.wrist_orientation = numpy.dot(numpy.dot(R03, R34), R47)
+            self.wrist_orientation_updated = True
+
+        return self.wrist_orientation
+        
+
+    def error_jacobian(self, x_d, R_d):        
 
         [[nx, sx, ax],
         [ny, sy, ay],
         [nz, sz, az]] = R_d
 
 
-        s10 = s1*s0
-        [s20,s21, s22, s210]  = s2*numpy.array([s0, s1, s2, s10])
-        [s30, s31, s32, s310, s320, s321, s322]  = s3*numpy.array([s0, s1, s2, s10, s20, s21, s22])
-
-        s332 = s3*s32
-
-        [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32]  = c0*numpy.array([s0,s1,s2,s10,s20,s21,s30,s31,s32])
-        
-        [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30, c1s320]  = c1*numpy.array([c0, s0, s1, s2, s3, s10, s20,s30, s320])
-        [c20,c21,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30, c2s310, c21s30]  = c2*numpy.array([c0, c1, c10, s0, s1, s2, s3, s10, s20, s30, s310, c1s30])
-        [c30,c31,c32,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s30,c310,c320,c321,c3210] = c3*numpy.array([c0,c1,c2,s0,s1,s2,s3,s10,s20,s30,c10,c20,c21,c210])
-
-        [c21s0,c31s0,c321s0]  = s0*numpy.array([c21,c31,c321])
-        [c30s1, c32s1]  = s1*numpy.array([c30, c32])
-        [c10s2,c20s2,c30s2, c32s2]  = s2*numpy.array([c10,c20,c30, c32])
-        [c10s3, c20s3, c30s3, c210s3]  = s3*numpy.array([c10, c20, c30, c210])
-
-        c10s32 = c10*s32
-
-        s54 = s5*s4
-        [c54, c5s4, c5s5] = c5*numpy.array([c4, s4, s5])
-
-        [s64, s65, c4s6, c5s6, c54s6, s654] = s6*numpy.array([s4, s5, c4, c5, c54, s54])
-        [c64, c65, c6s4, c6s5, c654, C6s54] = c6*numpy.array([c4, c5, s4, s5, c54, s54])
+        [s0, s1, s2, s3, s4, s5, s6] = self.config.s
+        [c0, c1, c2, c3, c4, c5, c6] = self.config.c
+        [s10]         = self.config.s1_mult1
+        [s20,s21, s22, s210]  = self.config.s2_mult1
+        [s30, s31, s32, s310, s320, s321, s322, s33,s3210] = self.config.s3_mult1
+        [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = self.config.c0_mult
+        [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = self.config.c1_mult
+        [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.config.c2_mult
+        [c30,c31,c32,c33,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s21,c3s30,c310,c320,c321,c3210,c32s0,c32s10] = self.config.c3_mult
+        [c21s0,c31s0,c321s0]  = self.config.s0_mult
+        [c10s1,c20s1,c30s1, c32s1,c320s1] = self.config.s1_mult2
+        [c10s2,c20s2,c30s2, c32s2,c310s2]  = self.config.s2_mult2
+        [c10s3, c20s3, c30s3, c210s3,s332]  = self.config.s3_mult2
+        [c10s32, c31s20, s54] = self.config.cs_mult
+        [c54, c5s4, c5s5] = self.config.c5_mult
+        [s64, s65, c4s6, c5s6, c54s6, s654] = self.config.s6_mult
+        [c64, c65, c6s4, c6s5, c654, C6s54] = self.config.c6_mult
 
         Q  = -2*self.d2*self.d4
         Q2 = Q**2
@@ -281,112 +308,96 @@ class PR2_ARM():
         J[6] = - numpy.dot(F[6,0:6],J[0:6])/F[6,6]
         #F60*J0 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5 + F66*J6 = 0  ==> J6 = - (F60 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5)/ J66
 
-    def forward_update_slow(self):        
-        self.A = []
+        H100 = 2*self.a0*s0
 
-        self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, self.a0, 0.0   ,   self.qr[0]))
-        self.A.append(transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   self.qr[1]))
-        self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d2   ,   self.qr[2]))
-        self.A.append(transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   self.qr[3]))
-        self.A.append(transfer_DH_standard( 0.0       , - math.pi/2, 0.0, self.d4   ,   self.qr[4]))
-        self.A.append(transfer_DH_standard( 0.0       ,   math.pi/2, 0.0, 0.0       ,   self.qr[5]))
-        self.A.append(transfer_DH_standard( 0.0       ,   0.0      , 0.0, 0.0       ,   self.qr[6]))
+        H133 = - Q*c3
 
-        T = numpy.eye(4)
-        # T Transfer matrix of the Arm (from base of arm to tip)
-        for X in self.A:
-            T = numpy.dot(T, X)
+        H222 = - 2*s33*(- s22 + c22)
+        H223 = -4*c32*s32
+
+        H232 = -4*c32*s32
+        H233 = - 2*(c33 - s33)*(alpha + s22) - betta*c3 
+
+        H311 = - self.d2*c1 - (c31 - c2s31)*self.d4
+        H312 = - c1s32*self.d4
+        H313 = (- s31 + c321)*self.d4
+
+        H321 =   c1s32*self.d4
+        H322 =   c2s31*self.d4
+        H323 =   c3s21*self.d4
+
+        H331 =   (s31 - c321)*self.d4
+        H332 =   c3s21*self.d4
+        H333 =   (c2s31 - c31)*self.d4
         
-        self.end_right_arm = numpy.copy(T)
+        H400 = ax*(s320 - c210s3 - c30s1) - ay*(c0s32 + c21s30 + c3s10)  
+        H401 = ax*(c2s310 - c31s0) + ay*(c310 - c20s31)  
+        H402 = ax*(c1s320 - c20s3) - ay*(c2s30 + c10s32)  
+        H403 = ax*(s310 - c30s2 - c321s0) + ay*(c3210 - c3s20 - c0s31)  
+        H405 = 0
 
-        self.end_right_arm_position    = self.end_right_arm[0:3,3]
-        self.end_right_arm_orientation = self.end_right_arm[0:3,0:3]
+        H410 =   ax*(c2s310 - c31s0) + ay*(c310 - c20s31)
+        H411 = - ax*(c210s3 + c30s1) - ay*(c21s30 + c3s10) + az*(c2s31 - c31)
+        H412 =   ax*c0s321 + ay*s3210 - az*c1s32
+        H413 = - ax*(c320s1 + c10s3) - ay*(c32s10 + c1s30) + az*(s31 - c321)
+        H415 = 0
 
-    def inverse_update(self, T_d):
-        '''
-        Corrects the joint angles to fulfil kinematic constraints (T6 = T_d) 
-        The new joint angles will be as close as possible to the current joint angles: (self.qr)
-        '''
-        tt0 = self.qr[0] 
-        tt3 = self.qr[3] 
+        H420  = ax*(- c20s3 + c1s320) + ay*(- c2s30 - c10s32)
+        H421  = ax*c0s321 + ay*s3210 + az*c1s32
+        H422  = ax*(s320 - c210s3) - ay*(c0s32 + c21s30) + az*c2s31
+        H423  = - ax*(c32s0 + c310s2) + ay*(c320 - c31*s20) + az*c3s21
 
-    def test_kinematic_equations(self): 
+        H430 =   ax*(s310 - c30s2 - c321s0) + ay*(c3210 - c3s20 - c0s31)
+        H431 = - ax*(c320s1 + c10s3) - ay*(c32s10 + c1s30) + az*(s31 - c321)
+        H432 = - ax*(c32s0 + c310s2) + ay*(c320 - c31*s20) + az*c3s21
+        H433 =   ax*(s320 - c210s3 - c30s1) - ay*(c0s32 + c21s30 + c3s10) + az*(c2s31 - c31)
+
+        H455 = c5
+
+        H500 =   ax*(c2s0 + c10s2) - ay*(c20 - c1s20)
+
+        H501 = - ax*s210 + ay*c0s21
+        H502 =   ax*(c0s2 + c21s0) + ay*(s20 - c210)
+
+        H510 = - ax*s210 - ay*c0s21
+        H511 =   ax*c10s2 - ay*c1s20 - az*s21
+        H512 =   ax*c20s1 - ay*c2s10 + az*c21
+
+        H520 = ax*(c0s2 + c21s0) + ay*(s20 - c210)
+        H521 = ax*c20s1 + ay*c2s10 + az*c21
+        F522 = ax*(c2s0 + c10s2) - ay*(c20 - c1s20) - az*c2s1
+
+        H544 =   s54
+        H545 = - c54
+
+        H554 = - c54
+        H555 =   s54
         
-        x_e = self.end_right_arm_position
+        H600 = - nx*(c210s3 + c30s1 - s320) - ny*(c0s32 + c21s30 + c3s10)
+        H601 = - nx*(- c2s310 + c31s0) + ny*(- c20s31 + c310)
+        H602 = - nx*(c20s3 - c1s320) - ny*(c2s30 + c10s32)
+        H603 = - nx*(c30s2 + c321s0 - s310) + ny*(- c3s20 + c3210 - c0s31)
 
-        A = self.d2 + math.cos(self.qr[3])*self.d4
-        B = self.d4*math.sin(self.qr[3])
+        H610 =   nx*(c2s310 - c31s0) + ny*(c310- c20s31)
+        H611 = - nx*(c210s3 + c30s1) - ny*(c21s30 + c3s10) - nz*(c31 - c2s31)
+        H612 =   nx*c0s321 + ny*s3210 + nz*c1s32
+        H613 = - nx*(c320s1 + c10s3) - ny*(c32s10 + c1s30) - nz*(- s31 + c321)
 
-        s0 = math.sin(self.qr[0])
-        c0 = math.cos(self.qr[0])
-        s1 = math.sin(self.qr[1])
-        c1 = math.cos(self.qr[1])
-        s2 = math.sin(self.qr[2])
-        c2 = math.cos(self.qr[2])
-        s3 = math.sin(self.qr[3])
-        c3 = math.cos(self.qr[3])
+        H620 = - nx*(c20s3 - c1s320) - ny*(c2s30 + c10s32)
+        H621 =   nx*c0s321 - ny*s3210 - nz*c1s32 
+        H622 =   nx*(s320 - c210s3) - ny*(c0s32 + c21s30) - nz*c2s31
+        H623 = - nx*(c32s0 + c310s2) + ny*(c320 - c31*s20) - nz*c3s21
 
-        xp = x_e[0] - c0*self.a0 
-        yp = x_e[1] - s0*self.a0 
-        zp = x_e[2]
+        H630 =   nx*(s310 - c30s2 - c321s0) + ny*(- c3s20 + c3210 - c0s31)
+        H631 = - nx*(c320s1 + c10s3) - ny*(c32s10 + c1s30) + nz*(s31 - c321)
+        H632 = - nx*(c32s0 + c310s2) + ny*(c320 - c31*s20) + nz*c3s21
+        H633 =   nx*(s320 - c210s3) - ny*(s320 + s30*c21) + nz*c2s31
 
-        U    = [xp,yp,zp]/numpy.linalg.norm([xp,yp,zp])
-        U_X  = vecmat.skew(U)
+        H655 = - c6s5
+        F656 = - c5s6
 
-        s22 = s2**2
-        c32 = c3**2
-
-        E = B*s2
-        F = B*c2
-
-        E2 = E**2
-
-        RAB2 = A**2 + B**2
-
-        rxy2  = x_e[0]**2 + x_e[1]**2
-        rxy   = math.sqrt(rxy2)
-        r2    = rxy2 + x_e[2]**2
-        a02   = self.a0**2
-        d42   = self.d4**2
-
-        R2 = r2 - self.d2**2 - self.d4**2 + a02
-        R4 = R2**2
-        Q  = -2*self.d2*self.d4
-        Q2 = Q**2
-        P2 = 4*a02*rxy2
-        T2 = R4 - 4*a02*rxy2
-
-        print " I must be zero (0): ", xp**2 + yp**2 + zp**2 - RAB2
-        print " I must be zero (1): ", 4*a02*E2 + (R2+Q*c3)**2 - P2
-
-        alpha = Q2 - 4*a02*d42*s22
-        betta = 2*Q*R2
-        gamma = R4 + 4*a02*(s22*d42 - rxy2)
-
-        print " I must be zero (2): ", alpha*c32 + betta*c3 + gamma
-
-        print " I must be zero (3): ", T2 + Q2*c32 + 2*R2*Q*c3  + 4*a02*(1-c32)*s22*d42
-        print " I must be zero (4): ", (T2 + Q2*c32 + 2*R2*Q*c3)/(4*a02*(c32 -1)*d42) - s22
-        
-        print " I must be zero (5): ", R2 + Q*c3 - 2*self.a0*(c0*x_e[0]+s0*x_e[1])
-
-        sai = math.atan2(x_e[1],x_e[0]) 
-
-        print " I must be zero (6): ", R2 + Q*c3 - 2*self.a0*rxy*math.sin(self.qr[0] + sai)
-
-        u = math.sin(self.qr[0] + sai)
-        a = - 2*self.a0*rxy
-        b = Q
-        c = R2
-        v = - (c + a*u)/b
-        v2 = v**2
-
-        print 'I must be zero (7):', c3 - v 
-
-        w = math.sqrt((Q2*v2 + 2*R2*Q*v + T2)/(4*a02*(v2 -1)*d42))
-        print 'I must be zero (8):', s2 - w 
-        
-        print 'I must be zero (9):', A*c1 - F*s1 - x_e[2]
+        F665 = - c5s6
+        F666 = - c6s5
 
     def solve_inverse_kinematics_explained(self, position, orientation, tt0): 
      
@@ -436,7 +447,7 @@ class PR2_ARM():
         v  = - (c + a*u)/b
         v2 = v**2
         A  = self.d2 + v*self.d4
-        #print " I must be zero (0): ", v - math.cos(self.qr[3])
+        #print " I must be zero (0): ", v - math.cos(self.config.q[3])
 
         i  = 0
         while i < 2:
@@ -465,7 +476,7 @@ class PR2_ARM():
                 In this case, a singularity happens
                 '''
             else: 
-                #print " I must be zero (1): ", (gamma + alpha*v2 + betta*v)/(1 - v2) - (math.sin(self.qr[2])**2)
+                #print " I must be zero (1): ", (gamma + alpha*v2 + betta*v)/(1 - v2) - (math.sin(self.config.q[2])**2)
                 w2  = (alpha*v2 + betta*v + gamma)/(1 - v2)
                 w   = math.sqrt(w2)
                 s2  = w
@@ -544,7 +555,7 @@ class PR2_ARM():
 
     def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321):
 
-        self.qr = numpy.zeros((7))
+        self.config = PR2_ARM_Configuration()        
     
         self.a0 = a0
         self.d2 = d2
@@ -552,6 +563,10 @@ class PR2_ARM():
 
         self.l_se = [0.0, - self.d2, 0.0]
         self.l_ew = [0.0, 0.0, self.d4]
+
+        self.position_update = False
+        self.orientation_update = False
+        self.jacobian_update = False
 
        
 class PR2_Arm_Symbolic():
@@ -853,9 +868,9 @@ def symbolic_help(code):
         print 
 
         """
-        EQ1: a*s0 + b*c3 + c = 0
-        EQ2: alpha*c33 + betta*c3 + gamma - s22*s33 = 0
-        EQ3: c1*d2 + (c31 - c2s31)*d4 - Z = 0
+        EQ1:  a*s0 + b*c3 + c = 0
+        EQ2:  alpha*c33 + betta*c3 + gamma - s22*s33 = 0
+        EQ3:  c1*d2 + (c31 - c2s31)*d4 - Z = 0
 
         EQ4: ax*(-s320 + c210s3 + c30s1) + ay*(c0s32 + c21s30 + c3s10) + az*(c31 - c2s31) -  c5 = 0
         EQ5: ax*(-c2s0 - c10s2) + ay*(c20 - c1s20) + az*s21 - s54 = 0
@@ -957,7 +972,7 @@ def symbolic_help(code):
         H455 = c5
 
         H500 =   ax*(c2s0 + c10s2) - ay*(c20 - c1s20)
-        H501 = - ax*s210 + ay*c0s22
+        H501 = - ax*s210 + ay*c0s21
         H502 =   ax*(c0s2 + c21s0) + ay*(s20 - c210)
 
         H510 = - ax*s210 - ay*c0s21
@@ -999,22 +1014,69 @@ def symbolic_help(code):
 
         F665 = - c5s6
         F666 = - c6s5
-
         """
+
+    if code == 6:
+        '''
+        We try to find the formulations for positions and orientations of the links
+        '''
+        T01 = arm.T[0]
+        T03 = arm.T[2]
+        T05 = arm.T[4]
+
+        R01 = T01[0:3,0:3]
+        
+        [x, y, z] = T01[0:3,3]
+        print "Uppaer Arm Position: ",
+        print
+        print "X = ", x
+        print "Y = ", y
+        print "Z = ", z
+        print
+        [x, y, z] = T03[0:3,3]
+        print "Fore Arm Position: ",
+        print
+        print "X = ", x
+        print "Y = ", y
+        print "Z = ", z
+        print
+        [x, y, z] = T05[0:3,3]
+        print "Wrist Position: ",
+        print
+        print "X = ", x
+        print "Y = ", y
+        print "Z = ", z
+        print
+        print "Shoulder Orientation: ",
+        print
+
+        '''
+        Shoulder Position : always [0,0,0]
+        Uppaer Arm position : extraxt position from: T[0] depends only on (theta0)
+        Fore Arm position : extraxt position from: T[2] depends only on (theta0, theta1 and theta2)
+        Wrist position : extraxt position from: T[4]  depends on (theta0, ..., theta3)
+        End of gripper position : extraxt position from: T[5]  depends on (theta0, ..., theta5)
+
+        Shoulder Orientation : extraxt rotation matrix from: T[0] depends only on (theta0)
+        Uppaer Arm Orientation : extraxt rotation matrix from: T[2] depends only on (theta0, theta1 and theta2)
+        Fore Arm Orientation : extraxt rotation matrix from: T[4] depends on (theta0, ..., theta4)
+        Wrist Orientation : extraxt rotation matrix from: T[6] depends on (theta0, ..., theta6)  
+                
+
+        '''
 
 
 def main():
 
     srs = PR2_ARM(a0=0)
 
-    srs.qr = numpy.array([-0.5, 0.5 + math.pi/2, 0.5, -0.5, 0.5, -0.5, 0.5])
-    srs.qr = drc*numpy.array([-45, 7, -51, -22, -90, 80, 15])
+    srs.set_config(numpy.array([-0.5, 0.5 + math.pi/2, 0.5, -0.5, 0.5, -0.5, 0.5]))
     
     srs.forward_update()
 
     #srs.end_right_arm[1,3] = srs.end_right_arm[1,3] - 0.188 
     
-    srs.solve_inverse_kinematics_explained(srs.end_right_arm, srs.qr[0])
+    srs.solve_inverse_kinematics_explained(srs.end_right_arm, srs.config.q[0])
 
     print srs.end_right_arm
     '''
@@ -1029,23 +1091,18 @@ def main_2():
     srs = PR2_ARM(a0 = 0.5, d2 = 1.4, d4 = 8.21)
     #srs = SRS_ARM()
 
-    srs.qr = drc*numpy.array([45, -10, 40, -45, 20, 15, -10])
-    #srs.qr = drc*numpy.array([-45, 7, -51, -22, -90, 80, 15])
-    print 'q1 = ', srs.qr
+    srs.set_config(drc*numpy.array([25, -10, 40, 45, 20, 15, -10]))
+
+    print 'q1 = ', srs.config.q
     
-    srs.forward_update()
+    era_pos = srs.wrist_position()
+    era_ori = srs.wrist_orientation()
 
-    era_pos = numpy.copy(srs.end_right_arm_position)
-    era_ori = numpy.copy(srs.end_right_arm_orientation)
-    srs.test_kinematic_equations()
-
-    all_solutions = srs.solve_inverse_kinematics_explained(srs.end_right_arm_position, srs.end_right_arm_orientation, tt0 = 45*drc)
+    all_solutions = srs.solve_inverse_kinematics_explained(era_pos, era_ori, tt0 = 25*drc)
 
     for i in range(0 ,len(all_solutions)):
         print all_solutions[i]
-        srs.qr = all_solutions[i]
-
-        srs.forward_update()
+        srs.set_config(all_solutions[i]) 
         print 
         '''
         print "End of Right Arm:"
@@ -1054,13 +1111,13 @@ def main_2():
         print 
         print end_right_arm
         '''
-        if vecmat.equal(srs.end_right_arm_position, era_pos) and vecmat.equal(srs.end_right_arm_orientation, era_ori):
+        if vecmat.equal(srs.wrist_position, era_pos) and vecmat.equal(srs.wrist_orientation, era_ori):
             print "Successful :-)"
         else:
             print "Failed :-("
 
 def main_3():
-    symbolic_help(5)    
+    symbolic_help(6)    
      
 def main_4():
     srs = PR2_ARM(a0 = 0.5, d2 = 1.4, d4 = 8.21)
@@ -1069,9 +1126,9 @@ def main_4():
     era_pos = numpy.copy(srs.end_right_arm_position)
     era_ori = numpy.copy(srs.end_right_arm_orientation)
     
-    srs.error_jacobian(srs.s, srs.c, era_pos, era_ori)    
+    srs.error_jacobian(era_pos, era_ori)    
 
 if __name__ == "__main__" :
     
-    main_4()
+    main_2()
 
