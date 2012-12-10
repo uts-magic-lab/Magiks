@@ -13,8 +13,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.2
-Last Revision:  23 October 2012
+@version:	    2.0
+Last Revision:  11 December 2012
 '''
 # HEADER
 import numpy, math
@@ -50,8 +50,8 @@ class Analytic_Jacobian:
         '''
         j = 0
         for jj in range(0, link_number + 1):
-            if config.free[jj]:
-                if config.prismatic[jj]:
+            if config.settings.free[jj]:
+                if config.settings.prismatic[jj]:
                     self.U[link_number][j][0,0] = 0.00 
                     self.U[link_number][j][1,1] = 0.00 
                     self.U[link_number][j][2,2] = 0.00 
@@ -99,23 +99,23 @@ class Geometric_Jacobian:
         '''
         Create and calculate the geometric jacobian for the given position references (reference_positions)
         '''
-        gj = [numpy.zeros((3)) for i in range(0,config.DOF)]
+        gj = [numpy.zeros((3)) for i in range(0,config.settings.DOF)]
         for j in range(0, len(reference_position.lp)):
             k = 0
             for kk in range(0,reference_position.lp[j].ln + 1):
-                if config.free[kk]:
+                if config.settings.free[kk]:
                     x = numpy.dot(analytic.U[reference_position.lp[j].ln][k],vecmatlib.extend_vector(reference_position.lp[j].pv))
                     gj[k] = gj[k] + reference_position.lp[j].w * x[0:3]
                     k = k + 1
         for i in range(0,3):
-            for j in range(0,config.DOF):
+            for j in range(0,config.settings.DOF):
                 self.value[i,j] = gj[j][i]
 
     def update_for_orientation(self, tskfrm, forward_kinematics):
         '''
         Create and calculate the geometric jacobian for the given orientation references (reference_orientations)
         '''
-        self.value = numpy.zeros((3, forward_kinematics.configuration.DOF))
+        self.value = numpy.zeros((3, forward_kinematics.configuration.settings.DOF))
 
         self.value[0,0] = 0
         self.value[1,0] = 0
@@ -123,8 +123,8 @@ class Geometric_Jacobian:
 
         for ii in range(0,tskfrm.ln + 1):
             i = 0
-            if forward_kinematics.configuration.free[ii]:
-                if forward_kinematics.configuration.prismatic[i]:
+            if forward_kinematics.configuration.settings.free[ii]:
+                if forward_kinematics.configuration.settings.prismatic[i]:
                     v = numpy.zeros((3))            
                 else:
                     if i == 0:
@@ -226,8 +226,8 @@ class Error_Jacobian:
                 if (tskpnt.error.power[k] != 0) and (tskpnt.error.power[k] != 1):
                     err = tskpnt.error.power[k]*((tskpnt.r[k] - tskpnt.rd[k])**(tskpnt.error.power[k] - 1))
                     j = 0
-                    for jj in range(0,config.DOF):
-                        if config.free[jj]:
+                    for jj in range(0,config.settings.DOF):
+                        if config.settings.free[jj]:
                             Jf[k,j] = tskpnt.geometric_jacobian.value[k,j]*err
                             j = j + 1
 
@@ -249,7 +249,7 @@ class Error_Jacobian:
         '''
         if tskfrm.error.basis_error_function   == 'Axis Inner Product':
             p = 3
-            Jf = numpy.zeros((p,config.DOF))
+            Jf = numpy.zeros((p,config.settings.DOF))
             for k in range (0,p):
                 if tskfrm.error.power[k] == 0:
                     err  = 0
@@ -264,24 +264,24 @@ class Error_Jacobian:
                     err = tskfrm.error.power[k]*((numpy.dot(vecmatlib.uvect(tskfrm.rd,k),vecmatlib.uvect(tskfrm.r,k)) - 1)**(tskfrm.error.power[k] - 1))
                 j = 0
                 for jj in range(0,tskfrm.ln + 1):
-                    if config.free[jj]:                    
+                    if config.settings.free[jj]:                    
                         jz1_k_j = numpy.dot(vecmatlib.uvect(analytic.U[tskfrm.ln][j],k),vecmatlib.uvect(tskfrm.rd,k))
                         Jf[k,j] = jz1_k_j*err
                         j = j + 1
         elif tskfrm.error.basis_error_function == 'relative_rotation_matrix_trace_minus_three':
             p = 1
-            Jf = numpy.zeros((p,config.DOF))
+            Jf = numpy.zeros((p,config.settings.DOF))
             for i in range(0,3):
                 for t in range(0,3):
                     j = 0
                     for jj in range(0, tskfrm.ln + 1):
-                        if config.free[jj]:
+                        if config.settings.free[jj]:
                             Jf[0,j] += tskfrm.rd[i,t]*analytic.U[tskfrm.ln][j][i,t]       
                             j += 1
                 
         elif tskfrm.error.basis_error_function == 'differential_quaternions':
             p = 3
-            Jf = numpy.zeros((p,config.DOF))
+            Jf = numpy.zeros((p,config.settings.DOF))
             ''''
             Remember that the following code line is implemented many times resulting the same value, so it is better to be defined once
             '''
@@ -289,7 +289,7 @@ class Error_Jacobian:
 
             j = 0
             for jj in range(0,tskfrm.ln + 1):
-                if config.free[jj]:
+                if config.settings.free[jj]:
                     uqns = quaternions.unit_quaternion_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
                     for k in range (0,p):
                         if tskfrm.error.power[k] != 0:
@@ -304,13 +304,13 @@ class Error_Jacobian:
 
         elif tskfrm.error.basis_error_function == 'relative_rotation_angle':
             p = 1
-            Jf = numpy.zeros((p,config.DOF))
+            Jf = numpy.zeros((p,config.settings.DOF))
 
             for i in range(0,3):
                 for t in range(0,3):
                     j = 0
                     for jj in range(0, tskfrm.ln + 1):
-                        if config.free[jj]:
+                        if config.settings.free[jj]:
                             sin_err = math.sin(tskfrm.error.value[0])
                             if abs(sin_err) < 0.000001:
                                 sin_err = 0.000001
@@ -330,7 +330,7 @@ class Error_Jacobian:
             Jf = t2_plus_1*tskfrm.Jg
         elif tskfrm.error.basis_error_function == 'differential_rotation_matrix':
             p = 9
-            Jf = numpy.zeros((p,config.DOF))
+            Jf = numpy.zeros((p,config.settings.DOF))
             k = 0
             for i in range(0,3):
                 for t in range(0,3):
@@ -344,7 +344,7 @@ class Error_Jacobian:
                             err = tskfrm.error.power[k]*(tskfrm.rd[i,t] - tskfrm.ra[i,t])**(tskfrm.error.power[k] - 1)
                         j = 0
                         for jj in range(0,tskfrm.ln + 1):
-                            if config.free[jj]:
+                            if config.settings.free[jj]:
                                 jz1_k_j = analytic.U[tskfrm.ln][j][i,t]                        
                                 Jf[k,j] = -jz1_k_j*err
                                 j = j + 1
