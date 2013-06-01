@@ -15,14 +15,15 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    1.4
-Last Revision:  1 June 2013
+@version:	    1.5
+Last Revision:  2 June 2013
 
-Changes from ver 1.3:
-                function permission_set_analytic uses arithmetic of intervals to find the intervals faster. The results have been compared to the previous method in the transparent version
+Changes from ver 1.4:
+                function idrange_distance_squared added to class PR2_ARM_Configuration
+                function all_IK_solutions separated from IK_config
 
 '''
-
+import sympy
 import packages.nima.mathematics.general as gen
 from sympy import Symbol, simplify
 from interval import interval, inf, imath
@@ -46,6 +47,176 @@ import packages.nima.mathematics.vectors_and_matrices as vecmat
 
 drc     = math.pi/180.00
 
+class PR2_Arm_Symbolic():
+    '''
+    This class provides a parametric representation of the kinematics of PR2 arm
+    The position, orientation and the Jacobian can be expressed in terms of DH parameters and sine and cosine of the joint angles
+    It uses sympy as a tool for symbols algebra
+    '''
+    def __init__(self):
+
+        n = 7
+
+        c = [Symbol('c' + str(i)) for i in range(n)]
+        s = [Symbol('s' + str(i)) for i in range(n)]
+        a = [Symbol('a0'), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        d = [0.0, 0.0, Symbol('d2'), 0.0, Symbol('d4'), 0.0, 0.0]
+        alpha = [- math.pi/2, math.pi/2, - math.pi/2, math.pi/2, - math.pi/2, math.pi/2, 0.0]    
+        
+        ca    = [math.cos(alpha[i]) for i in range(n)]
+        sa    = [math.sin(alpha[i]) for i in range(n)]
+
+        for i in range(len(ca)):
+            ca[i] = gen.round(ca[i])
+            sa[i] = gen.round(sa[i])
+        
+        # A[i] transfer matrix from link i-1 to i  according to standard DH parameters:
+        self.A = [numpy.array([[ c[i],  -ca[i]*s[i],  sa[i]*s[i], a[i]*c[i] ], 
+                               [ s[i],   ca[i]*c[i], -sa[i]*c[i], a[i]*s[i] ],
+                               [ 0   ,   sa[i]     ,  ca[i]     , d[i]      ],
+                               [ 0   ,   0         ,  0         , 1         ]]) for i in range(n)]
+                               
+        # B[i] transfer matrix from link i to i-1 or B[i] = inv(A[i])
+        self.B = [numpy.array([[        c[i],         s[i], 0     ,  0          ], 
+                               [ -ca[i]*s[i],   ca[i]*c[i], sa[i] , -d[i]*sa[i] ],
+                               [  ca[i]*s[i],  -sa[i]*c[i], ca[i] , -d[i]*ca[i] ],
+                               [  0         ,   0         , 0     ,  1          ]]) for i in range(n)]
+
+        # R[i] rotation matrix from link i-1 to i  according to standard DH parameters:
+        self.R = [numpy.array([[ c[i],  -ca[i]*s[i],  sa[i]*s[i]], 
+                               [ s[i],   ca[i]*c[i], -sa[i]*c[i]],
+                               [ 0   ,   sa[i]     ,  ca[i]     ]]) for i in range(n)]
+
+        # T[i] transfer matrix from link -1(ground) to i
+        self.T = numpy.copy(self.A)
+        for i in range(n-1):
+            self.T[i + 1] = numpy.dot(self.T[i],self.A[i + 1])
+
+        # Desired Pose:
+        T_d = numpy.array([[ Symbol('r11'), Symbol('r12') , Symbol('r13') , Symbol('px') ], 
+                           [ Symbol('r21'), Symbol('r22') , Symbol('r23') , Symbol('py') ],
+                           [ Symbol('r31'), Symbol('r32') , Symbol('r33') , Symbol('pz') ],
+                           [ 0           , 0            ,  0           , 1            ]])
+
+        self.x_d = T_d[0:3, 3]
+        self.R_d = T_d[0:3, 0:3]
+
+        '''
+        "r_W" denotes the position vector of the wrist joint center
+        "R_W" denotes the orientation of the gripper (Endeffector Orientation) 
+        '''
+        self.T_W = self.T[6]
+        self.r_W = self.T_W[0:3, 3]
+        self.R_W = self.T_W[0:3, 0:3]
+
+        '''
+        "r_EF_W" denotes the position of the arm endeffector (end of the gripper) relative to the wrist joint center 
+        in the coordinates system of the right gripper.
+        '''
+
+        self.r_EF_W = numpy.array([0.0, 0.0, Symbol('d7')])
+    
+        self.H = numpy.copy(self.T)
+        self.H[n - 1] = numpy.copy(T_d)
+        
+        # H[i] transfer matrix from link -1(ground) to i calculated from inverse transform
+        for i in range(n-1):
+            self.H[n - i - 2] = numpy.dot(self.H[n - i - 1], self.B[n - i - 1])
+
+        self.div_theta_e = sympy.Matrix([
+        [ 0 , 0 , -2*d[2]*d[4]*s[3] , 0 , 0 , 0   ],
+        [0 , - 2*c[2]*s[2]*s[3]**2 , Symbol('e23') , 0 , 0 , 0   ],
+        [Symbol('e31') , d[4]*Symbol('s321') , Symbol('e33') , 0 , 0 , 0   ],
+        [Symbol('e41') , Symbol('e42') , Symbol('e43') , 0 , - s[5] , 0   ],
+        [Symbol('e51') , Symbol('e52') , 0 , c[4]*s[5] , c[5]*s[4] , 0   ],
+        [Symbol('e61') , Symbol('e62') , Symbol('e63') , 0 , Symbol('c65') , - Symbol('s65') ]]) 
+
+        self.div_phi_e = sympy.Matrix([Symbol('e10') , 0 , 0 , Symbol('e40') , Symbol('e50') , Symbol('e60')   ]).transpose()
+
+        e = self.div_theta_e
+        J3 = - Symbol('e10')/e[0,2] 
+        J2 = - e[1,2]*J3/e[1,1]
+        J1 = - (e[2,1]*J2 + e[2,2]*J3)/e[2,0]
+        J5 = - (Symbol('e40') + e[3,0]*J1 + e[3,1]*J2 + e[3,2]*J3)/e[3,4]
+        J4 = - (Symbol('e50') + e[4,0]*J1 + e[4,1]*J2 + e[4,4]*J5)/e[4,3]
+        J6 = - (Symbol('e60') + e[5,0]*J1 + e[5,1]*J2 + e[5,2]*J3 + e[5,3]*J4 + e[5,4]*J5)/ e[5,5]
+
+        self.RJ = sympy.Matrix([J1,J2,J3,J4,J5,J6])
+        #self.redundancy_jacobian = self.div_theta_e.inv().transpose()*self.div_phi_e
+         
+
+class PR2_Symbolic():
+    '''
+    This class provides a parametric representation of the kinematics of PR2 robot
+    The position, orientation and the Jacobian can be expressed in terms of the kinematic parameters of the robot
+    It uses sympy as a tool for symbols algebra
+    '''
+    def __init__(self):
+
+        c = [Symbol('c' + str(i)) for i in range(7)]
+        s = [Symbol('s' + str(i)) for i in range(7)]
+        S = [Symbol('S' + str(i)) for i in range(7)]
+        C = [Symbol('C' + str(i)) for i in range(7)]
+        phi = [Symbol('p' + str(i)) for i in range(5)]
+        
+        a = [Symbol('a0'), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        d = [0.0, 0.0, Symbol('d2'), 0.0, Symbol('d4'), 0.0, 0.0]
+
+        self.right_arm = PR2_Arm_Symbolic()
+                
+        '''
+        we compromize that capital letters are used for the base
+        so X,Y,Z represent the position of the base
+        and C,S represent sin(theta) and cos(theta) where theta is the rotation of base around z axis 
+        '''
+        self.r_BO    = numpy.array([Symbol('X')  ,  Symbol('Y') , Symbol('Z')])
+        self.r_BR_BO = numpy.array([0.0          ,  Symbol('b0'), Symbol('h')])        
+        self.r_BL_BO = numpy.array([0.0          ,- Symbol('b0'), Symbol('h')])     
+        self.R_B     = numpy.array([[ Symbol('C'),  Symbol('S') , 0.0 ], 
+                                    [-Symbol('S'),  Symbol('C') , 0.0 ],
+                                    [ 0.0        ,  0.0         , 1.0]]) 
+        '''
+        RRd and LRd represent the desired orientation of the right and left arm grippers respectively
+        '''
+
+        T_EFR = numpy.array([[ Symbol('nx'), Symbol('sx') , Symbol('ax') , Symbol('xd') ], 
+                             [ Symbol('ny'), Symbol('sy') , Symbol('ay') , Symbol('yd') ],
+                             [ Symbol('nz'), Symbol('sz') , Symbol('az') , Symbol('zd') ],
+                             [ 0.0           , 0.0            , 0.0            , 1.0           ]])
+
+        self.r_EFR = T_EFR[0:3, 3]
+        self.R_EFR = T_EFR[0:3, 0:3]
+
+        self.r_WR_BR = - self.r_BR_BO + numpy.dot(self.R_B.T,(self.r_EFR - self.r_BO - numpy.dot(self.R_EFR, self.right_arm.r_EF_W)))
+        self.R_WR_B  = numpy.dot(self.R_B.T, self.R_EFR)
+
+        import sympy
+
+        self.div_theta_e = sympy.Matrix([
+        [0 , 0 , -2*Symbol('d42')*s[3] , 0 , 0 , 0 , 0 , 0 , Symbol('e19')  ],
+        [0 , Symbol('e22') , Symbol('e23') , 0 , 0 , 0 , 0 , 0 , 0  ],
+        [0 , 0 , 0 , 0 , 0 , 0 , Symbol('e37') , 0 , 0  ],
+        [Symbol('e41') , d[4]*Symbol('s321') , Symbol('e43') , 0 , 0 , 0 , 1 , 0 , 0  ],
+        [Symbol('e51') , Symbol('e52') , Symbol('e53') , 0 , - s[5] , 0  , 0 , 0 , 0 ],
+        [Symbol('e61') , Symbol('e62') , 0 , c[4]*s[5] , c[5]*s[4] , 0  , 0 , 0 , 0 ],
+        [Symbol('e71') , Symbol('e72') , Symbol('e73') , 0 , Symbol('c65') , - Symbol('s65')  , 0 , 0 , 0 ],
+        [0 , 0 , 0 , 0 , 0 , 0 , 0 , Symbol('e88') , Symbol('e89')  ],
+        [1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0   ]])
+                
+        self.div_phi_e = sympy.Matrix([
+        [ Symbol('z11') , Symbol('z12') , -2*phi[3] , Symbol('z14')  , 0   ],
+        [ 0                , Symbol('z22') , 0        , 0                 , 0   ],
+        [ 0                , 2*phi[2]          , -2*phi[3] , 0                 , 0   ],
+        [ 0                , 0                , 0        , 0                 , 0   ],
+        [ Symbol('z51') , 0                , 0        , 0                 , Symbol('z55')   ],
+        [ Symbol('z61') , 0                , 0        , 0                 , Symbol('z65')    ],
+        [ Symbol('z71') , 0                , 0        , 0                 , Symbol('z75')    ],
+        [ 0                , -2*phi[2]         , 0        , 0                 , Symbol('z85')  ],
+        [ 0               , C[4]      , 0        , - phi[2]*S[4] , 0   ]])
+
+        '''
+        self.redundancy_jacobian = - self.div_theta_e.inv().transpose()*self.div_phi_e
+        '''
 
 class PR2_ARM_Configuration():
 
@@ -134,11 +305,29 @@ class PR2_ARM_Configuration():
 
             self.c6_mult = c6*numpy.array([c4, c5, s4, s5, c54, s54])
             [c64, c65, c6s4, c6s5, c654, C6s54] = self.c6_mult
+
+            self.mid_dist_sq_computed = False
+            '''
+            Do not set any other environmental variables here
+            '''    
             return True
         else:
-            print "set_config error: Input joint configuration is not in the defined feasible range"
+            print "set_config error: Given joints are not in their feasible range"
             return False
         
+    def midrange_distance_squared(self):
+        if not self.mid_dist_sq_computed:
+            """
+            self.mid_dist_sq = 0
+            for i in range(0,7):
+                wi        = (self.qh[i] - self.ql[i])**(-2)
+                self.mid_dist_sq  = self.mid_dist_sq + wi*(self.q[i] - self.qm[i])**2
+            self.mid_dist_sq_computed = True
+            """
+            e = trig.angles_standard_range(self.q - self.qm)*self.W    
+            self.mid_dist_sq = numpy.dot(e.T,e)
+            self.mid_dist_sq_computed = True
+        return self.mid_dist_sq
 
     def __init__(self, ql = drc*numpy.array([-130, -30, -180, 0, -180, 0, -180]), qh = drc*numpy.array([40, 80, 44, 130, 180, 130, 180])):
         '''
@@ -151,6 +340,9 @@ class PR2_ARM_Configuration():
         self.ql = ql
         self.qh = qh
         self.qm = (qh + ql)/2
+
+        self.delta_phi_interval_computed = False
+        self.permission_set_position_computed = False
 
         # sets all angles as zero by default
         self.set_config(numpy.zeros(7))
@@ -167,9 +359,10 @@ class PR2_ARM():
             self.jacobian_updated = False
             self.in_target_updated = False
             self.joint_jacobian_updated = False
+            self.delta_phi_interval_computed = False
             return True
         else:
-            print "Given joints out of feasible range"
+            print "Could not set the given joints."
             return False
 
     def set_target(self, target_position, target_orientation):
@@ -196,6 +389,8 @@ class PR2_ARM():
 
         self.in_target_updated = False
         self.joint_jacobian_updated = False
+        self.permission_set_position_computed = False
+        self.delta_phi_interval_computed = False
 
         self.target_parameters = [r2, ro2, R2, T2, alpha, betta, gamma, sai]
             
@@ -304,7 +499,7 @@ class PR2_ARM():
 
             F[2,2] = - 2*c2*s332
             F[2,3] = - 2*alpha*c3s3 - betta*s3 - 2*c3*s322
-            
+
             F[3,1] = - self.d2*s1 - (c3*s1 + c2*c1*s3)*self.d4
             F[3,2] =   s321*self.d4
             F[3,3] =   - (c1s3 + c32s1)*self.d4
@@ -341,9 +536,39 @@ class PR2_ARM():
             self.JJ[4] = - (F[5,0] + F[5,1]*self.JJ[1] + F[5,2]*self.JJ[2] + F[5,5]*self.JJ[5])/F[5,4] 
             self.JJ[6] = - numpy.dot(F[6,0:6],self.JJ[0:6])/F[6,6]
             #F60*J0 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5 + F66*J6 = 0  ==> J6 = - (F60 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5)/ J66
+
+
             self.joint_jacobian_updated = True
 
         return self.JJ
+
+    def grown_phi(self, eta, k = 0.99):
+        '''
+        grows the redundant parameter by eta (adds eta to the current phi=q[0] and returns the new value for phi
+        1 - this function does NOT set the configuration so the joint values do not change
+        2 - if the grown phi is not in the feasible interval Delta, it will return the closest point in the range with a safety coefficient k so that
+        new phi = old phi + eta        : if    eta in Delta
+        new phi = old phi + k*Delta_h  : if    eta > Delta_h
+        new phi = old phi + k*Delta_l  : if    eta < Delta_l
+        '''  
+        Delta = self.delta_phi_interval()
+
+        # if Delta contains more than one interval, then we need to find which interval contains zero
+
+        assert len(Delta) > 0
+        j = 0
+        while (j < len(Delta)):
+           if 0.0 in interval(Delta[j]):
+               (dl,dh) = Delta[j] 
+           j = j + 1
+
+        if eta in Delta:
+            return self.config.q[0] + eta
+        elif eta > dh:   # if zero is not in any of the intervals, this line will raise an error because dh is not defined
+            return self.config.q[0] + k*dh
+        else:
+            assert eta < dl  # eta must now be smaller than Delta_l
+            return self.config.q[0] + k*dl
 
     def position_permission_workspace(self,fixed):
         '''
@@ -395,6 +620,7 @@ class PR2_ARM():
         # Finding a feasible phi (theta0)
 
         # first try the current theta0:
+
         phi     = self.config.q[0]
         phi_l   = self.config.ql[0]
         phi_h   = self.config.qh[0]
@@ -415,51 +641,48 @@ class PR2_ARM():
             print "Given pose out of workspace. No solution found"
             return False
         
-        new_error       = numpy.linalg.norm(trig.angles_standard_range(q_d - self.config.qm))
-        old_error       = 10000
+        e = trig.angles_standard_range(q_d - self.config.qm)*self.config.W
+        new_error = numpy.linalg.norm(e)
+        old_error = 10000
 
-        P = numpy.zeros(7)
-        e = numpy.zeros(7)
         while (new_error < old_error - gen.epsilon) and (len(q_d) != 0) and (new_error > gen.epsilon):
-            old_error = new_error
+            #old_error = new_error
             assert self.set_config(q_d)                        
+            phi     = self.config.q[0]
             J = self.joint_jacobian()
-            for i in range(0,7):
-                P[i] = self.config.W[i]*J[i]
-                e[i] = self.config.W[i]*(q_d[i] - self.config.qm[i])        
+            P = self.config.W*J
+            e = trig.angles_standard_range(q_d - self.config.qm)*self.config.W
 
             Delta_phi  = - numpy.dot(P.T, e) / numpy.dot(P.T, P)
             old_error  = numpy.linalg.norm(e)
-
-            q_d        = self.IK_config(phi + Delta_phi)
+            
+            new_phi    = self.grown_phi(Delta_phi)
+            q_d        = self.IK_config(new_phi)
 
             if len(q_d) == 0:
                 new_error = 0
             else:
-                #new_error = numpy.linalg.norm(trig.angles_standard_range(q_d - self.config.qm))
-                for i in range(0,7):
-                    e[i] = self.config.W[i]*(q_d[i] - self.config.qm[i])        
-
+                e = trig.angles_standard_range(q_d - self.config.qm)*self.config.W
                 new_error  = numpy.linalg.norm(e)
           
         assert vecmat.equal(self.wrist_position(), self.xd)
         assert vecmat.equal(self.wrist_orientation(), self.Rd)
         return True
         
-    def IK_config(self, tt0):    
+    def all_IK_solutions(self, phi):    
         '''
-        Finds the solution of the Inverse Kinematic problem for given theta0 = tt0
-
-        In case of redundant solutions, the one closest to current joint angles will be selected 
-        ''' 
-        if not self.config.joint_in_range(0, tt0):
+        Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter "phi"
+        "phi" is the value of the first joint angle "q[0]"
+        This function does NOT set the configuration so the joints do not change
+        '''
+        if not self.config.joint_in_range(0, phi):
             print "IK_config error: Given theta0 out of feasible range"
             return []
 
         solution_set = []
 
-        c0 = math.cos(tt0)
-        s0 = math.sin(tt0)
+        c0 = math.cos(phi)
+        s0 = math.sin(phi)
 
         [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha] = self.additional_dims
         [r2, ro2, R2, T2, alpha, betta, gamma, sai] = self.target_parameters
@@ -493,10 +716,19 @@ class PR2_ARM():
                     T34 = genkin.transfer_DH_standard( 0.0 , math.pi/2, 0.0, 0.0, theta3)
                     R34 = T34[0:3,0:3]
 
-                    w  = math.sqrt((alpha*v2 + betta*v + gamma)/(1 - v2))
+                    w2 = (alpha*v2 + betta*v + gamma)/(1 - v2)
+                    if gen.equal(w2, 1.0):
+                        w2 = 1.0
+                    elif gen.equal(w2, 0.0):
+                        w2 = 0.0
+                    elif w2 < 0.0:
+                        print "IK_config_error: w^2 is negative, This should never happen! Something is wrong!"
+                        assert False 
+
+                    w  = math.sqrt(w2)
                     if (w < 1.0):
-                        m = 0
-                        while (m < 2):
+                        m = 0              
+                        while (m < 2) and (not ((w == 0.0) and (m == 1))):  # beghole emam: intor nabashad ke ham w sefr bashad va ham m yek. 
                             s2  = (2*m - 1)*w
                             s20 = s2*s0 
                             c0s2= c0*s2  
@@ -585,32 +817,46 @@ class PR2_ARM():
                                                                 assert self.config.joint_in_range(4, theta4)    
                                                                 assert self.config.joint_in_range(6, theta6)    
 
-                                                                solution_set.append(numpy.array([tt0, theta1, theta2, theta3, theta4, theta5, theta6]))
+                                                                solution_set.append(numpy.array([phi, theta1, theta2, theta3, theta4, theta5, theta6]))
                                                         l = l + 1
                                             k = k + 1
                                 j = j + 1
                             m = m + 1
                 i = i + 1 
+        return solution_set
+
+    def IK_config(self, phi, ofun = 0):    
+        '''
+        Finds the solution of the Inverse Kinematic problem for given redundant parameter "phi"
+        In case of redundant solutions, the one corresponding to the lowest objective function is selected.
+        Argument ofun specifies the objective function:
+            ofun = 0 (Default) the solution closest to current joint angles will be selected 
+            ofun = 1 the solution corresponding to the lowest midrange distance is selected
+        This function does NOT set the configuration so the joints do not change
+        ''' 
+        solution_set = self.all_IK_solutions(phi)
 
         if len(solution_set) == 0:
-            #"No solution within the feasible joint ranges"
+            print "IK_config error: No solution found within the feasible joint ranges"
             return []
 
         delta_min = 1000
         for i in range(0, len(solution_set)):
             solution = solution_set[i]
-            delta    = numpy.linalg.norm(trig.angles_standard_range(solution - self.config.q))
+            if ofun == 0:
+                delta    = numpy.linalg.norm(trig.angles_standard_range(solution - self.config.q))
+            elif ofun == 1:
+                P = trig.angles_standard_range(solution - self.config.qm)*self.config.W
+                delta = numpy.dot(P.T,P)
+            else:
+                print "IK_config error: Value ",ofun," for argument ofun is not supported"
+                assert False
+ 
             if delta < delta_min:
                 delta_min = delta
                 i_min = i
             
         return solution_set[i_min]
-
-        self.set_config()
-
-        pos = self.wrist_position()
-
-        return True
 
     def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321):
 
@@ -692,6 +938,8 @@ class PR2_ARM():
         Permission set is broader than "confidence set" which ensures all q0, q2 and q3 to be in range.
         The output depends on the defined joint limits and the desired endeffector pose but does not depend on the current position of the joints.
         """
+        if self.permission_set_position_computed:
+            return self.Phi
 
         [r2, ro2, R2, T2, alpha, betta, gamma, sai] = self.target_parameters
         [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha] = self.additional_dims
@@ -757,8 +1005,8 @@ class PR2_ARM():
             Ui = interval(a) - interval(b)*interval(V[i])
             (uli, uhi) = Ui[0]            
 
-            zl = math.asin(uli)
-            zh = math.asin(uhi)
+            zl = trig.arcsin(uli)
+            zh = trig.arcsin(uhi)
 
             B1 = trig.standard_interval(zl - sai, zh - sai)
             B2 = trig.standard_interval(math.pi- zh - sai, math.pi- zl - sai)
@@ -769,9 +1017,35 @@ class PR2_ARM():
 
         Phi0 = interval([self.config.ql[0], self.config.qh[0]])
 
-        Phi = gen.connect_interval(Phi0 & Phi1_3)
+        self.Phi = gen.connect_interval(Phi0 & Phi1_3)
+        self.permission_set_position_computed = True
 
-        return Phi
+        return self.Phi
 
+
+    def delta_phi_interval(self):
+        '''
+        Updates the feasible interval for the growth of the redundant parameter according to
+        the specified joint limits and the current value of the joints
+        '''
+        if not self.delta_phi_interval_computed:
+            
+            J    = self.joint_jacobian()
+            self.Delta  = self.permission_set_position() - interval(self.config.q[0])  # set initial Delta based on the position permission set for phi
+
+            for i in range(0, 7):
+                if not gen.equal(J[i], 0.0):  # if Ji is not zero
+                    d1  = (self.config.ql[i] - self.config.q[i])/J[i]    
+                    d2  = (self.config.qh[i] - self.config.q[i])/J[i]    
+                    dli = gen.binary_choice(d1,d2,J[i])
+                    dhi = gen.binary_choice(d2,d1,J[i])
+
+                    assert dli < 0
+                    assert dhi > 0
+                    self.Delta   = self.Delta & interval([dli, dhi])
+
+            self.delta_phi_interval_computed = True    
+        return self.Delta
+        
 
 
