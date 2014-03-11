@@ -13,8 +13,12 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	0.2
-Last Revision:  20 November 2011
+@version:	0.3
+Last Revision:  12 March 2014
+
+Changes from last revision:
+
+	1- Function gauss_kernel_cosine added. (Translated from matlab code written by Gabriel)
 '''
 
 
@@ -29,6 +33,16 @@ deg_to_rad_coeff = (math.pi/180.00)
 f0       = float(0)
 f1       = float(1)
 err_code = 0
+infinity = float("inf")
+
+
+def sign_choice(x, y, z):
+    if z > 0:
+        return x
+    elif z < 0:
+        return y        
+    else:
+        print "Error from sign_choice(): value z can not be zero"
 
 def round(x):
     
@@ -42,8 +56,17 @@ def round(x):
         y = x    
     return y    
 
+def round_mat(A):
+    n = A.shape[0]
+    m = A.shape[1]
+    B = numpy.zeros((n,m))
 
-def equal(v1,v2):
+    for i in range(n):
+        for j in range(m):
+            B[i,j] = round(A[i,j])
+    return(B)    
+
+def equal(v1,v2, epsilon = epsilon):
     '''
     Returns 1 if two values v1 and v2 are equal otherwise returns 0
     ''' 
@@ -55,11 +78,11 @@ def sign(x):
     '''
         
     if (abs(x) < epsilon):
-        return 0
+        return 0.0
     elif x > 0:
-        return 1
+        return 1.0
     else:
-        return -1
+        return -1.0
 
 def connect_interval(C):
     '''
@@ -69,20 +92,22 @@ def connect_interval(C):
     This functions does this and returns an interval in which all sequential continuous intervals are replaced by one interval.
     '''    
     nC = len(C)
-    (a, b) = C[0]
-    R = interval()
-    for i in range(1, nC):
-        (aa, bb) = C[i]
-        if equal(aa,b):
-            b = bb
-        else:
-            R = R | interval([a,b])
-            a = aa
-            b = bb
+    if nC == 0:
+        return(C)
+    else:
+        (a, b) = C[0]
+        R = interval()
+        for i in range(1, nC):
+            (aa, bb) = C[i]
+            if equal(aa,b):
+                b = bb
+            else:
+                R = R | interval([a,b])
+                a = aa
+                b = bb
 
-    R = R | interval([a,b])
-
-    return R        
+        R = R | interval([a,b])
+        return R        
 
 def binary_choice(a,b,z):
     '''
@@ -114,4 +139,79 @@ def solve_quadratic_inequality(a, b, c):
         else:
             return interval()
     
-    
+def closest_border(x, S, k = 0.01):
+    '''
+    Returns the closest border of set S to value x. S is an interval variable from package interval
+    '''
+    d_min = infinity
+    for intrvl in S:
+        (xl, xh) = intrvl
+        d = abs(x - xl)
+        if d < d_min:
+            d_min   = d
+            clx     = xl + k*(xh-xl)
+
+        d = abs(x - xh)
+        if d < d_min:
+            d_min   = d
+            clx     = xh - k*(xh-xl)
+    return clx    
+
+def accommodating_interval(x, S):
+    '''
+    This function returns the interval in which x is located(accommodated)
+    if x is not in the interval, then None is returned    
+    '''
+    for intrvl in S:
+        (xl,xh) = intrvl
+        if (x >= xl)  and (x <= xh):
+            return intrvl
+
+    return None
+
+def gauss_rec(phi, W_arr, r, c, h, N_w):
+    '''
+    This function is translated from simulink model created by Gabriel
+    The .mdl file can be found in:
+    /home/nimasoft/Dropbox/software/matlab/packages/gabriell/Periodic_learning_v5_fafo_simulink/output_dyn_system_v4_simple.m
+    '''
+
+    '''
+    phi, r, h must be scalar values
+    c, W_arr  must be arrays of minimum length N_w
+    N_w = length(W_arr)
+    '''
+
+    # put input to the output dynamical system
+    num_in = 0
+    den_in = 0
+    for i in range(N_w):
+      (psi,arg) = gauss_kernel_cosine(phi, c[i], h)
+      '''  
+      print "W_arr[i] = ", W_arr[i]  
+      print "r        = ", r
+      print "psi      = ", psi
+      print "num_in   = ", num_in
+      '''  
+      num_in = num_in + psi*W_arr[i]*r
+      den_in = den_in + psi
+
+    return(num_in/den_in)
+
+def gauss_kernel_cosine(phi, c, h):
+    '''
+    This function is translated from Matlab code written by Gabriel.
+    The Matlab code can be found in:
+    /home/nimasoft/Dropbox/software/matlab/packages/gabriell/Periodic_learning_v5_fafo_simulink/gauss_kernel_cosine.m
+    '''
+    # psi: Gaussian kernel function
+    # phi: phase 
+    # c: value between 0 and 2*pi
+    # h: 'width' of the kernel function
+
+    arg = math.cos(phi - c) - 1.0
+    psi = math.exp(h*arg)
+    output = (psi, arg)
+    return output
+
+
