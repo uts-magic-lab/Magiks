@@ -14,13 +14,12 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nimaramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  06 July 2013
+@version:	    3.0
+Last Revision:  09 April 2014
 
-Changes from version 1.0:
-                - property "ofuncode" added to the class. Method "set_ofuncode" developed
-                - term "mid_dist_sq" changed to "ofun"                
-                - function "midrange_distance_squared" replaced by "objective_function"
+Changes from version 2.0:
+                - dual arm mode added
+
 '''
 import sympy, copy
 import pr2_arm_kinematics as armlib
@@ -80,8 +79,8 @@ class PR2_Symbolic():
         '''
         self.p_EFR_WR = numpy.array([0.0  ,  0.0 , Symbol('d7')])
         self.p_BO    = numpy.array([Symbol('X')  ,  Symbol('Y') , Symbol('Z')])
-        self.p_BR_BO = numpy.array([0.0          ,  Symbol('l0'), Symbol('h')])        
-        self.p_BL_BO = numpy.array([0.0          ,- Symbol('l0'), Symbol('h')])     
+        self.p_BR_BO = numpy.array([Symbol('b0') ,  Symbol('l0'), Symbol('h')])        
+        self.p_BL_BO = numpy.array([Symbol('b0') ,- Symbol('l0'), Symbol('h')])     
         self.R_B     = numpy.array([[ Symbol('C'),  Symbol('S') , 0.0 ], 
                                     [-Symbol('S'),  Symbol('C') , 0.0 ],
                                     [ 0.0        ,  0.0         , 1.0]]) 
@@ -140,7 +139,7 @@ class PR2(object):
     Left arm and dual arm control modes will be added later
     '''
 
-    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh):
+    def __init__(self, a0 = 0.1, b0 = 0.05, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh):
         '''
         ql and qh define the lower and higher bounds of the joints
         '''    
@@ -166,8 +165,10 @@ class PR2(object):
         self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7])
 
         self.d7 = d7
+        self.b0 = b0
         self.l0 = l0
         self.p_EFR_WR = numpy.array([0.0, 0.0, self.d7])
+        self.p_EFL_WL = numpy.array([0.0, 0.0, self.d7])
 
         # sets all angles to midrange by default
         self.set_config(self.qm)
@@ -177,8 +178,10 @@ class PR2(object):
         '''
         returns True if the given joint parameter qi is in feasible range for the i-th joint (within the specified joint limits for that joint)
         '''
-        if i in range(0,7):
+        if i in range(0, 7):
             return self.rarm.config.joint_in_range(i, qi)
+        elif i in range(11, 18):
+            return self.larm.config.joint_in_range(i - 11, qi)
         else:
             if i == 10: # if base rotation angle is selected, it should be taken into the standard range
                 qi = trig.angle_standard_range(qi) 
@@ -194,7 +197,9 @@ class PR2(object):
         '''
         Then, if The given joints "qd" are out of the range specified by properties: ql and qh, returns False, otherwise returns True  
         '''
-        flag = self.rarm.config.all_joints_in_range(qd[0:7])  #Are all the arm given joints in range?
+        #Are all the arm given joints in range?
+        flag = self.rarm.config.all_joints_in_range(qd[0:7])  
+        flag = flag and self.larm.config.all_joints_in_range(qd[11:18])  
         
         for i in range(7, 11):
             flag = flag and self.joint_in_range(i, qd[i])
@@ -226,22 +231,25 @@ class PR2(object):
             return False
 
         if self.all_joints_in_range(qd) and self.rarm.set_config(qd[0:7]) and self.larm.set_config(qd[11:18]):
-            self.q[0:10]  = qd[0:10]
-            self.q[10]   = trig.angle_standard_range(qd[10])
+            self.q[0:7]   = trig.angles_standard_range(qd[0:7])
+            self.q[7:10]  = qd[7:10]
+            self.q[10:18] = trig.angles_standard_range(qd[10:18])
 
             self.C = math.cos(self.q[10])
             self.S = math.sin(self.q[10])
 
             self.p_BO    = numpy.array([qd[8]   ,  qd[9],0.0])
-            self.p_BL_BO = numpy.array([0.0     ,  self.l0, qd[7]])        
-            self.p_BR_BO = numpy.array([0.0     ,- self.l0, qd[7]])     
+            self.p_BL_BO = numpy.array([self.b0     ,  self.l0, qd[7]])        
+            self.p_BR_BO = numpy.array([self.b0     ,- self.l0, qd[7]])     
 
-            self.R_B     = numpy.array([[  self.C, self.S, 0.0 ], 
-                                        [- self.S, self.C, 0.0 ],
+            self.R_B     = numpy.array([[  self.C, - self.S, 0.0 ], 
+                                        [  self.S,   self.C, 0.0 ],
                                         [  0.0          ,  0.0         , 1.0]]) 
 
-            self.endeff_position_updated         = False
-            self.endeff_orientation_updated      = False
+            self.rarm_endeff_position_updated    = False
+            self.larm_endeff_position_updated    = False
+            self.rarm_endeff_orientation_updated = False
+            self.larm_endeff_orientation_updated = False
             self.in_target_updated               = False
             self.redun_jacob_updated             = False
             self.redun_jacob_ext_updated         = False
@@ -399,7 +407,7 @@ class PR2(object):
             delta = trig.angles_standard_range(q - self.qm)
             ofun = numpy.dot(delta.T, self.W*delta)
         else:
-            print "IK_config error: Value ",self.ofun," for property ofun is not supported"
+            print "objective_function_customized error: Value ",self.ofun," for property ofun is not supported"
             assert False
         return ofun
 
@@ -429,11 +437,69 @@ class PR2(object):
             
         return solution_set[i_min]
 
+    """
+    def rarm_grip_ori_wrt_tor(self)
+        '''
+        Returns the right arm gripper rotation matrix (endeffector orientation) with respect to the torso
+        '''
+        return self.rarm.wrist_orientation()
+    """
+
+    def pos_rarm_grip_wrt_tor_shpan(self):
+        '''
+        Returns the right arm gripper position vector(endeffector position) with respect to the torso shoulder pan joint center
+        '''
+        R_WR_B   = self.rarm.wrist_orientation()
+        p_WR_BR  = self.rarm.wrist_position()
+        p_EFR_BR = p_WR_BR + numpy.dot(R_WR_B, self.p_EFR_WR)
+        return(p_EFR_BR)
+
+    def pos_larm_grip_wrt_tor_shpan(self):
+        '''
+        Returns the left arm gripper position vector(endeffector position) with respect to the torso shoulder pan joint center
+        '''
+        R_WL_B   = self.larm.wrist_orientation()
+        p_WL_BL  = self.larm.wrist_position()
+        p_EFL_BL = p_WL_BL + numpy.dot(R_WL_B, self.p_EFL_WL)
+        return(p_EFL_BL)
+
+    def pos_larm_grip_wrt_tor(self):
+        '''
+        Returns the left arm gripper position vector(endeffector position) with respect to the torso at the origin.
+        The torso origin is at the floor footprint (projection) of the middle point between the two shoulder pan joint centers.
+        '''
+        p_EFL_BL = self.pos_larm_grip_wrt_tor_shpan()
+        p_EFL_BO = self.p_BL_BO + p_EFL_BL
+        return(p_EFL_BO)
+
+    def pos_rarm_grip_wrt_tor(self):
+        '''
+        Returns the right arm gripper position vector(endeffector position) with respect to the torso at the origin.
+        The torso origin is at the floor footprint (projection) of the middle point between the two shoulder pan joint centers.
+        '''
+        p_EFR_BR = self.pos_rarm_grip_wrt_tor_shpan()
+        p_EFR_BO = self.p_BR_BO + p_EFR_BR
+        return(p_EFR_BO)
+
+    def pos_rarm_grip(self):
+        '''
+        Returns the global cartesian coordiantes of the end of right arm gripper.
+        '''    
+        p_EFR_BO = self.pos_rarm_grip_wrt_tor()
+        return(self.p_BO + p_EFR_BO)
+
+    def pos_larm_grip(self):
+        '''
+        Returns the global cartesian coordiantes of the end of left arm gripper.
+        '''    
+        p_EFL_BO = self.pos_larm_grip_wrt_tor()
+        return(self.p_BO + p_EFL_BO)
+
     def rarm_endeffector_position(self):        
         '''
         Returns the cartesian coordiantes of the end of gripper as the endeffector of the right arm.
         '''    
-        if not self.endeff_position_updated:
+        if not self.rarm_endeff_position_updated:
 
             self.R_WR    = self.rarm_endeffector_orientation()
             self.p_WR_BR = self.rarm.wrist_position()
@@ -455,7 +521,7 @@ class PR2(object):
             self.p_EFL   = self.p_BO + numpy.dot(self.R_B,(self.p_BL_BO + self.p_WL_BL)) + numpy.dot(self.R_WL, self.p_EFL_WL)
             self.larm_endeff_position_updated = True
 
-        return copy.copy(self.p_EFR)
+        return copy.copy(self.p_EFL)
 
     def rarm_endeffector_orientation(self):        
         '''
@@ -519,8 +585,8 @@ class PR2(object):
 
             phi = self.redundant_parameters()
         
-            Rd = self.endeffector_orientation()
-            xd = self.endeffector_position()
+            Rd = self.rarm_endeffector_orientation()
+            xd = self.rarm_endeffector_position()
 
             [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha] = self.rarm.additional_dims
 
