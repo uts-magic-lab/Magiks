@@ -1,10 +1,16 @@
 '''   Header
 @file:          quaternions.py
 @brief:    	    This module provides some useful functions dealing with quaternions.
-@author:        Nima Ramezani; DFKI Bremen
+@author:        Nima Ramezani; UTS Sydney
 @start date:    February 2010
-@version:	    0.1
-Last Revision:  31 March 2011
+@version:	    0.2
+Last Revision:  24 April 2014
+
+Changes from version 0.1:
+
+In the old version, the first three elements of the vector, represent the vectorial part and the forth (last) element, contains the real part of the unit quaternion
+In the new version, the first element of the vector contains the scalar part of the unit quaternion and the last three elements represent the vectorial part
+
 '''
 import math,numpy
 
@@ -31,21 +37,21 @@ def unit_quaternion(TRM):
     '''
     Returns a vector (4 X 1) containing elements of the unit quaternion corresponding to transformation or rotation matrix TRM. 
     (TRM can be the 4*4 transformation matrix or 3*3 rotation matrix)
-
-    The first three elements of the output vector, represent the vectorial part and the forth (last) element, contains the real part of the unit quaternion
+    the first element of the output vector contains the scalar part of the unit quaternion and the last three elements represent the vectorial part
+    
     '''
 
     uqn = numpy.zeros((4))
-    uqn[3] = 1.00
+    uqn[0] = 1.00
     [u,v,w] = permutation_uvw(TRM)
         
     p = math.sqrt(1 + TRM[u,u] - TRM[v,v] - TRM[w,w])
 
     if (p > 0.000001):
-        uqn[u] = p/2
-        uqn[v] = (TRM[v,u] + TRM[u,v])/(2*p)
-        uqn[w] = (TRM[w,u] + TRM[u,w])/(2*p)
-        uqn[3] = (TRM[w,v] - TRM[v,w])/(2*p)
+        uqn[u+1] = p/2.0
+        uqn[v+1] = (TRM[v,u] + TRM[u,v])/(2*p)
+        uqn[w+1] = (TRM[w,u] + TRM[u,w])/(2*p)
+        uqn[0] = (TRM[w,v] - TRM[v,w])/(2*p)
     
     assert abs(numpy.linalg.norm(uqn) - 1) < 0.000001
     return uqn
@@ -57,8 +63,8 @@ def unit_quaternion_speed(TRM,TRMD):
   
     (TRM and TRMD can be 4*4 transformation or 3*3 rotation matrices)
 
-    The first three elements of the output vector, represent the vectorial part 
-    The forth (last) element, contains the real part of the unit quaternion speed.
+    The last three elements of the output vector, represent the vectorial part 
+    The first element, contains the real part of the unit quaternion speed.
     '''
 
     uqns = numpy.zeros((4))
@@ -67,13 +73,13 @@ def unit_quaternion_speed(TRM,TRMD):
     p = math.sqrt(1+TRM[u,u]-TRM[v,v]-TRM[w,w])
     pp = (TRMD[u,u] - TRMD[v,v] - TRMD[w,w])/(2*p)
 
-    uqns[u] = pp/2
-    uqns[v] = (TRMD[v,u] + TRMD[u,v])/(2*p)
-    uqns[v] = uqns[v] - pp*(TRM[v,u] + TRM[u,v])/(2*p*p)
-    uqns[w] = (TRMD[w,u] + TRMD[u,w])/(2*p)
-    uqns[w] = uqns[w] - pp*(TRM[w,u] + TRM[u,w])/(2*p*p)
-    uqns[3] = (TRMD[w,v] - TRMD[v,w])/(2*p)
-    uqns[3] = uqns[3] - pp*(TRM[w,v] - TRM[v,w])/(2*p*p)
+    uqns[u+1] = pp/2
+    uqns[v+1] = (TRMD[v,u] + TRMD[u,v])/(2*p)
+    uqns[v+1] = uqns[v] - pp*(TRM[v,u] + TRM[u,v])/(2*p*p)
+    uqns[w+1] = (TRMD[w,u] + TRMD[u,w])/(2*p)
+    uqns[w+1] = uqns[w] - pp*(TRM[w,u] + TRM[u,w])/(2*p*p)
+    uqns[0] = (TRMD[w,v] - TRMD[v,w])/(2*p)
+    uqns[0] = uqns[0] - pp*(TRM[w,v] - TRM[v,w])/(2*p*p)
     
     return uqns
 
@@ -82,6 +88,7 @@ def normalized_quaternion(TRM):
     '''
     Returns a vector (3 X 1) containing elements of the normalized quaternion corresponding to transformation matrix TRM. 
     (TRM is the 4*4 transformation matrix) 
+    A normalized quaternion here means a quaternion that its real part is 1.0
     '''
     nqn = numpy.zeros((3))
     [u,v,w] = permutation_uvw(TRM)
