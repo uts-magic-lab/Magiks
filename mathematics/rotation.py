@@ -2,21 +2,35 @@
 @file:          rotation.py
 @brief:    	    This module provides some useful functions for rotation.
                 It supports various representations of orientation in three-dimentional space
-@author:        Nima Ramezani; DFKI Bremen
+@author:        Nima Ramezani; UTS Sydney
 @start date:    February 2011
-@version:	    1.3
-Last Revision:  27 May 2011
+@version:	    1.4
+Last Revision:  24 April 2014
 
 Reference 1: Robotics: Control, Sensing, Vision and Intelligence
 By: K.S.Fu and R.C.Gonzales and C.S.G.Lee
 McGraw-Hill Publishing Company
+
+Changes from version 1.3:
+in Quaternions, elements q[0] and [3] are swaped. Now, q[0] refers to the scalar value of the quaternion and the last three elements represent the vectorial part.
+
 '''
-import math
-import numpy 
-import quaternions
-import vectors_and_matrices
-import trigonometry
-import general
+import math, numpy 
+import general, quaternions, vectors_and_matrices, trigonometry
+import packages.nima.general as gen 
+
+
+i_uv = numpy.array([1.0, 0.0, 0.0])
+j_uv = numpy.array([0.0, 1.0, 0.0])
+k_uv = numpy.array([0.0, 0.0, 1.0])
+
+point_forward_orientation   = numpy.append(numpy.append([j_uv],[k_uv],axis = 0), [i_uv], axis = 0).T
+point_backward_orientation  = numpy.append(numpy.append([j_uv],[-k_uv],axis = 0), [-i_uv], axis = 0).T
+point_left_orientation      = numpy.append(numpy.append([k_uv],[i_uv],axis = 0), [j_uv], axis = 0).T
+point_right_orientation     = numpy.append(numpy.append([-k_uv],[i_uv],axis = 0), [-j_uv], axis = 0).T
+point_upward_orientation    = numpy.eye(3)
+point_downward_orientation  = numpy.append(numpy.append([-i_uv],[j_uv],axis = 0), [-k_uv], axis = 0).T
+
 
 def DH_transfer_matrix(theta,alpha,a,d):
     '''
@@ -33,20 +47,51 @@ def DH_transfer_matrix(theta,alpha,a,d):
                          [0.0 ,  0.0  ,  0.0  , 1.0  ]  ] )
     return TM
 
+def orthogonal(R):
+    '''
+    returns an orientation orthogonal to the given orientation    
+    '''    
+    w =   R[:,0]
+    h =   R[:,1]
+    n =   R[:,2]
+        
+    N = numpy.cross(- n, w)
+    if N[0] < 0:
+        N = - N
+
+    H = - n
+
+    if H[2] < 0:
+        H = - H
+    
+    W = numpy.cross(H,N)
+
+    return numpy.append(numpy.append([W],[H],axis = 0), [N], axis = 0).T
+
+def reverse(R):
+    '''
+    returns an orientation reverse to the given orientation    
+    '''    
+    R2 = numpy.copy(R)
+
+    R2[:0] = - R[:0]
+    R2[:1] = - R[:1]
+    return R2
+
 def trans_hemogeneous(v):
     '''
     Returns a  4X4 hemogeneous translation matrix corresponding to translation by given vector v
     if elements of v are numeric  values, then the elements of the translation matrix are numeric
     if elements of v are symbolic values, then the trans matrix is symbolic in terms of elements of v
     '''
-    TH = numpy.array([[ 1.0, 0.0, 0.0, v[0] ], 
-                      [ 0.0, 1.0, 0.0, v[1] ],
-                      [ 0.0, 0.0, 1.0, v[2] ],
-                      [ 0.0, 0.0, 0.0, 1.0  ]])
+    TH = numpy.array([[ 1, 0, 0, v[0] ], 
+                      [ 0, 1, 0, v[1] ],
+                      [ 0, 0, 1, v[2] ],
+                      [ 0, 0, 0, 1    ]])
     return TH
 
 
-def rot_y(theta, hemogeneous = False, symbolic = False, s = 'sin(t)', c = 'cos(t)'):
+def rot_y(theta, hemogeneous = False, symbolic = False, S = None, C = None):
     '''
     Returns the rotation matrix corresponding to rotation of "theta" around "z" axis  
     if hemogeneous is True, then a 4X4 hemogeneous transfer matrix is returned
@@ -57,65 +102,90 @@ def rot_y(theta, hemogeneous = False, symbolic = False, s = 'sin(t)', c = 'cos(t
     if symbolic is set to True the value of theta is ignored
 
     '''
-    if not symbolic:
-        c = math.cos(theta)
-        s = math.sin(theta)
+    if symbolic:    
+        from sympy import Symbol
+        S = replace_if_none(S, Symbol('s'))
+        C = replace_if_none(C, Symbol('c'))
+    else:
+        C = math.cos(theta)
+        S = math.sin(theta)
 
     if hemogeneous:
-        R_y     = numpy.array([[  c   , 0.0 , s   , 0.0 ], 
-                               [  0.0 , 1.0 , 0.0 , 0.0 ],
-                               [- s   , 0.0 , c   , 0.0 ],
-                               [  0.0 , 0.0 , 0.0 , 1.0 ]]) 
+        R_y     = numpy.array([[  C   , 0 , S , 0 ], 
+                               [  0   , 1 , 0 , 0 ],
+                               [- S   , 0 , C , 0 ],
+                               [  0   , 0 , 0 , 1 ]]) 
     else:
-        R_y     = numpy.array([[  c   , 0.0  , s   ], 
-                               [  0.0 , 1.0  , 0.0 ],
-                               [ -s   , 0.0  , c   ]]) 
+        R_y     = numpy.array([[  C   , 0  , S   ], 
+                               [  0   , 1  , 0   ],
+                               [ -S   , 0  , C   ]]) 
     return R_y
 
-def rot_x(theta, hemogeneous = False, symbolic = False, s = 'sin(t)', c = 'cos(t)'):
+def rot_x(theta, hemogeneous = False, symbolic = False, S = None, C = None):
     '''
     Similar to rot_y but rotation is around x axis
     '''
-    if not symbolic:
-        c = math.cos(theta)
-        s = math.sin(theta)
-    if hemogeneous:
-        R_x     = numpy.array([[  1.0 , 0.0 , 0.0, 0.0 ], 
-                               [  0.0 , c   , s  , 0.0 ],
-                               [  0.0 , -s  , c  , 0.0 ],
-                               [  0.0 , 0.0 , 0.0, 1.0]]) 
+    if symbolic:    
+        from sympy import Symbol
+        S = replace_if_none(S, Symbol('s'))
+        C = replace_if_none(C, Symbol('c'))
     else:
-        R_x     = numpy.array([[  1.0 , 0.0 , 0.0 ], 
-                               [  0.0 ,  c  , s   ],
-                               [  0.0 , -s  , c   ]]) 
+        C = math.cos(theta)
+        S = math.sin(theta)
+    if hemogeneous:
+        R_x     = numpy.array([[  1 , 0  , 0, 0 ], 
+                               [  0 , C  , -S, 0 ],
+                               [  0 , S  ,  C, 0 ],
+                               [  0 , 0  , 0, 1 ]]) 
+    else:
+        R_x     = numpy.array([[  1 ,  0  , 0 ], 
+                               [  0 ,  C  , -S ],
+                               [  0 ,  S  ,  C ]]) 
     return R_x
 
-def rot_z(theta, hemogeneous = False, symbolic = False, s = 'sin(t)', c = 'cos(t)'):
+def rot_z(theta, hemogeneous = False, symbolic = False, S = None, C = None):
     '''
     Similar to rot_y but rotation is around z axis
     '''
-    if not symbolic:
-        c = math.cos(theta)
-        s = math.sin(theta)
-    if hemogeneous:
-        R_z     = numpy.array([[  c   , s   , 0.0, 0.0 ], 
-                               [- s   , c   , 0.0, 0.0 ],
-                               [  0.0 , 0.0 , 1.0, 0.0 ],
-                               [  0.0 , 0.0 , 0.0, 1.0]]) 
+    if symbolic:
+        from sympy import Symbol
+        S = gen.replace_if_none(S, Symbol('s'))    
+        C = gen.replace_if_none(S, Symbol('c'))    
     else:
-        R_z     = numpy.array([[  c   , s   , 0.0 ], 
-                               [- s   , c   , 0.0 ],
-                               [  0.0 , 0.0 , 1.0]]) 
+        C = math.cos(theta)
+        S = math.sin(theta)
+
+    if hemogeneous:
+        R_z     = numpy.array([[  C   , -S   , 0, 0 ], 
+                               [  S   ,  C   , 0, 0 ],
+                               [  0   , 0   , 1, 0 ],
+                               [  0   , 0   , 0, 1 ]]) 
+    else:
+        R_z     = numpy.array([[  C   , -S , 0 ], 
+                               [  S   ,  C , 0 ],
+                               [  0 , 0   , 1 ]]) 
     return R_z
 
 
-def rotation_matrix(rv, parametrization = 'unit_quaternion'):
+def rotation_matrix(rv, parametrization = 'unit_quaternion', symbolic = False, derivative = False, C = None, S = None, U = None, W = None):
     '''
     This function returns the rotation matrix corresponding to rotation vector as p(phi)*U where:
     phi is the rotation angle and U is the unit vector directing towards the axis of rotation
     If type is "Linear Parametrization", then: p(phi) = sin(phi)
-    
+    if "parametrization = 'unit_quaternion', a unit quaternion must be given. The first element rv[0] is the scalar part and 
+    the next three elements (rv[1], rv[2], rv[3]) represent the vectorial part
+        
+    if argument derivative is True the derivative of the rotation matrix wrt angle phi (rv[0]) is return. 
+    Arguments "symbolic" and "derivative" are now supported only for angle-axis parametrization. C = cos(phi) , S = sin(phi) 
+    when phi is the rotation angle and [Ux, Uy, Uz] is the axis
     '''
+
+    if symbolic:
+        from sympy import Symbol
+        C = gen.replace_if_none(C, Symbol('c'))
+        S = gen.replace_if_none(S, Symbol('s'))
+        U = gen.replace_if_none(U, [Symbol('ux'), Symbol('uy'), Symbol('uz')])
+        W = gen.replace_if_none(W, Symbol('w'))
 
     u = numpy.zeros((3))
     
@@ -127,11 +197,19 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion'):
         u[2] = math.cos(rv[1])
         
     elif parametrization == 'angle_axis':
-        sin_phi = math.sin(rv[3])
-        cos_phi = math.cos(rv[3])
-        u[0] = rv[0]
-        u[1] = rv[1]
-        u[2] = rv[2]
+        if symbolic:
+            sin_phi = S
+            cos_phi = C
+            u[0] = U[0]
+            u[1] = U[1]
+            u[2] = U[2]
+
+        else:
+            sin_phi = math.sin(rv[0])
+            cos_phi = math.cos(rv[0])
+            u[0] = rv[1]
+            u[1] = rv[2]
+            u[2] = rv[3]
         
     elif parametrization == 'unit_quaternion':
         assert len(rv) == 4
@@ -139,18 +217,18 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion'):
         assert general.equal(numpy.linalg.norm(rv), 1.0)
 
         RM = numpy.eye(3)
-        a2 = rv[3]**2
-        b2 = rv[0]**2
-        c2 = rv[1]**2
-        d2 = rv[2]**2
-        ab = 2*rv[3]*rv[0]
-        ac = 2*rv[3]*rv[1]
-        ad = 2*rv[3]*rv[2]
+        a2 = rv[0]**2
+        b2 = rv[1]**2
+        c2 = rv[2]**2
+        d2 = rv[3]**2
+        ab = 2*rv[0]*rv[1]
+        ac = 2*rv[0]*rv[2]
+        ad = 2*rv[0]*rv[3]
         
-        bc = 2*rv[0]*rv[1]
-        bd = 2*rv[0]*rv[2]
+        bc = 2*rv[1]*rv[2]
+        bd = 2*rv[1]*rv[3]
         
-        cd = 2*rv[1]*rv[2]
+        cd = 2*rv[2]*rv[3]
         
         RM[0,0] = a2 + b2 - c2 - d2
         RM[0,1] = bc - ad
@@ -192,9 +270,13 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion'):
         sin_phi = math.sin(4*phi_4)
         cos_phi = math.cos(4*phi_4)
 
+    u = vectors_and_matrices.normalize(u)
     skew_u = vectors_and_matrices.skew(u)
 
-    RM = numpy.eye(3) + sin_phi*skew_u + (1 - cos_phi)*numpy.dot(skew_u,skew_u)
+    if derivative:
+        RM = cos_phi*skew_u + sin_phi*numpy.dot(skew_u,skew_u)
+    else: 
+        RM = numpy.eye(3) + sin_phi*skew_u + (1 - cos_phi)*numpy.dot(skew_u,skew_u)
     return(RM)    
 
 
@@ -229,7 +311,7 @@ def angle_axis(TRM):
         q = q / math.sin(phi/2)
         an_ax = q 
 
-    an_ax[3] = phi
+    an_ax[0] = phi
 
 
     return an_ax
@@ -242,10 +324,10 @@ def spherical_angles(TRM):
     sa = numpy.zeros((3))
     ax = angle_axis(TRM)
 
-    sa[0] = ax[3]
+    sa[0] = ax[0]
         
-    sa[2] = math.atan2(ax[1], ax[0])
-    sa[1] = trigonometry.arccos(ax[2])
+    sa[2] = math.atan2(ax[2], ax[1])
+    sa[1] = trigonometry.arccos(ax[3])
 
     return sa
 
@@ -270,10 +352,10 @@ def orientation_vector(TRM, parametrization):
         return rv
     else:
         ax = angle_axis(TRM)
-        phi = ax[3]
+        phi = ax[0]
         u = numpy.zeros((3))
         for j in range(0,3):
-            u[j] = ax[j]
+            u[j] = ax[j+1]
 
     if parametrization == 'vectorial_identity':
         p = phi
