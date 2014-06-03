@@ -1,14 +1,143 @@
 '''   Header
-@file:          interpolatepy.py
-@brief:    	    This module provides tools by which you can fit a curve through a set of points.
-@author:        Nima Ramezani; DFKI Bremen
+@file:          polynomials.py
+@brief:    	    This module provides everything you need to work with polynomials 
+                including tools by which you can fit a curve through a set of points.
+@author:        Nima Ramezani; UTS
 @start date:    February 2011
-@version:	    1.1
-Last Revision:  28 April 2011
+@version:	    2.0
+Last Revision:  04 June 2014
 '''
 
-
 import math, numpy
+
+class Point(object):
+    def __init__(self, t = 0.0, x = 0.0, v = 0.0, a = 0.0, x_free = False, v_free = True, a_free = True):
+        self.t = t
+        self.x = x    
+        self.v = v
+        self.a = a
+        self.x_free = x_free
+        self.v_free = v_free
+        self.a_free = a_free
+
+    def count_constraints(self):
+        nc = 0
+        if not self.x_free:
+            nc = nc + 1
+        if not self.v_free:
+            nc = nc + 1
+        if not self.a_free:
+            nc = nc + 1
+        return nc    
+
+class Polynomial(object):
+    '''
+    '''
+    def __init__(self, degree = 0):
+        self.degree = degree
+        self.coeff  = numpy.zeros(self.degree + 1)
+
+    def interpolate_smart(self, points):
+        n = len(points)
+        m = 0
+        for p in points:
+            m = m + p.count_constraints()
+
+        self.degree = m - 1        
+        A = numpy.zeros((m,m))
+        i = 0
+        u = numpy.array([])
+        for p in points:
+            if not p.x_free:
+                A[i, 0] = 1
+                for j in range(1, m):
+                    A[i, j] = A[i, j-1]*p.t
+                i = i + 1
+                u = numpy.append(u, p.x)
+
+            if not p.v_free:
+                A[i, 0] = 0.0
+                A[i, 1] = 1.0
+                for j in range(2, m):
+                    A[i, j] = j*(p.t**(j-1))
+                i = i + 1
+                u = numpy.append(u, p.v)
+
+            if not p.a_free:
+                A[i, 0:2] = 0.0
+                A[i, 2]   = 2.0
+                for j in range(3, m):
+                    A[i, j] = j*(j-1)*(p.t**(j-2))
+                i = i + 1
+                u = numpy.append(u, p.a)
+        
+        self.coeff = numpy.dot(numpy.linalg.inv(A), u)
+            
+
+    def interpolate(self, t, u, v = []):
+        '''
+        Generates the coefficients of a spline passing through key positions and velocities specified by u and v at corresponding t
+        t, u, v must have the same length
+        if v is not specified (keep the default), only positions are considered
+        '''
+        n  = len(t)
+        nu = len(u)
+        nv = len(v)
+        assert n == nu
+
+        if (nv == 0):
+            self.degree = n - 1        
+            A = numpy.zeros((n,n))
+            for i in range(n):
+                A[i, 0] = 1.0
+                for j in range(1, n):
+                    A[i, j] = A[i, j-1]*t[i]
+
+            self.coeff = numpy.dot(numpy.linalg.inv(A), u)
+        elif (nv == n):
+            self.degree = 2*n - 1
+            A = numpy.zeros((2*n, 2*n))
+            for i in range(n):
+                A[i,   0] = 1.0
+                A[n+i, 0] = 0.0
+                A[n+i, 1] = 1.0
+                for j in range(1, 2*n):
+                    A[i, j] = A[i, j-1]*t[i]
+                    A[n + i, j] = j*(t[i]**(j-1))
+
+            self.coeff = numpy.dot(numpy.linalg.inv(A), numpy.append(u, v))
+        else:
+            print "Error: Size of input vector v is different from t and u"
+
+    def position(self, t):
+        '''
+        Returns the value of the polynomial at time t
+        '''
+        n = self.degree + 1
+        s = self.coeff[0]
+        for i in range(1,n):
+            s = s + self.coeff[i]*(t**i)
+        return(s)
+
+    def velocity(self, t):
+        '''
+        Returns the derivative of the polynomial at time t
+        '''
+        n = self.degree
+        v = self.coeff[1]
+        for i in range(1, n):
+            v = v + (i+1)*self.coeff[i+1]*(t**i)
+        return(v)
+
+    def acceleration(self, t):
+        '''
+        Returns the derivative of the polynomial at time t
+        '''
+        n = self.degree - 1
+        a = 2*self.coeff[2]
+        for i in range(1, n):
+            a = a + (i+1)*(i+2)*self.coeff[i+2]*(t**i)
+        return(a)
 
 class Polynomial1_Interpolator:
     '''
