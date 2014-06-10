@@ -13,16 +13,32 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.3
-Last Revision:  29 October 2011
+@version:	    4
+Last Revision:  11 June 2014
+
+Changes from version 3:
+
+1- added function: rep     
 '''
 
 import math,numpy, general, trigonometry
 
+'''
+use mgv
 # global variables:
 f0       = float(0)
 f1       = float(1)
+'''
 err_code = 0
+
+def rep(a, n):
+    '''
+    returns a numpy vector of length n containing a (all elements of the vector will be a)
+    '''
+    v = numpy.zeros(n)
+    for i in range(n):
+        v[i] = a
+    return v
 
 def as_matrix(v):
     '''
@@ -75,6 +91,40 @@ def format_matrix( matrix, format="%.3f" ) :
             formatted[i,j] = format%matrix[i,j]          
     return formatted
 
+def which(v, condition, value):
+    '''
+    Returns the positions of those elements of vector v which satisfy the given condition with the given value
+    condition is a string and must be in: '>', '>=', '<', '=='
+    
+    '''
+    s = []
+    for i in range(len(v)):
+        if condition == '<':
+            flag = (v[i] < value)
+        elif condition == '>':
+            flag = (v[i] > value)
+        elif condition == '==':
+            flag = (v[i] == value)
+        elif condition == '<=':
+            flag = (v[i] <= value)
+        elif condition == '>=':
+            flag = (v[i] >= value)
+        else:
+            assert False, "Error from vectors_and_matrices.which(): "+ condition+ " is an unknown condition."
+        if flag:
+            s.append(i)
+
+    return s        
+
+def remove(v, positions):
+    '''
+    Removes the items from v whose positions are specified in given array "positions" and returns the filtered vector
+    '''
+    w = []
+    for i in range(len(v)):
+        if not (i in positions):
+            w.append(v[i])
+    return w        
 
 def matrix_column_multiply(A,v):
     '''
@@ -201,7 +251,7 @@ def equal(v1,v2, epsilon = general.epsilon):
     '''
     Returns 1 if two vectors or matrices are equal otherwise returns 0
     '''
-    return (numpy.linalg.norm(v1-v2) < len(v1)*epsilon)
+    return (numpy.linalg.norm(v1-v2) < epsilon)
 
 def uvect(TRM,m):
     '''
@@ -259,28 +309,51 @@ def extended_matrix( R, p ):
             em[i,j] = R[i,j]
     return em;
 
-
-def right_pseudo_inverse(M):
+def right_pseudo_inverse(J):
     '''
-    Return the right pseudo-inverse of matrix M
+    Return the right pseudo-inverse of matrix J
+    J^T*(J*J^T)^(-1)
+    --> take a look at ! numpy.linalg.pinv(a) !
     '''
-    A = numpy.dot(M,M.T);
-    vinv = numpy.dot(v.T,numpy.linalg.inv(A))
-    return vinv
+    A = numpy.dot(J,J.T);
+    Jinv = numpy.dot(J.T,numpy.linalg.inv(A))
+    return Jinv
 
+def left_pseudo_inverse(J):
+    '''
+    Return the left pseudo-inverse of matrix J
+    (J^T*J)^(-1)*J^T
+    '''
+    A = numpy.dot(J.T,J);
+    Jinv = numpy.dot(numpy.linalg.inv(A), J.T)
+    return Jinv
 
 def right_dls_inverse(M, k):
     '''
-    returns the right side damped least square inverse of matrix M. k is the damping factor.
-    
-    --> take a look at ! numpy.linalg.pinv(a, rcond=1.0000000000000001e-15) !
+    returns the right side damped least square inverse of matrix M. k is the damping factor:
+
+    M^T * [M*M^T + (k^2)*I]^(-1)
+
     '''
     m = M.shape[0]
     A = numpy.dot(M, M.T);
     
-    vinv = numpy.dot(v.T,numpy.linalg.inv(A + k*k*numpy.eye(m)))
-    return vinv
+    Minv = numpy.dot(M.T, numpy.linalg.inv(A + k*k*numpy.eye(m)))
+    return Minv
 
+def left_dls_inverse(M, k):
+    '''
+    returns the left side damped least square inverse of matrix M. k is the damping factor:
+
+    [M^T*M + (k^2)*I]^(-1) * M^T
+    
+    --> take a look at ! numpy.linalg.pinv(a, rcond=1.0000000000000001e-15) !
+    '''
+    m = M.shape[1]
+    A = numpy.dot(M.T, M);
+    
+    Minv = numpy.dot(numpy.linalg.inv(A + k*k*numpy.eye(m)), M.T)
+    return Minv
 
 def relative_trace(RMa,RMd):
     '''
@@ -294,3 +367,13 @@ def relative_trace(RMa,RMd):
 
     return trace_R
 
+def collapse(v, max_norm):
+    '''
+    if the magnitude(norm) of the given vector is smaller than max_norm, the given vctor is returned
+    otherwise a vector parallel to v with norm max_norm is returned
+    '''
+    l = numpy.linalg.norm(v)
+    if l > max_norm:
+        return v*max_norm/l
+    else:
+        return v
