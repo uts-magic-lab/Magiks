@@ -14,11 +14,11 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    3.0
-Last Revision:  10 Jun 2014
+@version:	    4.0
+Last Revision:  16 Jun 2014
 
 Changes from previous version:
-added functions for FK of all segment poses
+added functions for jacobians
 
 '''
 import packages.nima.mathematics.general as gen
@@ -66,6 +66,37 @@ class NAO():
 
     def update(self):
         k       = math.cos(math.pi/4)
+        self.Dfrx = numpy.zeros(21)
+        self.Dfry = numpy.zeros(21)
+        self.Dfrz = numpy.zeros(21)
+        self.Dflx = numpy.zeros(21)
+        self.Dfly = numpy.zeros(21)
+        self.Dflz = numpy.zeros(21)
+
+        self.Dgrx = numpy.zeros(21)
+        self.Dgry = numpy.zeros(21)
+        self.Dgrz = numpy.zeros(21)
+        self.Dglx = numpy.zeros(21)
+        self.Dgly = numpy.zeros(21)
+        self.Dglz = numpy.zeros(21)
+
+        self.Dsxl = numpy.zeros(21)
+        self.Dsyl = numpy.zeros(21)
+        self.Dszl = numpy.zeros(21)
+        self.Dsxr = numpy.zeros(21)
+        self.Dsyr = numpy.zeros(21)
+        self.Dszr = numpy.zeros(21)
+
+        self.Daxl = numpy.zeros(21)
+        self.Dayl = numpy.zeros(21)
+        self.Dazl = numpy.zeros(21)
+        self.Daxr = numpy.zeros(21)
+        self.Dayr = numpy.zeros(21)
+        self.Dazr = numpy.zeros(21)
+
+        self.Dnxr = numpy.zeros(21)
+        self.Dnyr = numpy.zeros(21)
+        self.Dnzr = numpy.zeros(21)
 
         (c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10) = (self.c[0], self.c[1],self.c[2],self.c[3],self.c[4],self.c[5], self.c[6], self.c[7],self.c[8],self.c[9],self.c[10]) 
         (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20) = (self.c[11], self.c[12],self.c[13],self.c[14],self.c[15],self.c[16], self.c[17], self.c[18],self.c[19],self.c[20])
@@ -73,20 +104,44 @@ class NAO():
         (s11, s12, s13, s14, s15, s16, s17, s18, s19, s20) = (self.s[11], self.s[12],self.s[13],self.s[14],self.s[15],self.s[16], self.s[17], self.s[18],self.s[19],self.s[20])
 
         self.frx = c0*s2 - self.c1*c2*s0
-        self.fry = k*(c2*(c0*self.c1 + self.s1) + s0*s2)
-        self.frz = k*(-c0*self.c1*c2 + self.s1*c2- s0*s2)
+        self.fry = k*(c2*( c0*self.c1 + self.s1) + s0*s2)
+        self.frz = k*(c2*(-c0*self.c1 + self.s1) - s0*s2)
+
+        self.Dfrx[0] = -s0*s2 - self.c1*c2*c0
+        self.Dfry[0] = k*(-c2*s0*self.c1 + c0*s2)
+        self.Dfrz[0] = k*( c2*s0*self.c1 - c0*s2)
+
+        self.Dfrx[1] = self.s1*c2*s0 
+        self.Dfry[1] = k*c2*(-c0*self.s1 + self.c1)
+        self.Dfrz[1] =  k*(c2*c0*self.s1 + self.c1*c2)
+
+        self.Dfrx[2] = c0*c2 + self.c1*s2*s0
+        self.Dfry[2] = k*(-s2*(c0*self.c1 + self.s1) + s0*c2)
+        self.Dfrz[2] = k*(c0*self.c1*s2 - self.s1*s2- s0*c2)
 
         self.flx = c0*s7 - self.c6*c7*s0
         self.fly = k*(c7*(-c0*self.c6 - self.s6) - s0*s7)
         self.flz = k*(-c0*self.c6*c7 + self.s6*c7- s0*s7)
 
+        self.Dflx[0] = -s0*s7 - self.c6*c7*c0
+        self.Dfly[0] = k*(c7*s0*self.c6 - c0*s7)
+        self.Dflz[0] = k*( c7*s0*self.c6 - c0*s7)
+
         self.grx = c3*(c0*s2 - self.c1*c2*s0) + s3*(c0*c2 + self.c1*s0*s2)
         self.gry = k*(c3*(c0*self.c1*c2 + self.s1*c2 + s0*s2) + s3*(c2*s0 -c0*self.c1*s2 - self.s1*s2))
         self.grz = k*(-c0*self.c1*c2*c3 + self.s1*c2*c3- s0*s2*c3 - c2*s0*s3 + c0*self.c1*s2*s3 - self.s1*s2*s3)
 
+        self.Dgrx[0] = c3*(-s0*s2 - self.c1*c2*c0) + s3*(-s0*c2 + self.c1*c0*s2)
+        self.Dgry[0] = k*(c3*(-s0*self.c1*c2 + c0*s2) + s3*(c2*c0 + s0*self.c1*s2))
+        self.Dgrz[0] = k*(s0*self.c1*c2*c3 - c0*s2*c3 - c2*c0*s3 - s0*self.c1*s2*s3)
+
         self.glx = c8*(c0*s7 - self.c6*c7*s0) + s8*(c0*c7 + self.c6*s0*s7)
         self.gly = k*(c8*(-c0*self.c6*c7 - self.s6*c7 - s0*s7) - s8*(c7*s0 -c0*self.c6*s7 - self.s6*s7))
         self.glz = k*(-c0*self.c6*c7*c8 + self.s6*c7*c8- s0*s7*c8 - c7*s0*s8 + c0*self.c6*s7*s8 - self.s6*s7*s8)
+
+        self.Dglx[0] = c8*(-s0*s7 - self.c6*c7*c0) + s8*(-s0*c7 + self.c6*c0*s7)
+        self.Dgly[0] = k*(c8*( s0*self.c6*c7 - c0*s7) - s8*(c7*c0 + s0*self.c6*s7))
+        self.Dglz[0] = k*(s0*self.c6*c7*c8 - c0*s7*c8 - c7*c0*s8 - s0*self.c6*s7*s8)
 
         self.prx = c11*c12
         self.pry = s12
@@ -147,82 +202,140 @@ class NAO():
         S1 = c1 + s1
         C1 = c1 - s1
 
-        u1 = c0*S1 - C1
-        v1  = c0*C1 + S1
-        p1 = c0*C1 - S1
-        q1 = c0*S1 + C1
+        u1    =   c0*S1 - C1
+        du1_0 = - s0*S1
+        v1    =   c0*C1 + S1
+        dv1_0 = - s0*C1
+        p1    =   c0*C1 - S1
+        dp1_0 = - s0*C1
+        q1    =   c0*S1 + C1
+        dq1_0 = - s0*S1
 
-        u2 = - k*c2*s0 + 0.5*s2*u1
-        v2 =   0.5*c2*u1  + k*s0*s2
-        p2 = - k*c2*s0 + 0.5*s2*q1
-        q2 =   0.5*c2*q1 + k*s0*s2
-        f2 =   c2*c0 + s2*k*s0*S1
-        g2 = - s2*c0 + c2*k*s0*S1
+        u2    = - k*c2*s0 + 0.5*s2*u1
+        du2_0 = - k*c2*c0 + 0.5*s2*du1_0
+        v2    =   0.5*c2*u1     + k*s0*s2
+        dv2_0 =   0.5*c2*du1_0  + k*c0*s2
+        p2    = - k*c2*s0 + 0.5*s2*q1
+        dp2_0 = - k*c2*c0 + 0.5*s2*dq1_0
+        q2    =   0.5*c2*q1 + k*s0*s2
+        dq2_0 =   0.5*c2*dq1_0 + k*c0*s2
+        f2    =   c2*c0 + s2*k*s0*S1
+        df2_0 = - c2*s0 + s2*k*c0*S1
+        g2    = - s2*c0 + c2*k*s0*S1
+        dg2_0 =   s2*s0 + c2*k*c0*S1
 
-        f3 = c3*g2 - s3*f2
-        g3 = c3*f2 + s3*g2
-        f4 = c4*f3 - s4*g3
+        f3    = c3*g2    - s3*f2
+        df3_0 = c3*dg2_0 - s3*df2_0
+        g3    = c3*f2    + s3*g2
+        dg3_0 = c3*df2_0 + s3*dg2_0
+        f4    = c4*f3    - s4*g3
+        df4_0 = c4*df3_0 - s4*dg3_0
 
-        u3 = c3*v2  - s3*u2
-        v3 = c3*u2  + s3*v2
-        u4 = c4*u3  - s4*v3
+        u3    = c3*v2     - s3*u2
+        du3_0 = c3*dv2_0  - s3*du2_0
+        v3    = c3*u2     + s3*v2
+        dv3_0 = c3*du2_0  + s3*dv2_0
+        u4    = c4*u3     - s4*v3
+        du4_0 = c4*du3_0  - s4*dv3_0
 
-        p3 = c3*q2 - s3*p2
-        q3 = c3*p2 + s3*q2
-        p4 = c4*p3 - s4*q3
+        p3    = c3*q2    - s3*p2
+        dp3_0 = c3*dq2_0 - s3*dp2_0
+        q3    = c3*p2    + s3*q2
+        dq3_0 = c3*dp2_0 + s3*dq2_0
+        p4    = c4*p3    - s4*q3
+        dp4_0 = c4*dp3_0 - s4*dq3_0
 
         self.sxr =   c4*v3 + s4*u3
         self.syr =   c4*g3 + s4*f3  
         self.szr =   c4*q3 + s4*p3
 
+        self.Dsxr[0] =   c4*dv3_0 + s4*du3_0
+        self.Dsyr[0] =   c4*dg3_0 + s4*df3_0  
+        self.Dszr[0] =   c4*dq3_0 + s4*dp3_0
+
         self.axr =   c5*u4 + 0.5*s5*v1
         self.ayr =   c5*f4 + k*s5*s0*C1
         self.azr =   c5*p4 + 0.5*s5*p1
+
+        self.Daxr[0] =   c5*du4_0 + 0.5*s5*dv1_0
+        self.Dayr[0] =   c5*df4_0 + k*s5*c0*C1
+        self.Dazr[0] =   c5*dp4_0 + 0.5*s5*dp1_0
 
         self.nxr =   0.5*c5*v1  - s5*u4
         self.nyr =   c5*s0*k*C1 - s5*f4
         self.nzr =   0.5*c5*p1  - s5*p4
 
+        self.Dnxr[0] =   0.5*c5*dv1_0  - s5*du4_0
+        self.Dnyr[0] =   c5*c0*k*C1    - s5*df4_0
+        self.Dnzr[0] =   0.5*c5*dp1_0  - s5*dp4_0
 
         S6 = c6 + s6
         C6 = c6 - s6
 
-        u6 = c0*S6 - C6
-        v6  = c0*C6 + S6
-        p6 = c0*C6 - S6
-        q6 = c0*S6 + C6
+        u6    =   c0*S6 - C6
+        du6_0 = - s0*S6
+        v6    =   c0*C6 + S6
+        dv6_0 = - s0*C6
+        p6    =   c0*C6 - S6
+        dp6_0 = - s0*C6
+        q6    =   c0*S6 + C6
+        dq6_0 = - s0*S6
 
-        u7 = - k*c7*s0 + 0.5*s7*u6
-        v7 =   0.5*c7*u6  + k*s0*s7
-        p7 = - k*c7*s0 + 0.5*s7*q6
-        q7 =   0.5*c7*q6 + k*s0*s7
-        f7 =   c7*c0 + s7*k*s0*S6
-        g7 = - s7*c0 + c7*k*s0*S6
+        u7    = - k*c7*s0 + 0.5*s7*u6
+        du7_0 = - k*c7*c0 + 0.5*s7*du6_0
 
-        f8 = c8*g7 - s8*f7
-        g8 = c8*f7 + s8*g7
-        f9 = c9*f8 - s9*g8
+        v7    =   0.5*c7*u6     + k*s0*s7
+        dv7_0 =   0.5*c7*du6_0  + k*c0*s7
+        p7    = - k*c7*s0 + 0.5*s7*q6
+        dp7_0 = - k*c7*c0 + 0.5*s7*dq6_0
 
-        u8 = c8*v7  - s8*u7
-        v8 = c8*u7  + s8*v7
-        u9 = c9*u8  - s9*v8
+        q7    =   0.5*c7*q6    + k*s0*s7
+        dq7_0 =   0.5*c7*dq6_0 + k*c0*s7
+        f7    =   c7*c0 + s7*k*s0*S6
+        df7_0 = - c7*s0 + s7*k*c0*S6
+        g7    = - s7*c0 + c7*k*s0*S6
+        dg7_0 =   s7*s0 + c7*k*c0*S6
 
-        p8 = c8*q7 - s8*p7
-        q8 = c8*p7 + s8*q7
-        p9 = c9*p8 - s9*q8
+        f8    = c8*g7    - s8*f7
+        df8_0 = c8*dg7_0 - s8*df7_0
+        g8    = c8*f7    + s8*g7
+        dg8_0 = c8*df7_0 + s8*dg7_0
+        f9    = c9*f8    - s9*g8
+        df9_0 = c9*df8_0 - s9*dg8_0
+
+        u8    = c8*v7     - s8*u7
+        du8_0 = c8*dv7_0  - s8*du7_0
+        v8    = c8*u7     + s8*v7
+        dv8_0 = c8*du7_0  + s8*dv7_0
+        u9    = c9*u8     - s9*v8
+        du9_0 = c9*du8_0  - s9*dv8_0
+
+        p8    = c8*q7    - s8*p7
+        dp8_0 = c8*dq7_0 - s8*dp7_0
+        q8    = c8*p7    + s8*q7
+        dq8_0 = c8*dp7_0 + s8*dq7_0
+        p9    = c9*p8    - s9*q8
+        dp9_0 = c9*dp8_0 - s9*dq8_0
 
         self.sxl = - c9*v8 - s9*u8
         self.syl =   c9*g8 + s9*f8  
         self.szl =   c9*q8 + s9*p8
 
+        self.Dsxl[0] = - c9*dv8_0 - s9*du8_0
+        self.Dsyl[0] =   c9*dg8_0 + s9*df8_0  
+        self.Dszl[0] =   c9*dq8_0 + s9*dp8_0
+
         self.axl = - c10*u9 - 0.5*s10*v6
         self.ayl =   c10*f9 + k*s10*s0*C6
         self.azl =   c10*p9 + 0.5*s10*p6
 
+        self.Daxl[0] = - c10*du9_0 - 0.5*s10*dv6_0
+        self.Dayl[0] =   c10*df9_0 + k*s10*c0*C6
+        self.Dazl[0] =   c10*dp9_0 + 0.5*s10*dp6_0
+
         self.nxl =   0.5*c10*v6  - s10*u9
         self.nyl = - c10*s0*k*C6 + s10*f9
         self.nzl = - 0.5*c10*p6  + s10*p9
-
 
     def torso_orientation_wrt_rfoot(self):
         (c0, c1, c2, c3, c4, c5) = (self.c[0], self.c[1],self.c[2],self.c[3],self.c[4],self.c[5]) 
@@ -602,8 +715,6 @@ class NAO():
 
         (b0, a2, a3, a5, d5) = (self.dim['b0'], self.dim['a2'], self.dim['a3'], self.dim['a5'],self.dim['d5'])
 
-        p0 = self.pos_lank_wrt_tor_in_torcs()
-
         X = a2*self.flx + a3*self.glx + d5*self.syl - a5*self.ayl
         Y = a2*self.fly + a3*self.gly - d5*self.sxl + a5*self.axl + b0
         Z = a2*self.flz + a3*self.glz + d5*self.szl - a5*self.azl
@@ -632,4 +743,58 @@ class NAO():
 
         return numpy.array([X , Y , Z ])
 
+    def partial_torso_orientation_wrt_rfoot(self, i):
+        R = numpy.zeros((3,3))
+        R[0,0] =  self.Dnxr[i]
+        R[0,1] =  self.Dnyr[i]
+        R[0,2] =  self.Dnzr[i]
+        R[1,0] =  self.Dsxr[i]
+        R[1,1] =  self.Dsyr[i]
+        R[1,2] =  self.Dszr[i]
+        R[2,0] =  self.Daxr[i]
+        R[2,1] =  self.Dayr[i]
+        R[2,2] =  self.Dazr[i]
 
+        return R
+
+
+    def partial_lfoot_wrt(self, i):
+        '''
+        Returns the partial derivative of left foot touch floor with respect to joint i (0 <= i <= 20) when right foot is the support foot
+        '''
+        (b0, a2, a3, a5, d5) = (self.dim['b0'], self.dim['a2'], self.dim['a3'], self.dim['a5'],self.dim['d5'])
+
+        U = a2*(self.flx-self.frx) + a3*(self.glx-self.grx) + d5*self.syl - a5*self.ayl
+        V = a2*(self.fly-self.fry) + a3*(self.gly-self.gry) - d5*self.sxl + a5*self.axl + 2*b0
+        W = a2*(self.flz-self.frz) + a3*(self.glz-self.grz) + d5*self.szl - a5*self.azl
+
+        dU = a2*(self.Dflx[i]-self.Dfrx[i]) + a3*(self.Dglx[i]-self.Dgrx[i]) + d5*self.Dsyl[i] - a5*self.Dayl[i]
+        dV = a2*(self.Dfly[i]-self.Dfry[i]) + a3*(self.Dgly[i]-self.Dgry[i]) - d5*self.Dsxl[i] + a5*self.Daxl[i] 
+        dW = a2*(self.Dflz[i]-self.Dfrz[i]) + a3*(self.Dglz[i]-self.Dgrz[i]) + d5*self.Dszl[i] - a5*self.Dazl[i]
+
+        X =    self.Dsyr[i]*U + self.syr*dU - self.Dsxr[i]*V - self.sxr*dV + self.Dszr[i]*W + self.szr*dW
+        Y =  - self.Dnyr[i]*U - self.nyr*dU + self.Dnxr[i]*V + self.nxr*dV - self.Dnzr[i]*W - self.nzr*dW
+        Z =  - self.Daxr[i]*V - self.axr*dV + self.Dayr[i]*U + self.ayr*dU + self.Dazr[i]*W + self.azr*dW 
+        return numpy.array([X , Y , Z ])
+            
+    """    
+
+    def partial(self):
+        k = math.cos(math.pi/4)
+        (c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10) = (self.c[0], self.c[1],self.c[2],self.c[3],self.c[4],self.c[5], self.c[6], self.c[7],self.c[8],self.c[9],self.c[10]) 
+        (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20) = (self.c[11], self.c[12],self.c[13],self.c[14],self.c[15],self.c[16], self.c[17], self.c[18],self.c[19],self.c[20])
+        (s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) = (self.s[0], self.s[1],self.s[2],self.s[3],self.s[4],self.s[5], self.s[6], self.s[7],self.s[8],self.s[9],self.s[10]) 
+        (s11, s12, s13, s14, s15, s16, s17, s18, s19, s20) = (self.s[11], self.s[12],self.s[13],self.s[14],self.s[15],self.s[16], self.s[17], self.s[18],self.s[19],self.s[20])
+        '''
+        px = e2*(s2*(s1*(0.5 - 0.5*s0) - c1*(0.5 + 0.5*s0)) - 0.707106781186548*c0*c2) - h2*(c2*(s1*(0.5 - 0.5*s0) - c1*(0.5 + 0.5*s0)) + 0.707106781186548*c0*s2)
+        py = e2*(s2*(0.707106781186548*c0*c1 + 0.707106781186548*c0*s1) - c2*(2.22044604925031e-16 + s0)) - h2*(c2*(0.707106781186548*c0*c1 + 0.707106781186548*c0*s1) + s2*s0)
+        pz = e2*(s2*(c1*(0.5 - 0.5*s0) - s1*(0.5 + 0.5*s0)) - 0.707106781186548*c0*c2) - h2*(c2*(c1*(0.5 - 0.5*s0) - s1*(0.5 + 0.5*s0)) + 0.707106781186548*c0*s2)
+        
+        return numpy.array([px,py,pz])
+        '''
+        R = numpy.zeros((3,3))
+        R[0,0] = 0.5 - 0.5*s0
+        R[0,1] = -k*c0
+        R[0,2] = -0.5 - 0.5*s0
+        return R
+    """
