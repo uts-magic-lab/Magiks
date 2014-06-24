@@ -4,29 +4,39 @@
                 including tools by which you can fit a curve through a set of points.
 @author:        Nima Ramezani; UTS
 @start date:    February 2011
-@version:	    2.0
-Last Revision:  04 June 2014
+@version:	    3.0
+Last Revision:  25 June 2014
 '''
 
+"""
+Changes from version 2.0:
+    1- features x_free, v_free and a_free are removed. The freedom is specified by setting the value as None
+
+"""
 import math, numpy
 
 class Point(object):
-    def __init__(self, t = 0.0, x = 0.0, v = 0.0, a = 0.0, x_free = False, v_free = True, a_free = True):
+    def __init__(self, t = 0.0, x = 0.0, v = None, a = None):
         self.t = t
         self.x = x    
         self.v = v
         self.a = a
-        self.x_free = x_free
-        self.v_free = v_free
-        self.a_free = a_free
+
+    def __str__( self ):
+        s  = "Scalar point:"  + '\n'
+        s += "t = " + str(self.t) + '\n'
+        s += "x = " + str(self.x) + '\n'
+        s += "v = " + str(self.v) + '\n'
+        s += "a = " + str(self.a) + '\n'
+        return s
 
     def count_constraints(self):
         nc = 0
-        if not self.x_free:
+        if self.x != None:
             nc = nc + 1
-        if not self.v_free:
+        if self.v != None:
             nc = nc + 1
-        if not self.a_free:
+        if self.a !=None:
             nc = nc + 1
         return nc    
 
@@ -48,14 +58,14 @@ class Polynomial(object):
         i = 0
         u = numpy.array([])
         for p in points:
-            if not p.x_free:
+            if p.x != None:
                 A[i, 0] = 1
                 for j in range(1, m):
                     A[i, j] = A[i, j-1]*p.t
                 i = i + 1
                 u = numpy.append(u, p.x)
 
-            if not p.v_free:
+            if p.v != None:
                 A[i, 0] = 0.0
                 A[i, 1] = 1.0
                 for j in range(2, m):
@@ -63,7 +73,7 @@ class Polynomial(object):
                 i = i + 1
                 u = numpy.append(u, p.v)
 
-            if not p.a_free:
+            if p.a != None:
                 A[i, 0:2] = 0.0
                 A[i, 2]   = 2.0
                 for j in range(3, m):
@@ -117,6 +127,7 @@ class Polynomial(object):
         s = self.coeff[0]
         for i in range(1,n):
             s = s + self.coeff[i]*(t**i)
+
         return(s)
 
     def velocity(self, t):
@@ -124,7 +135,10 @@ class Polynomial(object):
         Returns the derivative of the polynomial at time t
         '''
         n = self.degree
-        v = self.coeff[1]
+        if n < 1:
+            v = 0.0
+        else:
+            v = self.coeff[1]
         for i in range(1, n):
             v = v + (i+1)*self.coeff[i+1]*(t**i)
         return(v)
@@ -134,7 +148,10 @@ class Polynomial(object):
         Returns the derivative of the polynomial at time t
         '''
         n = self.degree - 1
-        a = 2*self.coeff[2]
+        if n < 2:
+            a = 0.0
+        else:
+            a = 2*self.coeff[2]
         for i in range(1, n):
             a = a + (i+1)*(i+2)*self.coeff[i+2]*(t**i)
         return(a)
