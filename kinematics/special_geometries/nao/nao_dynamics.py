@@ -14,23 +14,25 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    5.0
-Last Revision:  20 June 2014
+@version:	    6.0
+Last Revision:  25 June 2014
 
 Changes from previous version:
 
-added "pos_updated", "ori_updated" and "jac_updated" flags for the segments and the robot to avoid repeating calculations
-This will reduce computational costs
-functions for calculating the Jacobian matrix added
+A trajectory is added to the module.
+functions step_forward() and run() are added to follow the given trajectory
+
 '''
 
 import numpy as np
-import math, copy
+import math, copy, time
 from sympy import Symbol
 
 import packages.nima.mathematics.vectors_and_matrices as vm
 import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.rotation as rot
+import packages.nima.robotics.kinematics.task_space.trajectory as traj
+
 
 drc     = math.pi/180.00
 
@@ -41,6 +43,17 @@ dflt_mass_symb = {"torso":Symbol('m0'), "neck":Symbol('m19'), "shoulder": Symbol
                       "hip1" :Symbol('m1'), "hip2": Symbol('m2'), "thigh"   : Symbol('m3') , "shank": Symbol('m4') , "ankle"   : Symbol('m5'),  "foot" :Symbol('m6')}
 dflt_dims_symb = {"h19":Symbol('h19'), "b11":Symbol('b11'),"h11":Symbol('h11'),"a2":Symbol('a2'),"d2":Symbol('d2'),"h2" :Symbol('h2') ,"e2" :Symbol('e2') ,"a3" :Symbol('a3') ,"h3" :Symbol('h3'),
                       "e3" :Symbol('e3') , "a5" :Symbol('a5') ,"h5" :Symbol('h5') ,"d5":Symbol('d5'),"e5":Symbol('e5'),"e14":Symbol('e14'),"e12":Symbol('e12'),"b12":Symbol('b12'),"d12":Symbol('d12'),              "a12":Symbol('a12'), "h20":Symbol('h20'),"a19":Symbol('a19'),"e0":Symbol('e0'),"h0":Symbol('h0'),"b0":Symbol('b0')}
+
+def sum_dic(dic):
+    s = 0
+    for p in dic:
+        s = s + dic[p]    
+    return (s)
+    
+def inner_product(R1 = np.eye(3), R2 = np.eye(3)):
+    x = 1000.0*(R1[0,0]*R2[0,0] + R1[1,0]*R2[1,0] + R1[2,0]*R2[2,0])
+    z = 1000.0*(R1[0,2]*R2[0,2] + R1[1,2]*R2[1,2] + R1[2,2]*R2[2,2])
+    return np.array([x,z])
 
 
 class Segment(object):
@@ -80,8 +93,8 @@ class Segment(object):
         else:
             self.q = qd
 
-        self.c = math.cos(qd)
-        self.s = math.sin(qd)
+        self.c = math.cos(self.q)
+        self.s = math.sin(self.q)
 
         if gen.equal(self.c, 0.0):
             self.c = 0
@@ -103,11 +116,11 @@ class Segment(object):
             if self.symb:
                 self.s = self.S 
         
-class NAO():
+class NAO(object):
     '''
     The defaults are extracted from NAO model ... :
     '''
-    def __init__(self, mass = dflt_mass, dims = dflt_dims, mass_symb = dflt_mass_symb, dims_symb = dflt_dims_symb, symb = False):
+    def __init__(self, mass = dflt_mass, dims = dflt_dims, mass_symb = dflt_mass_symb, dims_symb = dflt_dims_symb, symb = False, q0 = np.zeros(21)):
         '''
         definition of nao segments according to this:
         simspark.sourceforge.net/wiki/images/4/42/Models_NaoBoxModel.png
@@ -146,11 +159,16 @@ class NAO():
         e5  : foot COM offset from ankle JC  in y direction when NAO is in zero state = 30 mm
         '''
         self.mass      = mass
+        self.M         = sum_dic(self.mass)
         self.mass_symb = mass_symb
         self.dims      = dims
         self.dims_symb = dims_symb
-
-        self.q   = np.zeros(21)
+        self.tar_traj_pos_rft_wrt_lft = traj.Trajectory()
+        self.tar_traj_pos_lft_wrt_rft = traj.Trajectory()
+        self.tar_traj_pos_com_wrt_sft = traj.Trajectory()
+        self.tar_traj_ori_rft_wrt_lft = traj.Orientation_Trajectory()
+        self.tar_traj_ori_lft_wrt_rft = traj.Orientation_Trajectory()
+        self.q   = q0
         self.com = 0.0
         self.all_segments = ['torso','r_hip1', 'r_hip2', 'r_thigh', 'r_shank', 'r_ankle', 'r_foot', 
                                      'l_hip1', 'l_hip2', 'l_thigh', 'l_shank', 'l_ankle', 'l_foot', 
@@ -158,6 +176,14 @@ class NAO():
                             'l_shoulder', 'l_upperarm', 'l_elbow', 'l_lowerarm', 'neck', 'head']
 
         self.set_symb(symb)
+        self.reset_history()
+
+        self.support_foot  = 'l_foot'
+        self.com_respected = False
+        self.ori_respected = False
+        self.zmp_respected = False
+        self.n_com_pel     = 3 # number of center of mass position elements
+
         
     def generate_segments(self, mass, dim):
 
@@ -276,6 +302,7 @@ class NAO():
         self.com_l_jacobian_updated = False
         self.com_r_jacobian_updated = False
 
+        self.q = copy.copy(qd)
 
     def effective_joints(self, seg_name):
         '''
@@ -499,13 +526,13 @@ class NAO():
             dR_SF_T = self.partial_orientation('l_foot', joint_name = 'l_hip1').T
 
             b = np.dot(dR_SF_T, p_S_T - p_SF_T) + np.dot(R_SF_T, dp_S_T - dp_SF_T)
-            J = [b]
+            J = [b[0:self.n_com_pel]]
 
             # joints 1-5
             for segname in ['r_hip2', 'r_thigh', 'r_shank', 'r_ankle', 'r_foot']:
                 dp_S_T  = self.partial_pos_com(joint_name = segname)
                 b = np.dot(R_SF_T, dp_S_T)
-                J = np.append(J, [b], axis = 0)
+                J = np.append(J, [b[0:self.n_com_pel]], axis = 0)
 
             # joints 6-10
             for segname in ['l_hip2', 'l_thigh', 'l_shank', 'l_ankle', 'l_foot']:
@@ -514,18 +541,120 @@ class NAO():
                 dR_SF_T = self.partial_orientation('l_foot', joint_name = segname).T
 
                 b = np.dot(dR_SF_T, p_S_T - p_SF_T) + np.dot(R_SF_T, dp_S_T - dp_SF_T)
-                J = np.append(J, [b], axis = 0)
+                J = np.append(J, [b[0:self.n_com_pel]], axis = 0)
 
             # joints 11-20
             for segname in ['r_shoulder', 'r_upperarm', 'r_elbow', 'r_lowerarm', 'l_shoulder', 'l_upperarm', 'l_elbow', 'l_lowerarm', 'neck', 'head']:
                 dp_S_T  = self.partial_pos_com(joint_name = segname)
                 b = np.dot(R_SF_T, dp_S_T)
-                J = np.append(J, [b], axis = 0)
+                J = np.append(J, [b[0:self.n_com_pel]], axis = 0)
             
             self.JCL = J.T
             self.com_l_jacobian_updated = True
 
         return self.JCL
+
+    def pos_zmp_wrt_lfoot(self, a = np.zeros(3)):
+        p  = self.pos_com_wrt_lfoot()
+        g  = np.array([0.0, 0.0, -9.81])
+        F  = self.M*(a+g)
+        Mx = F[2]*p[1] - F[1]*p[2]
+        My = F[0]*p[2] - F[2]*p[0]
+        Mz = F[1]*p[0] - F[0]*p[1]
+        return np.array([Mx, My])
+
+    def pos_zmp_wrt_lfoot_jacobian(self, a = np.zeros(3)):
+        J = self.pos_com_wrt_lfoot_jacobian()
+        g = np.array([0.0, 0.0, -9.81])
+        F = self.M*(a+g)
+        JMx = F[2]*J[1,:] - F[1]*J[2,:]
+        JMy = F[0]*J[2,:] - F[2]*J[0,:]
+        JMz = F[1]*J[0,:] - F[0]*J[1,:]
+        return np.append([JMx], [JMy], axis = 0)
+
+    def ori_rfoot_wrt_lfoot(self):
+        RL = self.orientation('l_foot')
+        RR = self.orientation('r_foot')
+        return np.dot(RL.T, RR)
+
+    def ori_lfoot_wrt_rfoot(self):
+        RL = self.orientation('l_foot')
+        RR = self.orientation('r_foot')
+        return np.dot(RR.T, RL)
+
+    def ori_err_rfoot(self, Rd = np.eye(3)):
+        Ra = self.ori_rfoot_wrt_lfoot()
+        return inner_product(Ra, Rd)
+        
+    def ori_err_lfoot(self, Rd = np.eye(3)):
+        Ra = self.ori_lfoot_wrt_rfoot()
+        return inner_product(Ra, Rd)
+        
+    def ori_err_rfoot_jacobian(self, Rd = np.eye(3)):
+        J = []
+        # joint 0
+        RL  = self.orientation('l_foot')
+        RR  = self.orientation('r_foot')
+        dRL = self.partial_orientation('l_foot', 'l_hip1')
+        dRR = self.partial_orientation('r_foot', 'r_hip1')
+
+        dR  = np.dot(dRL.T, RR) + np.dot(RL.T, dRR)
+        b   = inner_product(dR, Rd)            
+        J   = [b]
+
+        # joints 1-5
+        for segname in ['r_hip2', 'r_thigh', 'r_shank', 'r_ankle', 'r_foot']:
+            dRR = self.partial_orientation('r_foot', segname)
+            dR  = np.dot(RL.T, dRR)
+            b   = inner_product(dR, Rd)            
+            J   = np.append(J, [b], axis = 0)
+
+        # joints 6-10
+        for segname in ['l_hip2', 'l_thigh', 'l_shank', 'l_ankle', 'l_foot']:
+
+            dRL = self.partial_orientation('l_foot', segname)
+            dR  = np.dot(dRL.T, RR)
+            b   = inner_product(dR, Rd)            
+            J   = np.append(J, [b], axis = 0)
+
+        # joints 11-20
+        for i in range(10):
+            J = np.append(J, [np.zeros(2)], axis = 0)
+
+        return J.T
+
+    def ori_err_lfoot_jacobian(self, Rd = np.eye(3)):
+        J = []
+        # joint 0
+        RL  = self.orientation('l_foot')
+        RR  = self.orientation('r_foot')
+        dRL = self.partial_orientation('l_foot', 'l_hip1')
+        dRR = self.partial_orientation('r_foot', 'r_hip1')
+
+        dR  = np.dot(dRR.T, RL) + np.dot(RR.T, dRL)
+        b   = inner_product(dR, Rd)            
+        J   = [b]
+
+        # joints 1-5
+        for segname in ['r_hip2', 'r_thigh', 'r_shank', 'r_ankle', 'r_foot']:
+
+            dRR = self.partial_orientation('r_foot', segname)
+            dR  = np.dot(dRR.T, RL)
+            b   = inner_product(dR, Rd)            
+            J   = np.append(J, [b], axis = 0)
+
+        # joints 6-10
+        for segname in ['l_hip2', 'l_thigh', 'l_shank', 'l_ankle', 'l_foot']:
+            dRL = self.partial_orientation('l_foot', segname)
+            dR  = np.dot(RR.T, dRL)
+            b   = inner_product(dR, Rd)            
+            J   = np.append(J, [b], axis = 0)
+
+        # joints 11-20
+        for i in range(10):
+            J = np.append(J, [np.zeros(2)], axis = 0)
+
+        return J.T
 
     def pos_com_wrt_rfoot_jacobian(self):
         '''
@@ -544,7 +673,7 @@ class NAO():
             dR_SF_T = self.partial_orientation('r_foot', joint_name = 'r_hip1').T
 
             b = np.dot(dR_SF_T, p_S_T - p_SF_T) + np.dot(R_SF_T, dp_S_T - dp_SF_T)
-            J = [b]
+            J = [b[0:self.n_com_pel]]
 
             # joints 1-5
             for segname in ['r_hip2', 'r_thigh', 'r_shank', 'r_ankle', 'r_foot']:
@@ -553,22 +682,566 @@ class NAO():
                 dR_SF_T = self.partial_orientation('r_foot', joint_name = segname).T
 
                 b = np.dot(dR_SF_T, p_S_T - p_SF_T) + np.dot(R_SF_T, dp_S_T - dp_SF_T)
-                J = np.append(J, [b], axis = 0)
+                J = np.append(J, [b[0:self.n_com_pel]], axis = 0)
 
             # joints 6-10
             for segname in ['l_hip2', 'l_thigh', 'l_shank', 'l_ankle', 'l_foot']:
                 dp_S_T  = self.partial_pos_com(joint_name = segname)
                 b = np.dot(R_SF_T, dp_S_T)
-                J = np.append(J, [b], axis = 0)
+                J = np.append(J, [b[0:self.n_com_pel]], axis = 0)
 
             # joints 11-20
             for segname in ['r_shoulder', 'r_upperarm', 'r_elbow', 'r_lowerarm', 'l_shoulder', 'l_upperarm', 'l_elbow', 'l_lowerarm', 'neck', 'head']:
                 dp_S_T  = self.partial_pos_com(joint_name = segname)
                 b = np.dot(R_SF_T, dp_S_T)
-                J = np.append(J, [b], axis = 0)
+                J = np.append(J, [b[0:self.n_com_pel]], axis = 0)
             
             self.JCR = J.T
             self.com_r_jacobian_updated = True
 
         return self.JCR
+
+    def err_vect(self):
+        if self.support_foot == 'l_foot':
+            xa = self.pos_rfoot_wrt_lfoot()
+            xd = self.tar_traj_pos_rft_wrt_lft.current_position
+            if self.ori_respected:
+                xa = np.append(xa, self.ori_err_rfoot(Rd = self.tar_traj_ori_rft_wrt_lft.current_orientation))
+                xd = np.append(xd, np.array([1000.0, 1000.0]))
+            if self.com_respected:
+                xa = np.append(xa, self.pos_com_wrt_lfoot()[0:self.n_com_pel])
+                xd = np.append(xd, self.tar_traj_pos_com_wrt_sft.current_position[0:self.n_com_pel])
+            elif self.zmp_respected:
+                xa = np.append(xa, self.pos_zmp_wrt_lfoot())
+                xd = np.append(xd, np.zeros(2))
+        elif self.support_foot == 'r_foot':
+            xa = self.pos_lfoot_wrt_rfoot()
+            xd = self.tar_traj_pos_lft_wrt_rft.current_position
+            if self.ori_respected:
+                xa = np.append(xa, self.ori_err_lfoot(Rd = self.tar_traj_ori_lft_wrt_rft.current_orientation))
+                xd = np.append(xd, np.array([1000.0, 1000.0]))
+            if self.com_respected:
+                xa = np.append(xa, self.pos_com_wrt_rfoot()[0:self.n_com_pel])
+                xd = np.append(xd, self.tar_traj_pos_com_wrt_sft.current_position[0:self.n_com_pel])
+            elif self.zmp_respected:
+                xa = np.append(xa, self.pos_zmp_wrt_rft())
+                xd = np.append(xd, np.zeros(2))
+        else:
+            print "Error from err_vect(): support_foot must be either 'r_foot' or 'l_foot'"
+            return None
+        return xd-xa                        
+
+    def target_velocity(self):
+        if self.support_foot == 'l_foot':
+            vd = self.tar_traj_pos_rft_wrt_lft.current_velocity
+            if self.ori_respected:
+                vd = np.append(vd, np.zeros(2))
+            if self.com_respected:
+                vd = np.append(vd, self.tar_traj_pos_com_wrt_sft.current_velocity[0:self.n_com_pel])
+            elif self.zmp_respected:
+                vd = np.append(vd, np.zeros(2))
+        elif self.support_foot == 'r_foot':
+            vd = self.tar_traj_pos_lft_wrt_rft.current_velocity
+            if self.ori_respected:
+                vd = np.append(vd, np.zeros(2))
+            if self.com_respected:
+                vd = np.append(vd, self.tar_traj_pos_com_wrt_sft.current_velocity[0:self.n_com_pel])
+            elif self.zmp_respected:
+                vd = np.append(vd, np.zeros(2))
+        else:
+            print "Error from err_vect(): support_foot must be either 'r_foot' or 'l_foot'"
+            return None
+        return vd                        
+
+    def err_norm(self):
+        return np.linalg.norm(self.err_vect())
+
+    def err_jacob(self):    
+        if self.support_foot == 'l_foot':
+            JE = self.pos_rfoot_jacobian()
+            if self.ori_respected:
+                JE = np.append(JE, self.ori_err_rfoot_jacobian(Rd = self.tar_traj_ori_rft_wrt_lft.current_orientation), axis = 0)
+            if self.com_respected:
+                JE = np.append(JE, self.pos_com_wrt_lfoot_jacobian(), axis = 0)
+            elif self.zmp_respected:
+                JE = np.append(JE, self.pos_zmp_wrt_lfoot_jacobian(), axis = 0)
+        elif self.support_foot == 'r_foot':
+            JE = self.pos_lfoot_jacobian()
+            if self.ori_respected:
+                JE = np.append(JE, self.ori_err_lfoot_jacobian(Rd = self.tar_traj_ori_lft_wrt_rft.current_orientation), axis = 0)
+            if self.com_respected:
+                JE = np.append(JE, self.pos_com_wrt_rfoot_jacobian(), axis = 0)
+            elif self.zmp_respected:
+                JE = np.append(JE, self.pos_zmp_wrt_rfoot_jacobian(), axis = 0)
+        else:
+            print "Error from err_jacob(): support_foot must be either 'r_foot' or 'l_foot'"
+            return None
+        return JE
+
+    def in_target(self):
+        if self.support_foot == 'l_foot':
+            intarg = vm.equal(self.pos_rfoot_wrt_lfoot(), self.tar_traj_pos_rft_wrt_lft.current_position, epsilon = 0.1)
+            if self.ori_respected:
+                intarg = intarg and vm.equal(self.ori_err_rfoot(Rd = self.tar_traj_ori_rft_wrt_lft.current_orientation),np.array([1000.0, 1000.0]), epsilon = 0.1) 
+            if self.com_respected:
+                intarg = intarg and vm.equal(self.pos_com_wrt_lfoot()[0:self.n_com_pel],self.tar_traj_pos_com_wrt_sft.current_position[0:self.n_com_pel], epsilon = 1.0)    
+            elif self.zmp_respected:
+                intarg = intarg and vm.equal(self.pos_zmp_wrt_lfoot(), np.zeros(2), epsilon = 10.0)
+        elif self.support_foot == 'r_foot':
+            intarg = vm.equal(self.pos_lfoot_wrt_rfoot(), self.tar_traj_pos_lft_wrt_rft.current_position, epsilon = 0.1)
+            if self.ori_respected:
+                intarg = intarg and vm.equal(self.ori_err_lfoot(Rd = self.tar_traj_ori_lft_wrt_rft.current_orientation),np.array([1000.0, 1000.0]), epsilon = 0.1) 
+            if self.com_respected:
+                intarg = intarg and vm.equal(self.pos_com_wrt_rfoot()[0:self.n_com_pel],self.tar_traj_pos_com_wrt_sft.current_position[0:self.n_com_pel], epsilon = 1.0)    
+            elif self.zmp_respected:
+                intarg = intarg and vm.equal(self.pos_zmp_wrt_rfoot(), np.zeros(2), epsilon = 10.0)
+        else:
+            print "Error from err_jacob(): support_foot must be either 'r_foot' or 'l_foot'"
+            return None
+        return intarg
+    def update_step(self, step_size):
+        '''
+        Implements an update rule for the joint configuration. This function performs one iteration of the algorithm.
+        '''
+        # Pose Error is multiplied by step_size
+        err = step_size*self.err_vect()
+        # Error jacobian is placed in Je
+        Je  = self.err_jacob()
+        # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
+        Je_dagger = np.linalg.pinv(Je)
+        # Joint Correction is calculated
+
+        dq = np.dot(Je_dagger, err)
+
+        self.set_config(self.q + dq)
+
+    def self_copy(self):
+        nao = NAO()
+        nao.set_config(self.q)
+
+        nao.tar_traj_pos_rft_wrt_lft = copy.copy(self.tar_traj_pos_rft_wrt_lft)
+        nao.tar_traj_pos_lft_wrt_rft = copy.copy(self.tar_traj_pos_lft_wrt_rft)
+        nao.tar_traj_pos_com_wrt_sft = copy.copy(self.tar_traj_pos_com_wrt_sft)
+        nao.com_respected = self.com_respected
+        nao.ori_respected = self.ori_respected
+        nao.support_foot = self.support_foot
+        nao.n_com_pel    = self.n_com_pel
+        return nao        
+    
+    def reach_target(self):
+        number_of_steps = 20
+
+        # nao = copy.copy(self)
+
+        nao  = self.self_copy()
+        nao2 = self.self_copy()
+        counter = 0
+
+        not_yet     = not nao2.in_target()
+        have_time   = (counter < number_of_steps)
+        err_reduced = False
+
+        while not_yet and (have_time or err_reduced):   
+            try:
+                nao.update_step(step_size = 1.0)
+                counter     += 1
+            except np.linalg.linalg.LinAlgError:
+
+                print "********************************************************Singular Matrix ***********************************************************";
+                break
+    
+            not_yet     = not nao2.in_target()
+            have_time   = (counter < number_of_steps)
+            err_reduced = (nao.err_norm() < nao2.err_norm())
+    
+            if err_reduced:
+                nao2.set_config(nao.q)
+
+        assert nao2.in_target()
+        self.set_config(nao2.q)
+
+    def joint_speed(self, k = 1.0):
+
+        e  = self.err_vect()
+        JA = self.err_jacob()
+        K  = k*np.eye(len(e))
+        vd = self.target_velocity()
+
+        JA_dag = np.linalg.pinv(JA)
+        q_dot  = np.dot(JA_dag, vd + np.dot(K,e)) 
+
+        return q_dot        
+
+    def run(self, duration, k = 1.0, verbose = False):
+        t_s    = time.time()        
+        t      = 0.0
+        self.t = t_s - self.t_s
+
+        while t < duration:
+            t0  = t
+            if self.com_respected:     
+                self.tar_traj_pos_com_wrt_sft.set_phi(t)
+            if self.support_foot == 'l_foot':
+                self.tar_traj_pos_rft_wrt_lft.set_phi(t)
+            elif self.support_foot == 'r_foot':
+                self.tar_traj_pos_lft_wrt_rft.set_phi(t)
+            else:
+                print "Error from run(): support_foot must be either 'r_foot' or 'l_foot'"
+                return None
+
+            q_dot  = self.joint_speed(k = k)
+            t      = time.time() - t_s
+            self.t = t + t_s - self.t_s
+            dt     = t - t0
+            self.set_config(self.q + dt*q_dot)
+
+            '''
+            self.reach_target()
+            t     = time.time() - t_s
+            '''
+    
+            self.history_time.append(self.t)
+            if self.support_foot == 'l_foot':
+                xa = self.pos_rfoot_wrt_lfoot()
+                xd = self.tar_traj_pos_rft_wrt_lft.current_position
+                if self.ori_respected:
+                    xa = np.append(xa, self.ori_err_rfoot())
+                    xd = np.append(xd, np.array([1000.0, 1000.0]))
+                if self.com_respected:
+                    xa = np.append(xa, self.pos_com_wrt_lfoot())
+                    xd = np.append(xd, self.tar_traj_pos_com_wrt_sft.current_position)
+                elif self.zmp_respected:
+                    xa = np.append(xa, self.pos_zmp_wrt_lfoot())
+                    xd = np.append(xd, np.zeros(2))
+            elif self.support_foot == 'r_foot':
+                xa = self.pos_lfoot_wrt_rfoot()
+                xd = self.tar_traj_pos_lft_wrt_rft.current_position
+                if self.ori_respected:
+                    xa = np.append(xa, self.ori_err_lfoot())
+                    xd = np.append(xd, np.array([1000.0, 1000.0]))
+                if self.com_respected:
+                    xa = np.append(xa, self.pos_com_wrt_rfoot())
+                    xd = np.append(xd, self.tar_traj_pos_com_wrt_sft.current_position)
+                elif self.zmp_respected:
+                    xa = np.append(xa, self.pos_zmp_wrt_rfoot())
+                    xd = np.append(xd, np.zeros(2))
+
+            self.history_target.append(xd) 
+            self.history_actual.append(xa) 
+            if verbose:
+                print
+                print "t = ", t
+                print "Target Position = ", xd
+                print "Actual Position = ", xa
+
+    def run_ik(self, duration, dt = 0.5, k = 1.0, verbose = False, delay = False):
+        t      = 0.0
+
+        while t < duration + 0.001:
+            if self.com_respected:     
+                self.tar_traj_pos_com_wrt_sft.set_phi(t)
+            if self.support_foot == 'l_foot':
+                self.tar_traj_pos_rft_wrt_lft.set_phi(t)
+            elif self.support_foot == 'r_foot':
+                self.tar_traj_pos_lft_wrt_rft.set_phi(t)
+            else:
+                print "Error from run(): support_foot must be either 'r_foot' or 'l_foot'"
+                return None
+
+            if delay:
+                '''
+                In python 3.x, you should use: input("...")
+                '''
+                # raw_input("Be careful! I am going to change the joint angles. Press Enter to continue...")
+                print("Be careful! I am going to change the joint angles in 5 seconds")
+                time.sleep(5.0)
+                    
+            self.reach_target()
+    
+            self.history_time.append(self.t)
+            if self.support_foot == 'l_foot':
+                xa = self.pos_rfoot_wrt_lfoot()
+                xd = self.tar_traj_pos_rft_wrt_lft.current_position
+                if self.ori_respected:
+                    xa = np.append(xa, self.ori_err_rfoot())
+                    xd = np.append(xd, np.array([1000.0, 1000.0]))
+                if self.com_respected:
+                    xa = np.append(xa, self.pos_com_wrt_lfoot())
+                    xd = np.append(xd, self.tar_traj_pos_com_wrt_sft.current_position)
+                elif self.zmp_respected:
+                    xa = np.append(xa, self.pos_zmp_wrt_lfoot())
+                    xd = np.append(xd, np.zeros(2))
+            elif self.support_foot == 'r_foot':
+                xa = self.pos_lfoot_wrt_rfoot()
+                xd = self.tar_traj_pos_lft_wrt_rft.current_position
+                if self.ori_respected:
+                    xa = np.append(xa, self.ori_err_lfoot())
+                    xd = np.append(xd, np.array([1000.0, 1000.0]))
+                if self.com_respected:
+                    xa = np.append(xa, self.pos_com_wrt_rfoot())
+                    xd = np.append(xd, self.tar_traj_pos_com_wrt_sft.current_position)
+                elif self.zmp_respected:
+                    xa = np.append(xa, self.pos_zmp_wrt_rfoot())
+                    xd = np.append(xd, np.zeros(2))
+
+            self.history_target.append(xd) 
+            self.history_actual.append(xa) 
+            if verbose:
+                print
+                print "t = ", t
+                print "Target Position = ", xd
+                print "Actual Position = ", xa
+
+            t      = t + dt
+            self.t = self.t + dt
+
+    def reset_history(self):
+        self.t_s = time.time()
+        self.t   = 0.0
+        self.history_time   = []
+        self.history_target = []
+        self.history_actual = []
+
+    '''
+    def set_walk_step_trajectory(self, duration, Dx, h):
+
+        phi = [0.0, 0.5*duration, duration]
+        if self.support_foot == 'l_foot':
+            p_start = self.pos_rfoot_wrt_lfoot()
+        elif self.support_foot == 'r_foot':
+            p_start = self.pos_lfoot_wrt_rfoot()
+       
+        p_end = copy.copy(p_start)
+        p_end[1] = Dx
+        if self.support_foot == 'l_foot':
+            p_end[0] = 110.0
+        elif self.support_foot == 'r_foot':
+            p_end[0] = - 110.0
+        
+
+        p_middle = 0.5*(p_start+p_end)
+        p_middle[2] = p_middle[2] + h
+        pos      = [p_start, p_middle, p_end]
+
+        v_start  = np.zeros(3)
+        v_middle = np.array([None,None,None])
+        v_end    = np.zeros(3)
+        vel      = [v_start, v_middle, v_end]
+
+        a_start  = np.zeros(3)
+        a_middle = np.array([None,None,None])
+        a_end    = np.zeros(3)
+        acc      = [a_start, a_middle, a_end]
+    
+        if self.support_foot == 'l_foot':
+            self.tar_traj_pos_rft_wrt_lft.interpolate(phi = phi, positions = pos, velocities = vel, accelerations = acc)
+        elif self.support_foot == 'r_foot':
+            self.tar_traj_pos_lft_wrt_rft.interpolate(phi = phi, positions = pos, velocities = vel, accelerations = acc)
+
+        if self.com_respected:
+            if self.support_foot == 'l_foot':
+                p_s_com = self.pos_com_wrt_lfoot()
+            elif self.support_foot == 'r_foot':
+                p_s_com = self.pos_com_wrt_rfoot()
+
+            p_e_com = copy.copy(p_s_com)
+            p_e_com[1] = 0.5*Dx
+            p_e_com[0] = 0.5*p_end[0]
+
+            p_m_com = 0.5*(p_s_com+p_e_com)
+            pos      = [p_s_com, p_m_com, p_e_com]
+
+            self.tar_traj_pos_com_wrt_sft.interpolate(phi = phi, positions = pos, velocities = vel, accelerations = acc)
+    '''
+
+    def gen_walk_trajectories(self, T, Ts, L, h, b, w):
+        # Left foot is the support foot
+        self.part0_rft = traj.Path()
+        self.part0_com = traj.Path()
+
+        # Left foot is the support foot
+        self.part1_rft = traj.Path()
+        self.part1_com = traj.Path()
+
+        # Both feet are on the floor (support) but left foot is set as the support foot (Reference)
+        self.part2_rft = traj.Path()
+        self.part2_com = traj.Path()
+
+        # Right foot is the support foot
+        self.part3_lft = traj.Path()
+        self.part3_com = traj.Path()
+
+        # Both feet are on the floor (support) but right foot is set as the support foot (Reference)
+        self.part4_lft = traj.Path()
+        self.part4_com = traj.Path()
+        '''
+        totally, COM slides by 2*L in time T
+        '''    
+        t0 = 0.0
+        # middle 1: t1/2
+        t1 = 0.5*(T - 2*Ts)
+        t2 = t1 + Ts
+        # middle 2: t2 + t1/2
+        t3 = t2 + t1
+        t4 = T
+
+        # traj part 0 for right Foot:
+        p0    = self.pos_rfoot_wrt_lfoot()        
+
+        p2    = np.zeros(3)
+        p2[0] = 110.0
+        p2[1] = - L
+
+        v0    = np.zeros(3)
+        v2    = np.zeros(3)
+            
+        phi = [0.0, 1.0]
+        p   = [p0, p2]
+        v   = [v0, v2]
+
+        self.part0_rft.interpolate(phi, positions = p, velocities = v)
+
+        # traj part 0 for COM:
+        p0    = self.pos_com_wrt_lfoot()        
+
+        p2    = np.zeros(3)
+        p2[0] =   b/2
+        p2[1] = - w/2
+        p2[2] = p0[2]
+
+        v2[1] = w/t1
+
+        phi = [0.0, 1.0]
+        p   = [p0, p2]
+        v   = [v0, v2]
+        self.part0_com.interpolate(phi, positions = p, velocities = v)
+
+        # traj part 1 for right Foot: (starting from t0) Right foot moves
+        
+        p0    = np.array([110.0, - L, 0.0])
+        p1    = np.array([110.0, 0.0, h  ])
+        p2    = np.array([110.0,   L, 0.0])
+
+        v0    = np.array([0.0, 0.0   , 0.0])
+        v1    = np.array([0.0, None  , 0.0])
+        v2    = np.array([0.0, 0.0   , 0.0])
+
+        a0    = np.zeros(3)
+        a1    = np.array([None, None, None])
+        a2    = np.zeros(3)
+            
+        phi = [t0, t1/2, t1]
+        p   = [p0, p1, p2]
+        v   = [v0, v1, v2]
+        a   = [a0, a1, a2]    
+        
+        self.part1_rft.interpolate(phi, p, velocities = v, accelerations = a)
+
+        # traj part 1 for COM:  
+        self.part0_com.set_phi(1.0)
+        p0    = self.part0_com.current_position
+        p2    = np.array([b/2, w/2, p0[2]])
+
+        v0    = self.part0_com.current_velocity
+        v2    = np.array([None, (L-w)/Ts, None])
+
+        phi = [t0, t1]
+        p   = [p0, p2]
+        v   = [v0, v2]
+
+        self.part1_com.interpolate(phi, p, velocities = v)
+
+        # traj part 2 for right foot:  (from t1 --> t2) Double Support
+        self.part1_rft.set_phi(t1)
+        p0    = self.part1_rft.current_position
+
+        phi = [t0]
+        p   = [p0]
+
+        self.part2_rft.interpolate(phi, p)
+
+        # traj part 2 for COM:
+        self.part1_com.set_phi(t1)
+        p0    = self.part1_com.current_position
+        p2    = np.array([110.0 - b/2, L - w/2, p0[2]])
+
+        v0    = self.part1_com.current_velocity
+        v2    = np.array([0.0, w/t1, None])
+
+        phi = [t0, Ts]
+        p   = [p0, p2]
+        v   = [v0, v2]
+
+        self.part2_com.interpolate(phi, p, velocities = v)
+
+        # traj part 3 for left Foot:  (from t2 --> t3) Left leg moves
+        
+        p0    = np.array([-110.0, - L, 0.0])
+        p1    = np.array([-110.0, 0.0, h  ])
+        p2    = np.array([-110.0,   L, 0.0])
+
+        v0    = np.array([0.0, 0.0   , 0.0])
+        v1    = np.array([0.0, None  , 0.0])
+        v2    = np.array([0.0, 0.0   , 0.0])
+
+        a0    = np.zeros(3)
+        a1    = np.array([None, None, None])
+        a2    = np.zeros(3)
+            
+        phi = [t0, t1/2, t1]
+        p   = [p0, p1, p2]
+        v   = [v0, v1, v2]
+        a   = [a0, a1, a2]    
+        
+        self.part3_lft.interpolate(phi, p, velocities = v, accelerations = a)
+
+        # traj part 3 for COM:
+        self.part2_com.set_phi(Ts)
+        p0    = self.part2_com.current_position
+        p0[0] = -b/2
+        p0[1] = -w/2
+
+        p2    = copy.copy(p0)
+        p2[1] = w/2
+
+        v0  = self.part2_com.current_velocity
+        v2    = np.array([0.0, (L-w)/Ts, None])  # prepares speed for the next stage
+        
+        phi = [t0, t1]
+        p   = [p0, p2]
+        v   = [v0, v2]
+
+        self.part3_com.interpolate(phi, p, velocities = v)
+
+        # traj part 4 for left Foot:  (from t3 --> t4) Double Support
+        
+        self.part3_lft.set_phi(t1)
+        p0    = self.part3_lft.current_position
+
+        phi = [t0]
+        p   = [p0]
+        
+        self.part4_lft.interpolate(phi, p)
+
+        # traj part 4 for COM:
+        self.part3_com.set_phi(t1)
+        p0    = self.part3_com.current_position
+        p2    = np.array([- 110.0 + b/2, L - w/2, p0[2]])
+
+        v0    = self.part3_com.current_velocity
+        v2    = np.array([0.0, w/t1, None])
+
+        phi = [t0, Ts]
+        p   = [p0, p2]
+        v   = [v0, v2]
+
+        self.part4_com.interpolate(phi, p, velocities = v)
+
+    def change_support_foot(self):
+        if self.support_foot == 'l_foot':
+            self.support_foot == 'r_foot'            
+        elif self.support_foot == 'r_foot':
+            self.support_foot == 'l_foot'            
+
+            
 
