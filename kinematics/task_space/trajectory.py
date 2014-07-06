@@ -15,8 +15,18 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    1
-Last Revision:  04 June 2014
+@version:	    2
+
+Last Revision:  07 July 2014
+
+Changes from version 1:
+    1- In version 2, trajectories can have multiple paths, connection of trajectories means connecting the paths to each other.
+    old class Trajectory(), is now a class Path() and a Trajectory is a set of paths.
+
+    2- In version 1, positions are three dimensional, while in version 2, positions can be multi dimensional(more or less than 3)
+
+    3- Orientations, angular velocities and ang. acc. have been removed. There will be another trajectory type for them in the future
+        At the moment, orientations, angular velocities and angular accelerations are not supported.
 
 '''
 
@@ -28,85 +38,73 @@ import copy, math
 from packages.nima.mathematics import polynomials as pl
 from packages.nima.mathematics import general as gen
 
-
-class Trajectory(object):
+class Path(object):
     
     def __init__(self):
         self.n = 1  # Number of keypoints. By default the trajectory is a constant pose (not changing)
         self.current_phi = 0
-        self.current_position = np.zeros(3)
-        self.current_velocity = np.zeros(3)
-        self.current_acceleration = np.zeros(3)
-        self.current_orientation = np.eye(3)
-        self.current_angular_velocity = np.zeros(3)
-        self.current_angular_acceleration = np.zeros(3)
+        self.dim = 3
+        self.current_position = np.zeros(self.dim)
+        self.current_velocity = np.zeros(self.dim)
+        self.current_acceleration = np.zeros(self.dim)
 
-    def interpolate(self, phi = [0.0], positions = [np.zeros(3)], orientations = None, velocities = None, angular_velocities = None, accelerations = None, angular_accelerations = None):
+    def interpolate(self, phi = [0.0], positions = [np.zeros(3)], velocities = None, accelerations = None):
         '''
         specifies the coefficients of the trajectory which passes through a number of poses
-        At the moment, orientations, angular velocities and angular accelerations are not supported.
         At least one position and one phi is required.
         phi[0] must be zero.
         '''
-        n = len(positions)
+        n = len(phi)
         assert n > 0
         assert n == len(positions)
         assert phi[0] == 0.0
 
+        self.dim = len(positions[0]) # dimension of position vector
+        nn  = np.array([None for j in range(self.dim)])
         for i in range(n):
             if positions[i] == None:
-                positions[i] = np.array([None, None, None])
+                positions[i] = copy.copy(nn)
 
         if velocities == None:
-            velocities = [np.array([None, None, None]) for i in range(n)]
+            velocities = [copy.copy(nn) for i in range(n)]
         else:
             assert n == len(velocities)
             for i in range(n):
                 if velocities[i] == None:
-                    velocities[i] = np.array([None, None, None])
+                    velocities[i] = copy.copy(nn)
 
         if accelerations == None:
-            accelerations = [np.array([None, None, None]) for i in range(n)]
+            accelerations = [copy.copy(nn) for i in range(n)]
         else:
             assert n == len(accelerations)
             for i in range(n):
                 if accelerations[i] == None:
-                    accelerations[i] = np.array([None, None, None])
+                    accelerations[i] = copy.copy(nn)
 
-        pnt_x = []
-        pnt_y = []
-        pnt_z = []
+        pnt = [[] for j in range(self.dim)]
 
         for i in range(n):
-            pnt_x.append(pl.Point(t = phi[i], x = positions[i][0], v = velocities[i][0], a = accelerations[i][0]))
-            pnt_y.append(pl.Point(t = phi[i], x = positions[i][1], v = velocities[i][1], a = accelerations[i][1]))
-            pnt_z.append(pl.Point(t = phi[i], x = positions[i][2], v = velocities[i][2], a = accelerations[i][2]))
+            for j in range(self.dim):
+                pnt[j].append(pl.Point(t = phi[i], x = positions[i][j], v = velocities[i][j], a = accelerations[i][j]))
 
-        self.traj_x = pl.Polynomial()
-        self.traj_y = pl.Polynomial()
-        self.traj_z = pl.Polynomial()
+        self.traj = [pl.Polynomial() for j in range(self.dim)] 
 
-        self.traj_x.interpolate_smart(pnt_x)
-        self.traj_y.interpolate_smart(pnt_y)
-        self.traj_z.interpolate_smart(pnt_z)
+        for j in range(self.dim):
+            self.traj[j].interpolate_smart(pnt[j])
+
+        self.phi_end = phi[n-1]
 
     def set_phi(self, phi):
         self.current_phi = phi
-        self.current_position[0] = self.traj_x.position( t = phi )
-        self.current_position[1] = self.traj_y.position( t = phi )
-        self.current_position[2] = self.traj_z.position( t = phi )
-
-        self.current_velocity[0] = self.traj_x.velocity( t = phi )
-        self.current_velocity[1] = self.traj_y.velocity( t = phi )
-        self.current_velocity[2] = self.traj_z.velocity( t = phi )
-
-        self.current_acceleration[0] = self.traj_x.acceleration( t = phi )
-        self.current_acceleration[1] = self.traj_y.acceleration( t = phi )
-        self.current_acceleration[2] = self.traj_z.acceleration( t = phi )
+        self.current_position = np.zeros(self.dim)
+        self.current_velocity = np.zeros(self.dim)
+        self.current_acceleration = np.zeros(self.dim)
+        for j in range(self.dim):
+            self.current_position[j]     = self.traj[j].position( t = phi )
+            self.current_velocity[j]     = self.traj[j].velocity( t = phi )
+            self.current_acceleration[j] = self.traj[j].acceleration( t = phi )
 
 # Special Trajectories
-
-
     
 class Colin_Graf_Trajectory(object):
     '''
@@ -134,7 +132,7 @@ class Colin_Graf_Trajectory(object):
             return 0.0
 
     def tr_lift(self, phi):
-        return self.tl_lift(phi-1)
+        return self.tl_lift(phi-0.5)
 
     def tl_move(self, phi):
         if (2*phi > self.xm) and (2*phi < self.xm + self.ym):
@@ -145,7 +143,7 @@ class Colin_Graf_Trajectory(object):
             return 0.0
 
     def tr_move(self, phi):
-        return self.tl_move(phi-1)
+        return self.tl_move(phi-0.5)
             
     def tl(self, phi):
         if phi < 0.5:
@@ -269,4 +267,91 @@ class Colin_Graf_Trajectory(object):
         plt.xlabel('phi')
         plt.show()
 
+class Trajectory(object):
+    def __init__(self):
+        self.path = []
+
+    def connect(self, delta_times, new_points, velocity_consistent = True, acceleration_consistent = True):
+        n = len(new_points)
+        dim = len(new_points[0])
+        n_path = len(self.path)
+        if n_path == 0:
+            assert n == len(delta_times) + 1
+            vel   = [None for i in range(n)] 
+            acc   = [None for i in range(n)] 
+            times = [0.0 for i in range(n)]
+            for i in range(n-1):
+                times[i+1] = times[i] + delta_times[i]
+            if velocity_consistent:
+                vel[0] = np.zeros(dim)
+            if acceleration_consistent:
+                acc[0] = np.zeros(dim)
+            pth = Path()
+            pth.interpolate(phi = times, positions = new_points, velocities = vel, accelerations = acc)
+            self.path       = [pth]
+            self.path_start = [0.0]
+        else:
+            assert n == len(delta_times)
+            vel   = [None for i in range(n+1)] 
+            acc   = [None for i in range(n+1)] 
+            times = [0.0 for i in range(n+1)]
+            for i in range(n):
+                times[i+1] = times[i] + delta_times[i]
+
+            self.path[n_path - 1].set_phi(self.path[n_path - 1].phi_end)  # go to the end of path
+            pre_pos = self.path[n_path - 1].current_position
+            if velocity_consistent:
+                vel[0] = self.path[n_path - 1].current_velocity
+            if acceleration_consistent:
+                acc[0] = self.path[n_path - 1].current_acceleration
+            
+            pth = Path()
+            pth.interpolate(phi = times, positions = [pre_pos] + new_points, velocities = vel, accelerations = acc)
+            self.path_start.append(self.path_start[n_path-1] + self.path[n_path-1].phi_end)
+            self.path.append(pth)
+
+    def set_phi(self, phi):
+        '''
+        lpi  = len(self.path)-1 # last path index
+        phi2 = self.path_start[lpi] + self.path[lpi].phi_end 
+        if phi > phi2:
+            phi = phi2
+        '''
+        self.current_phi = phi
+        i = 0
+        while (phi > self.path_start[i] + self.path[i].phi_end) and (i < len(self.path)):
+            i += 1
+        
+        self.path[i].set_phi(phi - self.path_start[i])
+        self.current_position = self.path[i].current_position
+        self.current_velocity = self.path[i].current_velocity
+        self.current_acceleration = self.path[i].current_acceleration
+       
+    def plot(self, wtp = 'position', axis = 0, n = 100):
+        lpi  = len(self.path)-1 # last path index
+        phi2 = self.path_start[lpi] + self.path[lpi].phi_end 
+        x = np.arange(0.0, phi2, phi2/n)
+        y = copy.copy(x)
+        for i in range(len(x)):
+            self.set_phi(x[i])
+            if wtp == 'position':
+                y[i] = self.current_position[axis]
+            elif wtp == 'velocity':
+                y[i] = self.current_velocity[axis]
+            elif wtp == 'acceleration':
+                y[i] = self.current_acceleration[axis]
+            else:
+                print "Error from Trajectory.set_phi(): Given wtp is not valid"
+        plt.plot(x, y) 
+        plt.ylabel(wtp)
+        plt.xlabel('phi')
+        plt.show()
+
+    '''
+    def position(self, phi):
+        phi0 = self.    
+    '''
+class Orientation_Trajectory(object):
+    def __init__(self):
+        self.current_orientation = np.eye(3)        
                 
