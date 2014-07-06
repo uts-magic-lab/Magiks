@@ -14,14 +14,12 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    6.0
-Last Revision:  25 June 2014
+@version:	    7.0
+Last Revision:  07 July 2014
 
 Changes from previous version:
 
-A trajectory is added to the module.
-functions step_forward() and run() are added to follow the given trajectory
-
+run_ik issues joint trajectories
 '''
 
 import numpy as np
@@ -168,13 +166,16 @@ class NAO(object):
         self.tar_traj_pos_com_wrt_sft = traj.Trajectory()
         self.tar_traj_ori_rft_wrt_lft = traj.Orientation_Trajectory()
         self.tar_traj_ori_lft_wrt_rft = traj.Orientation_Trajectory()
+        self.joint_trajectory = traj.Trajectory()
         self.q   = q0
+        self.qh = np.zeros(21)
+        self.ql = np.zeros(21)
         self.com = 0.0
         self.all_segments = ['torso','r_hip1', 'r_hip2', 'r_thigh', 'r_shank', 'r_ankle', 'r_foot', 
                                      'l_hip1', 'l_hip2', 'l_thigh', 'l_shank', 'l_ankle', 'l_foot', 
                             'r_shoulder', 'r_upperarm', 'r_elbow', 'r_lowerarm',
                             'l_shoulder', 'l_upperarm', 'l_elbow', 'l_lowerarm', 'neck', 'head']
-
+    
         self.set_symb(symb)
         self.reset_history()
 
@@ -183,8 +184,10 @@ class NAO(object):
         self.ori_respected = False
         self.zmp_respected = False
         self.n_com_pel     = 3 # number of center of mass position elements
-
-        
+        self.time_for_sampling = 0.0
+    
+        self.determine_joint_limits()
+    
     def generate_segments(self, mass, dim):
 
         '''
@@ -260,6 +263,51 @@ class NAO(object):
 
         for child in self.segment[seg_name].children:
             self.unupdate(child)
+
+    def determine_joint_limits(self):
+        self.qh[0] = self.segment['r_hip1'].qh
+        self.qh[1] = self.segment['r_hip2'].qh
+        self.qh[2] = self.segment['r_thigh'].qh
+        self.qh[3] = self.segment['r_shank'].qh
+        self.qh[4] = self.segment['r_ankle'].qh
+        self.qh[5] = self.segment['r_foot'].qh
+        self.qh[6] = self.segment['l_hip2'].qh
+        self.qh[7] = self.segment['l_thigh'].qh
+        self.qh[8] = self.segment['l_shank'].qh
+        self.qh[9] = self.segment['l_ankle'].qh
+        self.qh[10] = self.segment['l_foot'].qh
+        self.qh[11] = self.segment['r_shoulder'].qh
+        self.qh[12] = self.segment['r_upperarm'].qh
+        self.qh[13] = self.segment['r_elbow'].qh
+        self.qh[14] = self.segment['r_lowerarm'].qh
+        self.qh[15] = self.segment['l_shoulder'].qh
+        self.qh[16] = self.segment['l_upperarm'].qh
+        self.qh[17] = self.segment['l_elbow'].qh
+        self.qh[18] = self.segment['l_lowerarm'].qh
+        self.qh[19] = self.segment['neck'].qh
+        self.qh[20] = self.segment['head'].qh
+    
+        self.ql[0] = self.segment['r_hip1'].ql
+        self.ql[1] = self.segment['r_hip2'].ql
+        self.ql[2] = self.segment['r_thigh'].ql
+        self.ql[3] = self.segment['r_shank'].ql
+        self.ql[4] = self.segment['r_ankle'].ql
+        self.ql[5] = self.segment['r_foot'].ql
+        self.ql[6] = self.segment['l_hip2'].ql
+        self.ql[7] = self.segment['l_thigh'].ql
+        self.ql[8] = self.segment['l_shank'].ql
+        self.ql[9] = self.segment['l_ankle'].ql
+        self.ql[10] = self.segment['l_foot'].ql
+        self.ql[11] = self.segment['r_shoulder'].ql
+        self.ql[12] = self.segment['r_upperarm'].ql
+        self.ql[13] = self.segment['r_elbow'].ql
+        self.ql[14] = self.segment['r_lowerarm'].ql
+        self.ql[15] = self.segment['l_shoulder'].ql
+        self.ql[16] = self.segment['l_upperarm'].ql
+        self.ql[17] = self.segment['l_elbow'].ql
+        self.ql[18] = self.segment['l_lowerarm'].ql
+        self.ql[19] = self.segment['neck'].ql
+        self.ql[20] = self.segment['head'].ql
     
     def set_config(self, qd = np.zeros(21)):
         
@@ -860,19 +908,34 @@ class NAO(object):
         assert nao2.in_target()
         self.set_config(nao2.q)
 
-    def joint_speed(self, k = 1.0):
+    def joint_speed(self, k = 0.1, k0 = 1.0):
+        k0 = k
 
         e  = self.err_vect()
+        Im  = np.eye(len(e))
+        In  = np.eye(21)
         JA = self.err_jacob()
-        K  = k*np.eye(len(e))
+        K  = k*Im
         vd = self.target_velocity()
 
-        JA_dag = np.linalg.pinv(JA)
-        q_dot  = np.dot(JA_dag, vd + np.dot(K,e)) 
+        den = 21*(self.qh - self.ql)**2
+        num = 0.5*(self.qh + self.ql) - self.q
+        rond_w_rond_qi = num/den
+
+        # JA_dag = np.linalg.pinv(JA)  
+        JA_dag = vm.right_dls_inverse(JA, 1.0)
+
+        J_dag_J = np.dot(JA_dag, JA)
+
+        internal_motion = np.dot(In - J_dag_J, k0*rond_w_rond_qi)
+        
+        q_dot  = np.dot(JA_dag, vd + np.dot(K,e)) + internal_motion
+        # q_dot  = np.dot(JA_dag, 0.5*vd)
+        # q_dot  = np.dot(JA_dag, np.dot(K,e)) 
 
         return q_dot        
 
-    def run(self, duration, k = 1.0, verbose = False):
+    def run(self, duration, k = 0.1, verbose = False, take_joint_samples = False, sampling_time = 1.0):
         t_s    = time.time()        
         t      = 0.0
         self.t = t_s - self.t_s
@@ -894,6 +957,13 @@ class NAO(object):
             self.t = t + t_s - self.t_s
             dt     = t - t0
             self.set_config(self.q + dt*q_dot)
+
+            
+            if take_joint_samples:
+                self.time_for_sampling = self.time_for_sampling + dt
+                if self.time_for_sampling > sampling_time:
+                    self.joint_trajectory.connect(delta_times = [dt], new_points=[self.q], velocity_consistent = True, acceleration_consistent = False)
+                    self.time_for_sampling = 0.0    
 
             '''
             self.reach_target()
@@ -934,7 +1004,46 @@ class NAO(object):
                 print "Target Position = ", xd
                 print "Actual Position = ", xa
 
-    def run_ik(self, duration, dt = 0.5, k = 1.0, verbose = False, delay = False):
+    def run_joint_trajectory(self, duration, verbose = False):
+        t_s    = time.time()        
+        t      = 0.0
+        self.t = t_s - self.t_s
+
+        while t < duration:
+            t0  = t
+            self.joint_trajectory.set_phi(t)
+            q      = self.joint_trajectory.current_position
+            t      = time.time() - t_s
+            self.t = t + t_s - self.t_s
+            dt     = t - t0
+            self.set_config(q)
+            
+            self.history_time.append(self.t)
+            if self.support_foot == 'l_foot':
+                xa = self.pos_rfoot_wrt_lfoot()
+                if self.ori_respected:
+                    xa = np.append(xa, self.ori_err_rfoot())
+                if self.com_respected:
+                    xa = np.append(xa, self.pos_com_wrt_lfoot())
+                elif self.zmp_respected:
+                    xa = np.append(xa, self.pos_zmp_wrt_lfoot())
+            elif self.support_foot == 'r_foot':
+                xa = self.pos_lfoot_wrt_rfoot()
+                if self.ori_respected:
+                    xa = np.append(xa, self.ori_err_lfoot())
+                if self.com_respected:
+                    xa = np.append(xa, self.pos_com_wrt_rfoot())
+                elif self.zmp_respected:
+                    xa = np.append(xa, self.pos_zmp_wrt_rfoot())
+
+            self.history_actual.append(xa) 
+            if verbose:
+                print
+                print "t = ", t
+                print "Actual Position = ", xa
+
+
+    def run_ik(self, duration, dt = 0.5, k = 1.0, verbose = False, delay = False, gen_joint_traj = False):
         t      = 0.0
 
         while t < duration + 0.001:
@@ -957,6 +1066,10 @@ class NAO(object):
                 time.sleep(5.0)
                     
             self.reach_target()
+
+            if gen_joint_traj:
+                print "I am adding a point: t,dt = ", t, dt
+                self.joint_trajectory.connect(delta_times = [dt], new_points=[self.q], velocity_consistent = True, acceleration_consistent = False)
     
             self.history_time.append(self.t)
             if self.support_foot == 'l_foot':
