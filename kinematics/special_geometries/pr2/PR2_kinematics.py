@@ -14,24 +14,24 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nimaramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    3.0
-Last Revision:  09 April 2014
+@version:	    4.0
+Last Revision:  30 July 2014
 
-Changes from version 2.0:
-                - dual arm mode added
+Changes from version 3.0:
+                - IK and ORR functions now, work for both right and left arms depending on property: "larm_reference" 
+                - function inverse_update() for "fixed_base" mode is supported
 
 '''
-import sympy, copy
+import copy
 import pr2_arm_kinematics as armlib
 import packages.nima.mathematics.general as gen
+import packages.nima.general as pygen
 import packages.nima.mathematics.rotation as rotlib
 import packages.nima.mathematics.vectors_and_matrices as vecmat
+import packages.nima.mathematics.trigonometry as trig
 
-
-from sympy import Symbol, simplify
 from interval import interval, inf, imath
-from sets import Set
-
+# from sets import Set
 
 '''
 The most convenient way to install "pyinterval" library is by means of easy_install:
@@ -45,86 +45,20 @@ http://pyinterval.googlecode.com/svn-history/r25/trunk/html/index.html
 import numpy, math
 import packages.nima.robotics.kinematics.kinematicpy.general as genkin
 import packages.nima.robotics.kinematics.joint_space.configuration as configlib
-import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.trigonometry as trig
-import packages.nima.mathematics.vectors_and_matrices as vecmat
+import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
 
 drc        = math.pi/180.00
-default_ql = drc*numpy.array([-130.0, 60.0 , -180.0, - 131.0, -180.0, -130.0, -180.0, 0.8/drc, -1000.0, -1000.0, -180.0,  -40.0,  60.0, - 44.0, -131.0, -180.0, -130.0, -180.0])
+'''
+default_ql = drc*numpy.array([-130.0, 70.0 , -180.0, - 131.0, -180.0, -130.0, -180.0, 0.8/drc, -1000.0, -1000.0, -180.0,  -40.0,  60.0, - 44.0, -131.0, -180.0, -130.0, -180.0])
 default_qh = drc*numpy.array([  40.0, 170.0,   44.0, -   8.6,  180.0, - 5.72,  180.0, 1.14/drc,  1000.0,  1000.0,  180.0,  130.0, 170.0,  180.0, -  8.6,  180.0, - 5.72,  180.0])
+'''
+default_ql = drc*numpy.array([-130.0, 70.0 , -180.0, - 131.0, -180.0, -130.0, -180.0, 0.8/drc, -1000.0, -1000.0, -180.0,  -40.0,  60.0, - 44.0, -131.0, -180.0, -130.0, -180.0])
+default_qh = drc*numpy.array([  30.0, 170.0,   44.0, -   8.6,  180.0, 0.00,  180.0, 1.14/drc,  1000.0,  1000.0,  180.0,  130.0, 170.0,  180.0, -  8.6,  180.0, 0.00,  180.0])
 
-class PR2_Symbolic():
-    '''
-    This class provides a parametric representation of the kinematics of PR2 robot
-    The position, orientation and the Jacobian can be expressed in terms of the kinematic parameters of the robot
-    It uses sympy as a tool for symbols algebra
-    '''
-    def __init__(self):
-
-        c = [Symbol('c' + str(i)) for i in range(7)]
-        s = [Symbol('s' + str(i)) for i in range(7)]
-        S = [Symbol('S' + str(i)) for i in range(7)]
-        C = [Symbol('C' + str(i)) for i in range(7)]
-        phi = [Symbol('p' + str(i)) for i in range(5)]
-        
-        a = [Symbol('a0'), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        d = [0.0, 0.0, Symbol('d2'), 0.0, Symbol('d4'), 0.0, 0.0]
-
-        self.right_arm = armlib.PR2_Arm_Symbolic()
-                
-        '''
-        we compromize that capital letters are used for the base
-        so X,Y,Z represent the position of the base
-        and C,S represent sin(theta) and cos(theta) where theta is the rotation of base around z axis 
-        '''
-        self.p_EFR_WR = numpy.array([0.0  ,  0.0 , Symbol('d7')])
-        self.p_BO    = numpy.array([Symbol('X')  ,  Symbol('Y') , Symbol('Z')])
-        self.p_BR_BO = numpy.array([Symbol('b0') ,  Symbol('l0'), Symbol('h')])        
-        self.p_BL_BO = numpy.array([Symbol('b0') ,- Symbol('l0'), Symbol('h')])     
-        self.R_B     = numpy.array([[ Symbol('C'),  Symbol('S') , 0.0 ], 
-                                    [-Symbol('S'),  Symbol('C') , 0.0 ],
-                                    [ 0.0        ,  0.0         , 1.0]]) 
-        '''
-        RRd and LRd represent the desired orientation of the right and left arm grippers respectively
-        '''
-
-        T_EFR = numpy.array([[ Symbol('nx'), Symbol('sx') , Symbol('ax') , Symbol('xd') ], 
-                             [ Symbol('ny'), Symbol('sy') , Symbol('ay') , Symbol('yd') ],
-                             [ Symbol('nz'), Symbol('sz') , Symbol('az') , Symbol('zd') ],
-                             [ 0.0           , 0.0            , 0.0            , 1.0           ]])
-
-        self.p_EFR = T_EFR[0:3, 3]
-        self.R_EFR = T_EFR[0:3, 0:3]
-
-        self.p_WR_BR = - self.p_BR_BO + numpy.dot(self.R_B.T,(self.p_EFR - self.p_BO - numpy.dot(self.R_EFR, self.right_arm.p_EF_W)))
-        self.R_WR_B  = numpy.dot(self.R_B.T, self.R_EFR)
-
-        import sympy
-
-        self.div_theta_e = sympy.Matrix([
-        [0 , 0 , -2*Symbol('d42')*s[3] , 0 , 0 , 0 , 0 , 0 , 0  ],
-        [0 , Symbol('e22') , Symbol('e23') , 0 , 0 , 0 , 0 , 0 , 0  ],
-        [Symbol('e31') , d[4]*Symbol('s321') , Symbol('e33') , 0 , 0 , 0 , 1 , 0 , 0  ],
-        [Symbol('e41') , Symbol('e42') , Symbol('e43') , 0 , - s[5] , 0  , 0 , 0 , 0 ],
-        [Symbol('e51') , Symbol('e52') , 0 , c[4]*s[5] , c[5]*s[4] , 0  , 0 , 0 , 0 ],
-        [Symbol('e61') , Symbol('e62') , Symbol('e63') , 0 , Symbol('c65') , - Symbol('s65')  , 0 , 0 , 0 ],
-        [0 , 0 , 0 , 0 , 0 , 0 , 1 , 0 , 0  ],
-        [0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 0  ],
-        [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1   ]])
-                
-        self.div_phi_e = sympy.Matrix([
-        [ Symbol('z11') , Symbol('z12') , -2*phi[3]     , Symbol('z14')     , 0   ],
-        [ 0             , Symbol('z22') , Symbol('z23') , 0                 , 0   ],
-        [ 0             , 0             , 0             , 0                 , 0   ],
-        [ Symbol('z41') , 0             , 0             , 0                 , - Symbol('z41')   ],
-        [ Symbol('z51') , 0             , 0             , 0                 , - Symbol('z51')    ],
-        [ Symbol('z61') , 0             , 0             , 0                 , - Symbol('z61')    ],
-        [ 0             , 0             , 1             , 0                 , 0   ],
-        [ 0             , Symbol('z82') , 0             , Symbol('z84')     , Symbol('z85')  ],
-        [ 0             , Symbol('z92') , 0             , Symbol('z94')     , Symbol('z95')  ]])
-
-        self.redundancy_jacobian = sympy.Matrix([
-        [Symbol('J' + str(j+1) + str(i+1)) for i in range(5)] for j in range(9)])
+'''
+default_ql = drc*numpy.array([-130.0, 70.0 , -180.0, 0.0, -180.0, -130.0, -180.0, 0.8/drc, -1000.0, -1000.0, -180.0,  -40.0,  60.0, - 44.0, -131.0, -180.0, -130.0, -180.0])
+default_qh = drc*numpy.array([  40.0, 170.0,   44.0, 133.0,  180.0, - 5.72,  180.0, 1.14/drc,  1000.0,  1000.0,  180.0,  130.0, 170.0,  180.0, -  8.6,  180.0, - 5.72,  180.0])
+'''
 
 class PR2(object):
     '''
@@ -139,7 +73,7 @@ class PR2(object):
     Left arm and dual arm control modes will be added later
     '''
 
-    def __init__(self, a0 = 0.1, b0 = 0.05, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh):
+    def __init__(self, a0 = 0.1, b0 = 0.05, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh, vts = False):
         '''
         ql and qh define the lower and higher bounds of the joints
         '''    
@@ -148,6 +82,7 @@ class PR2(object):
         self.qh = qh
         self.qm = (qh + ql)/2
         self.q  = (qh + ql)/2
+
         '''
         property "ofuncode" specifies the objective function for redundancy optimization.
         this property should not be set by the user directly. Use method "self.set_ofuncode" to set this property
@@ -161,8 +96,8 @@ class PR2(object):
         for i in [0, 1, 2, 3, 5, 7]:
             self.W[i] = 1.0/((qh[i] - ql[i])**2)
 
-        self.rarm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[0:7]  , qh = qh[0:7]  , W = self.W[0:7])
-        self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7])
+        self.rarm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[0:7]  , qh = qh[0:7]  , W = self.W[0:7], vts = vts)
+        self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7], vts = vts)
 
         self.d7 = d7
         self.b0 = b0
@@ -172,6 +107,12 @@ class PR2(object):
 
         # sets all angles to midrange by default
         self.set_config(self.qm)
+
+        self.control_mode          = "fixed_base"
+        self.larm_reference        = False
+        # Endeffector Traget Pose:
+        self.xd = None
+        self.Rd = None
 
 
     def joint_in_range(self,i, qi):
@@ -191,6 +132,7 @@ class PR2(object):
             if abs(qi - self.qh[i]) < gen.epsilon:
                 qi = self.qh[i]
 
+            # print i,((qi <= self.qh[i]) and (qi >= self.ql[i]))
             return ((qi <= self.qh[i]) and (qi >= self.ql[i]))
 
     def all_joints_in_range(self, qd):
@@ -199,8 +141,10 @@ class PR2(object):
         '''
         #Are all the arm given joints in range?
         flag = self.rarm.config.all_joints_in_range(qd[0:7])  
+        # print "right arm:", self.rarm.config.all_joints_in_range(qd[0:7])
         flag = flag and self.larm.config.all_joints_in_range(qd[11:18])  
         
+        # print "left arm:", self.larm.config.all_joints_in_range(qd[11:18])
         for i in range(7, 11):
             flag = flag and self.joint_in_range(i, qd[i])
         return flag
@@ -218,7 +162,7 @@ class PR2(object):
 
     def objective_function(self):
         if not self.ofun_computed:
-            self.ofun = self.objective_function_customized(self.q)
+            self.ofun = self.objective_function_for(self.q[0:11])
             self.ofun_computed = True
         return self.ofun
         
@@ -263,7 +207,10 @@ class PR2(object):
 
             return True
         else:
-            print "set_config error: Given joints are not in their feasible range"
+            print "Error from PR2().set_config(): Given joints are not in their feasible range"
+            print "Lower Limit  :", self.ql
+            print "Upper Limit  :", self.qh
+            print "Desired Value:", qd
             return False
 
     def set_target(self, target_position, target_orientation):
@@ -290,7 +237,7 @@ class PR2(object):
 
         self.in_target_evaluated           = False
 
-    def all_IK_solutions(self, phi):    
+    def all_IK_solutions(self, phi):  
         '''
         Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector "phi"
         "phi" is a vector of five elements specifying five degrees of freedom.
@@ -303,17 +250,28 @@ class PR2(object):
 
         This function only returns the feasible IK solutions but does NOT set the configuration so the joints do not change
         '''
-        if not self.joint_in_range(0, phi[0]):
+        if not self.larm_reference:
+            jn     = 0
+            arm    = self.rarm
+            l0     = - self.l0
+            p_EF_W = self.p_EFR_WR
+        else:
+            jn     = 7
+            arm    = self.larm
+            l0     = self.l0
+            p_EF_W = self.p_EFL_WL
+
+        if not self.joint_in_range(jn, phi[0]):
             print "IK_config error: Given theta0 out of feasible range"
-            return []
-        if not self.joint_in_range(4, phi[4]):
+            return None
+        if not self.joint_in_range(10, phi[4]):
             print "IK_config error: Given tau out of feasible range"
-            return []
+            return None
         # check later for phi[2] 
 
         #keep the current target of the arm
-        save_arm_target_position    = copy.copy(self.rarm.xd)
-        save_arm_target_orientation = copy.copy(self.rarm.Rd)
+        save_arm_target_position    = copy.copy(arm.xd)
+        save_arm_target_orientation = copy.copy(arm.Rd)
         
         # Set parameters based on the given redundancy vector phi:
         r   = phi[1]
@@ -326,21 +284,22 @@ class PR2(object):
         px = r*math.sin(psi)
         py = r*math.cos(psi)
 
-        p_WR_BR = numpy.array([px, py, pz])
+        p_W_B = numpy.array([px, py, pz])
+
 
         # Calculate the relative endeffector orientation:
         R_B     = rotlib.rot_z(tau)  # orientation of robot base
-        R_WR    = self.Rd
-        p_EFR   = self.xd   
-        R_WR_B  = numpy.dot(R_B.T, R_WR)
+        R_W     = self.Rd
+        p_EF    = self.xd   
+        R_W_B  = numpy.dot(R_B.T, R_W)
 
         #set the new target for the arm associated with the given phi
         
-        self.rarm.set_target(p_WR_BR, R_WR_B)
+        arm.set_target(p_W_B, R_W_B)
 
         #Find all the solutions for the arm IK
         solution_set = []
-        arm_solution_set = self.rarm.all_IK_solutions(phi[0])
+        arm_solution_set = arm.all_IK_solutions(phi[0])
         
         if len(arm_solution_set) == 0:
             print "IK Error: No solution for the arm for given phi"
@@ -352,24 +311,10 @@ class PR2(object):
 
             #calculate the base position:
 
-            p_BR_BO = numpy.array([0.0, self.l0, h_ts])
+            p_B_BO = numpy.array([self.b0 , l0, h_ts])     
 
-            p_BO    = p_EFR - numpy.dot(R_B,(p_BR_BO + p_WR_BR)) - numpy.dot(R_WR, self.p_EFR_WR)
-            '''
-            print "in IK: p_BO    = ", p_BO
-            print "in IK: p_EFR   = ", p_EFR
-            print "in IK: R_B     = ", R_B
-            print "in IK: p_BR_BO = ", p_BR_BO
-            print "in IK: h_ts    = ", h_ts
-            print "in IK: pz      = ", pz
-            print "in IK: xd[2]   = ", self.xd[2]
-            print
+            p_BO    = p_EF - numpy.dot(R_B,(p_B_BO + p_W_B)) - numpy.dot(R_W, p_EF_W)
 
-            print "in IK: p_WR_BR = ", p_WR_BR
-            print "in IK: R_WR_B  = ", R_WR_B
-            print "in IK: theta0  = ", phi[0]
-
-            '''
             assert gen.equal(p_BO[2], 0.0) # z coordinate of the base must be zero
 
             # Now we have all the joints(all 11 degrees of freedom) insert extra DOFs to the arm solution set
@@ -385,12 +330,11 @@ class PR2(object):
 
         #return back the previous target of the arm
 
-        self.rarm.set_target(save_arm_target_position, save_arm_target_orientation)
-        
+        arm.set_target(save_arm_target_position, save_arm_target_orientation)
 
         return solution_set
 
-    def objective_function_customized(self, q):    
+    def objective_function_for(self, q):    
         '''
         Returns the value of objective function for a given configuration "q"
         Why has this function been written?
@@ -399,15 +343,21 @@ class PR2(object):
         In this case, you can not use function "self.objective_function()" which gives the value of the objective 
         function for the current configuration of the robot.
         '''
+        if not self.larm_reference:
+            qc = self.q[0:11]
+            qm = self.qm[0:11]
+        else:
+            qc = numpy.append(self.q[11:18] , self.q[7:11])
+            qm = numpy.append(self.qm[11:18], self.qm[7:11])
 
         if self.ofuncode == 0:
-            delta = trig.angles_standard_range(q - self.q)
+            delta = trig.angles_standard_range(q - qc)
             ofun = numpy.dot(delta.T, self.W*delta)
         elif self.ofuncode == 1:
-            delta = trig.angles_standard_range(q - self.qm)
+            delta = trig.angles_standard_range(q - qm)
             ofun = numpy.dot(delta.T, self.W*delta)
         else:
-            print "objective_function_customized error: Value ",self.ofun," for property ofun is not supported"
+            print "Error from PR2().objective_function_for(): Value ",self.ofuncode," for property ofuncode is not supported"
             assert False
         return ofun
 
@@ -424,26 +374,18 @@ class PR2(object):
 
         if len(solution_set) == 0:
             print "IK_config error: No solution found within the feasible joint ranges"
-            return []
+            return None
 
         ofun_min = 1000
         for i in range(0, len(solution_set)):
             solution = solution_set[i]
-            ofun = self.objective_function_customized(solution)
+            ofun = self.objective_function_for(solution)
 
             if ofun < ofun_min:
                 ofun_min = ofun
                 i_min = i
             
         return solution_set[i_min]
-
-    """
-    def rarm_grip_ori_wrt_tor(self)
-        '''
-        Returns the right arm gripper rotation matrix (endeffector orientation) with respect to the torso
-        '''
-        return self.rarm.wrist_orientation()
-    """
 
     def pos_rarm_grip_wrt_tor_shpan(self):
         '''
@@ -523,6 +465,12 @@ class PR2(object):
 
         return copy.copy(self.p_EFL)
 
+    def endeffector_position(self):
+        if self.larm_reference:
+            return self.larm_endeffector_position()
+        else:
+            return self.rarm_endeffector_position()
+
     def rarm_endeffector_orientation(self):        
         '''
         Returns the cartesian coordiantes of the right arm gripper as the endeffector frame.
@@ -547,12 +495,25 @@ class PR2(object):
 
         return copy.copy(self.R_WL)
 
+    def endeffector_orientation(self):
+        if self.larm_reference:
+            return self.larm_endeffector_orientation()
+        else:
+            return self.rarm_endeffector_orientation()
+
     def div_theta_err(self):
         '''
         Returns the divergence of the vector of kinematic constraints "e" in respect with the joints
         It is a 9*9 matrix
         e_ij = rond e_i / rond q_j  (for i,j = 0,..,8)   
         '''
+        if not self.larm_reference:
+            arm = self.rarm
+            l0  = self.l0
+        else:
+            arm = self.larm
+            l0  = - slef.l0
+
         if not self.div_theta_err_updated:
 
             self.E = numpy.zeros((9,9))
@@ -560,42 +521,42 @@ class PR2(object):
 
             phi = numpy.zeros(5)                
 
-            [s0, s1, s2, s3, s4, s5, s6] = self.rarm.config.s
-            [c0, c1, c2, c3, c4, c5, c6] = self.rarm.config.c
+            [s0, s1, s2, s3, s4, s5, s6] = arm.config.s
+            [c0, c1, c2, c3, c4, c5, c6] = arm.config.c
 
             tau = self.q[10]
             C5  = math.cos(tau)
             S5  = math.sin(tau)
 
-            [s10]         = self.rarm.config.s1_mult1
-            [s20,s21, s22, s210]  = self.rarm.config.s2_mult1
-            [s30, s31, s32, s310, s320, s321, s322, s33,s3210] = self.rarm.config.s3_mult1
-            [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = self.rarm.config.c0_mult
-            [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = self.rarm.config.c1_mult
-            [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.rarm.config.c2_mult
-            [c30,c31,c32,c33,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s21,c3s30,c310,c320,c321,c3210,c32s0,c32s10] = self.rarm.config.c3_mult
-            [c21s0,c31s0,c321s0]  = self.rarm.config.s0_mult
-            [c10s1,c20s1,c30s1, c32s1,c320s1] = self.rarm.config.s1_mult2
-            [c10s2,c20s2,c30s2, c32s2,c310s2]  = self.rarm.config.s2_mult2
-            [c10s3, c20s3, c30s3, c21s3, c210s3,s332]  = self.rarm.config.s3_mult2
-            [c10s32, c31s20, s54] = self.rarm.config.cs_mult
-            [c54, c5s4, c5s5] = self.rarm.config.c5_mult
-            [s64, s65, c4s6, c5s6, c54s6, s654] = self.rarm.config.s6_mult
-            [c64, c65, c6s4, c6s5, c654, C6s54] = self.rarm.config.c6_mult
+            [s10]         = arm.config.s1_mult1
+            [s20,s21, s22, s210]  = arm.config.s2_mult1
+            [s30, s31, s32, s310, s320, s321, s322, s33,s3210] = arm.config.s3_mult1
+            [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = arm.config.c0_mult
+            [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = arm.config.c1_mult
+            [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = arm.config.c2_mult
+            [c30,c31,c32,c33,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s21,c3s30,c310,c320,c321,c3210,c32s0,c32s10] = arm.config.c3_mult
+            [c21s0,c31s0,c321s0]  = arm.config.s0_mult
+            [c10s1,c20s1,c30s1, c32s1,c320s1] = arm.config.s1_mult2
+            [c10s2,c20s2,c30s2, c32s2,c310s2]  = arm.config.s2_mult2
+            [c10s3, c20s3, c30s3, c21s3, c210s3,s332]  = arm.config.s3_mult2
+            [c10s32, c31s20, s54] = arm.config.cs_mult
+            [c54, c5s4, c5s5] = arm.config.c5_mult
+            [s64, s65, c4s6, c5s6, c54s6, s654] = arm.config.s6_mult
+            [c64, c65, c6s4, c6s5, c654, C6s54] = arm.config.c6_mult
 
             phi = self.redundant_parameters()
         
-            Rd = self.rarm_endeffector_orientation()
-            xd = self.rarm_endeffector_position()
+            Rd = self.endeffector_orientation()
+            xd = self.endeffector_position()
 
-            [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha] = self.rarm.additional_dims
+            [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha] = arm.additional_dims
 
             r2   = phi[1]**2
             rho2 = r2 + phi[2]**2
-            R2   = rho2 - self.rarm.l**2
-            a0   = self.rarm.a0
-            d2   = self.rarm.d2
-            d4   = self.rarm.d4
+            R2   = rho2 - arm.l**2
+            a0   = arm.a0
+            d2   = arm.d2
+            d4   = arm.d4
 
             a = Rd[:,2]
             n = Rd[:,0]
@@ -613,7 +574,7 @@ class PR2(object):
             S45           = math.sin(phi[4] + phi[3])
 
             self.E[0,2] = - 2*d42*s3
-            self.E[2,1] =   self.rarm.d4*s321
+            self.E[2,1] =   arm.d4*s321
             self.E[3,4] =   -s5
             self.E[4,3] =   c4*s5
             self.E[4,4] =   c5*s4
@@ -630,8 +591,8 @@ class PR2(object):
             self.E[6,6] = 1.0
             self.F[6,2] = 1.0
 
-            self.E[2,0] = - self.rarm.d2*s1 - self.rarm.d4*(c3s1 + c21s3) 
-            self.E[2,2] =  - self.rarm.d4*(c1s3 + c32s1) 
+            self.E[2,0] = - arm.d2*s1 - arm.d4*(c3s1 + c21s3) 
+            self.E[2,2] =  - arm.d4*(c1s3 + c32s1) 
             self.E[3,0] =  ax_c5_m_ay_s5*(c20s31 - c310) + ax_s5_p_ay_c5*(c2s310 - c31s0) + a[2]*(c3s1 + c21s3) 
             self.E[3,1] =  ax_c5_m_ay_s5*(c2s30 + c10s32) - ax_s5_p_ay_c5*(c20s3 - c1s320) - a[2]*s321 
             self.E[3,2] =  ax_c5_m_ay_s5*(c3s20 - c3210 + c0s31) - ax_s5_p_ay_c5*(c30s2 + c321s0 - s310) + a[2]*(c1s3 + c32s1)
@@ -649,12 +610,12 @@ class PR2(object):
             self.F[7,1] =  S45
             self.F[8,1] =  C45
 
-            self.F[0,0] =   2*self.rarm.a0*phi[1]*C14 
-            self.F[0,1] =   2*self.rarm.a0*S14 - 2*phi[1]
-            self.F[0,3] =   2*self.rarm.a0*phi[1]*C14 
+            self.F[0,0] =   2*arm.a0*phi[1]*C14 
+            self.F[0,1] =   2*arm.a0*S14 - 2*phi[1]
+            self.F[0,3] =   2*arm.a0*phi[1]*C14 
 
-            self.F[1,1] =   2*phi[1]*self.rarm.a0*(phi[1]*S14 - self.rarm.a0)
-            self.F[1,2] =   2*phi[1]*self.rarm.a0*S14*phi[2]
+            self.F[1,1] =   2*phi[1]*arm.a0*(phi[1]*S14 - arm.a0)
+            self.F[1,2] =   2*phi[1]*arm.a0*S14*phi[2]
 
             self.F[3,0] =   ax_c5_m_ay_s5 *(c0s32 + c21s30 + c3s10) + ax_s5_p_ay_c5*(s320 - c210s3 - c30s1) 
             self.F[3,4] =   - ax_s5_p_ay_c5*(s320 - c210*s3 - c30*s1) - ax_c5_m_ay_s5*(c0*s32 + c21*s30 + c3s10)
@@ -662,8 +623,8 @@ class PR2(object):
             self.F[4,4] = - ax_c5_m_ay_s5*(c20 - c1s20) - ax_s5_p_ay_c5*(c2s0 + c10s2)  
             self.F[5,0] = - nx_c5_m_ny_s5*(c0s32 + c21s30 + c3s10) + nx_s5_p_ny_c5*(-s320 + c210s3 + c30s1) 
             self.F[5,4] = + nx_c5_m_ny_s5*(c0s32 + c21s30 + c3s10) - nx_s5_p_ny_c5*(-s320 + c210s3 + c30s1)
-            self.F[7,4] =   phi[1]*C45 + C5*self.l0
-            self.F[8,4] =   - phi[1]*S45 - S5*self.l0
+            self.F[7,4] =   phi[1]*C45 + C5*l0
+            self.F[8,4] =   - phi[1]*S45 - S5*l0
             self.F[7,3] =   phi[1]*C45
             self.F[8,3] =   - phi[1]*S45
 
@@ -681,11 +642,16 @@ class PR2(object):
         phi[3] = The "psi" coordinate of the relative wrist position(in cylinderical coordinates) phi[3] = arctan(x/y)
         phi[4] = The rotation of the base. Same as "tau" or the 10th joint angle (phi[4] = q[10] = tau)
         '''
+        if self.larm_reference:
+            arm = self.larm
+        else:
+            arm = self.rarm
+
         if not self.redundant_parameters_updated:
-            p = self.rarm.wrist_position()
+            p = arm.wrist_position()
             r2 = p[0]**2 + p[1]**2
             self.phi = numpy.zeros(5)
-            self.phi[0] = self.rarm.config.q[0]
+            self.phi[0] = arm.config.q[0]
             self.phi[1] = math.sqrt(r2)
             self.phi[2] = p[2] 
             self.phi[3] = math.atan2(p[0],p[1]) 
@@ -710,12 +676,17 @@ class PR2(object):
         Redundancy Jacobian is the partial derivative of the joints in respect with redundant parameters
         RJ is a 9*5 matrix because the first and the last joints (q[0] and q[10]) are themselves selected as the redundant parameters
         '''
+        if self.larm_reference:
+            arm = self.larm
+        else:
+            arm = self.rarm
+
         if not self.redun_jacob_updated:
 
-            d42 = self.rarm.d2*self.rarm.d4
+            d42 = arm.d2*arm.d4
     
-            [s0, s1, s2, s3, s4, s5, s6] = self.rarm.config.s
-            [c0, c1, c2, c3, c4, c5, c6] = self.rarm.config.c
+            [s0, s1, s2, s3, s4, s5, s6] = arm.config.s
+            [c0, c1, c2, c3, c4, c5, c6] = arm.config.c
 
             s321 = s3*s2*s1
             c65  = c6*c5
@@ -726,7 +697,7 @@ class PR2(object):
 
             r2 = p[0]**2 + p[1]**2
             p1 = math.sqrt(r2)
-            p2 = self.rarm.xd[2]
+            p2 = arm.xd[2]
         
 
             C4 = math.cos(self.q[10])
@@ -765,11 +736,11 @@ class PR2(object):
             RJ[1,3] =  -RJ[2,3]*E[1,2]/E[1,1]
             RJ[1,4] =  -RJ[2,4]*E[1,2]/E[1,1]
 
-            RJ[0,0] =  -(RJ[6,0] + RJ[2,0]*E[2,2] + RJ[1,0]*self.rarm.d4*s321)/E[2,0]
-            RJ[0,1] =  -(RJ[6,1] + RJ[2,1]*E[2,2] + RJ[1,1]*self.rarm.d4*s321)/E[2,0]
-            RJ[0,2] =  -(RJ[6,2] + RJ[2,2]*E[2,2] + RJ[1,2]*self.rarm.d4*s321)/E[2,0]
-            RJ[0,3] =  -(RJ[6,3] + RJ[2,3]*E[2,2] + RJ[1,3]*self.rarm.d4*s321)/E[2,0]
-            RJ[0,4] =  -(RJ[6,4] + RJ[2,4]*E[2,2] + RJ[1,4]*self.rarm.d4*s321)/E[2,0]
+            RJ[0,0] =  -(RJ[6,0] + RJ[2,0]*E[2,2] + RJ[1,0]*arm.d4*s321)/E[2,0]
+            RJ[0,1] =  -(RJ[6,1] + RJ[2,1]*E[2,2] + RJ[1,1]*arm.d4*s321)/E[2,0]
+            RJ[0,2] =  -(RJ[6,2] + RJ[2,2]*E[2,2] + RJ[1,2]*arm.d4*s321)/E[2,0]
+            RJ[0,3] =  -(RJ[6,3] + RJ[2,3]*E[2,2] + RJ[1,3]*arm.d4*s321)/E[2,0]
+            RJ[0,4] =  -(RJ[6,4] + RJ[2,4]*E[2,2] + RJ[1,4]*arm.d4*s321)/E[2,0]
 
             RJ[4,0] =  (F[3,0] + RJ[0,0]*E[3,0] + RJ[1,0]*E[3,1] + RJ[2,0]*E[3,2])/s5
             RJ[4,1] =  (RJ[0,1]*E[3,0] + RJ[1,1]*E[3,1] + RJ[2,1]*E[3,2])/s5
@@ -838,16 +809,11 @@ class PR2(object):
         Returns an interval for the step size by which the joints are allowed to move in the given "direction"
         "direction" is a "n X 1" vector and specifies the direction of motion in the jointspace. 
         '''
+
         stepsize_interval = interval([-inf, inf])
         for i in range(11):  #  for each joint
             if self.W[i] != 0: # if the joint is limited
-                joint_correction_interval = interval([self.ql[i], self.qh[i]]) - interval(self.q[i])  # find the interval for joint correction
-                '''
-                print "joint_interval[",i,"]           = ", interval([self.ql[i], self.qh[i]])
-                print "q[",i,"]                        = ", self.q[i]
-                print "joint_correction_interval[",i,"]= ", joint_correction_interval
-                print
-                '''
+                joint_correction_interval = interval([self.ql[i], self.qh[i]]) - interval(self.q[i])  # find the interval for joint correction 
             else:
                 joint_correction_interval = interval([-inf, inf])
 
@@ -867,13 +833,21 @@ class PR2(object):
         if the joints are constrained to move in the given "direction".
         The "safety_factor" specifies how much we can approach to the borders of joint limits
         '''
-        den = numpy.dot(direction.T, self.W * direction)
-        num = numpy.dot(direction.T, self.W * (self.q - self.qm))
+        if not self.larm_reference:
+            qc = self.q[0:11]
+            qm = self.qm[0:11]
+        else:
+            qc = numpy.append(self.q[11:18] , self.q[7:11])
+            qm = numpy.append(self.qm[11:18], self.qm[7:11])
 
-        if not gen.equal(num,0.0):
+        den = numpy.dot(direction.T, self.W * direction)
+        num = numpy.dot(direction.T, self.W * (qc - qm))
+
+        if not gen.equal(num, 0.0):
             eta = - num/den
         else:
-            print "optim_joint_stepsize Error: Moving in the given direction does not influence the objective function"
+            print "Error from PR2.optim_joint_stepsize(): Moving in the given direction does not influence the objective function"
+            return None
 
         interval_eta   = self.joint_stepsize_interval(direction)
 
@@ -909,7 +883,8 @@ class PR2(object):
             self.in_target_evaluated = True
         return self.in_target
 
-    def optimal_internal_motion(self):
+
+    def optimize_config(self, silent = True):
         '''
         Assuming the endeffector is in target,
         this function changes the robot configuration without changing the endeffector pose
@@ -918,16 +893,15 @@ class PR2(object):
         This function is a procedure and does not return any thing. Running this function, changes the robot configuration. 
         If the current tip pose is not in target, this function fails with an error
         '''    
-        if not self.endeffector_in_target():
-            print "optimal_internal_motion Error: Endeffector is not in target pose"
-            return None
+        if (self.xd == None) or (self.Rd == None):
+            self.set_target(self.endeffector_position(), self.endeffector_orientation())
+
+        assert self.endeffector_in_target(), "optimize_config Error: Endeffector is not in target pose"
         
         ofun_old = self.objective_function()
-        k = 1.0
-        ofun_changed   = True
-        solution_exists = True
+        k        = 1.0
 
-        while ofun_changed:
+        while k > 0.001:
             phi = self.redundant_parameters()
             # Find the steepest descent correction for redundancy:    
             delta_phi = self.steepest_descent_redundancy_correction() 
@@ -935,33 +909,39 @@ class PR2(object):
             phi = phi + k*delta_phi
             # Run IK to find the joints with the corrected redundancy:
             solution = self.IK_config(phi)
-            # Compute the value of the objective function for the new configuration
-            ofun_new = self.objective_function_customized(solution)
-            # set the new configuration
-            ofun_reduced = ofun_new < ofun_old - gen.epsilon
-            ofun_raised  = ofun_new > ofun_old + gen.epsilon
-            ofun_changed = ofun_reduced or ofun_raised
-            '''
-            print "------------------"
-            if ofun_reduced:
-                print "ofun reduced"
-            elif ofun_raised:
-                print "ofun raised"
+            if solution == None:
+                fail = True
             else:
-                print "ofun not changed"
-            print 
-            print "ofun old: ", ofun_old 
-            print "ofun new: ", ofun_new 
-            '''
-
-            if ofun_reduced:  # if the objective function has significantly reduced
-                solution_exists = self.set_config(solution)
-            if solution_exists:
-                ofun_old        = self.objective_function()
-                
-            if (not solution_exists) or (ofun_raised):  # if error raised or solution does not exist
-                k = k/10.0
+                # Solution exists: Compute the value of the objective function for the new configuration
+                ofun_new = self.objective_function_for(solution)
+                pygen.show("Objective Function Value: ", ofun_new, silent)
+                if ofun_new > ofun_old - gen.epsilon:
+                    fail = True
+                else:
+                    # Objective Function Reduced: Try to set the solution config
+                    qd          = numpy.copy(self.q)
+                    qd[0:11]    = solution
+                    if not self.set_config(qd):
+                        fail = True
+                    else:
+                        # Solution is feasible :-)
+                        fail = False
             
+            if fail:
+                k = k/2
+            else:
+                k = 1.0   
+
+    
+    def extended_config(self, q):
+        qq = numpy.copy(self.q)
+        if not self.larm_reference:
+            qq[0:11]  = q
+        else:
+            qq[7:11 ] = q[7:11]
+            qq[11:18] = q[0:7]
+        return qq
+
     def inverse_update(self):
         '''
         Finds the inverse kinematic solution closest to the current configuration
@@ -969,71 +949,120 @@ class PR2(object):
         All kinematic parameters will be updated.
         THIS FUNCTION IS NOT COMPLETE AND i NEED TO WORK ON IT MORE ...
         '''
-
-        #Step 1: Check if a solution exists
-        nz = self.Rd[2,0]
-        zd = self.xd[2]
-        lower_bound = self.rarm.d2*math.cos(self.qh[1]) - self.rarm.d4 + nz*self.d7 + self.ql[7]
-        upper_bound = math.cos(self.ql[1])*(self.rarm.d2 + self.rarm.d4*math.cos(self.ql[3])) + nz*self.d7 + self.qh[7]
-        if (zd < lower_bound):
-            print "inverse_update Error: Desired endeffector height too low. Unable to reach" 
-            return None
-        if (zd > upper_bound):
-            print "inverse_update Error: Desired endeffector height too high. Unable to reach" 
-            return None
-
-        #Step 2: Find a proper correction for q[1], q[2], q[3], q[7]
-        Delta_q = numpy.zeros(11)
-        [s0, s1, s2, s3, s4, s5, s6] = self.rarm.config.s
-        [c0, c1, c2, c3, c4, c5, c6] = self.rarm.config.c
-
-        tau = self.q[10]
-        C5  = math.cos(tau)
-        S5  = math.sin(tau)
-
-        e = self.q[7] + c1*self.rarm.d2 + (c3*c1 - c2*s3*s1)*self.rarm.d4 + nz*self.d7 - zd
-
-        print "e = ", e
-
-        while abs(e) > 0.0001:
-
-            j7 = 1.0 # rond e / rond q7
-            j1 = - s1*self.rarm.d2 -self.rarm.d4*(c3*s1+c2*c1*s3)
-            j2 = s3*s2*s1*self.rarm.d4
-            j3 = -self.rarm.d4*(s3*c1 + c3*c2*s1)
-
-            den = j1**2 + j2**2+ j3**2 + j7**2
-
-            Delta_q[1] = - e*j1/den
-            Delta_q[2] = - e*j2/den 
-            Delta_q[3] = - e*j3/den 
-            Delta_q[7] = - e*j7/den 
-
-            JSI = self.joint_stepsize_interval(Delta_q)
-
-            (eta_l, eta_h) = JSI[0]
+        if not self.larm_reference:
+            arm    = self.rarm
+            p_EF_W = self.p_EFR_WR
+            p_B_BO = self.p_BR_BO
+        else:
+            arm    = self.larm
+            p_EF_W = self.p_EFL_WL
+            p_B_BO = self.p_BL_BO
             
-            if 1 > eta_h:
-                eta = 0.99*eta_h
+        if self.control_mode == "fixed_base":
+            arm_ori_target = numpy.dot(self.R_B.T, self.Rd)
+            arm_pos_target = numpy.dot(self.R_B.T, self.xd - self.p_BO - numpy.dot(self.Rd, p_EF_W)) - p_B_BO
+            arm.set_target(arm_pos_target, arm_ori_target)
+            if not arm.inverse_update(optimize = True):
+                print "Error from inverse_update: No soluton for the arm in fixed mode"
+                return False
             else:
-                eta = 1.0
+                if not self.larm_reference:
+                    self.q[0:7] = arm.config.q
+                else:
+                    self.q[11:18] = arm.config.q
 
-            print
-            print "eta = ", eta
-            print
+                self.set_config(self.q)
+                return True            
+        elif self.control_mode == "free_base":
+            print "Error from PR2().inverse_update: Free-Base mode is not supported yet."
+            return False
+        else:            
+            print "Error from PR2().inverse_update: Unknown control mode"
+            return False
+
+
+    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True):
+        '''
+        projects the given taskspace pose trajectory into the jointspace 
+        The phase starts from phi_start and added by delta_phi in each step.
+        at any time, if a solution is not found, the process stops
+        '''
+        if phi_end == None:
+            phi_end = pos_traj.phi_end
+    
+        if phi_end > pos_traj.phi_end:
+            phi_end = pos_traj.phi_end
+    
+        if ori_traj == None:
+            ori_traj = trajlib.Orientation_Trajectory()
+            ori_traj.current_orientation = self.endeffector_orientation()
+
+        jt          = trajlib.Polynomial_Trajectory(dimension = 18)
+        jt.capacity = 5
+        jt.add_point(phi = 0.0, pos = numpy.copy(self.q), vel = numpy.zeros(18))
+
+        phi   = phi_start
+        pos_traj.set_phi(phi)
+        ori_traj.set_phi(phi)
+        if relative:
+            p0    = self.endeffector_position() - pos_traj.current_position
+            R0    = numpy.dot(self.endeffector_orientation(), ori_traj.current_orientation.T)  
+        else:
+            p0    = numpy.zeros(3)
+            R0    = numpy.eye(3)  
+        
+        phi       = phi + delta_phi
+        stay      = True
+
+        while (phi <= phi_end) and stay:
+            if phi == phi_end:
+                stay = False
+            pos_traj.set_phi(phi)
+            ori_traj.set_phi(phi)
+            p = p0 + pos_traj.current_position
+            R = numpy.dot(R0, ori_traj.current_orientation)
+            self.set_target(p, R)
+            if self.inverse_update():
+                jt.add_point(phi = phi - phi_start, pos = numpy.copy(self.q))
+                phi = phi + delta_phi
+                if phi > phi_end:
+                    phi = phi_end
+            else:
+                stay = False
+
+        jt.interpolate()
+
+        return jt
+
+    def project_to_ts(self,  js_traj, phi_start = 0.0, phi_end = None, delta_phi = 0.1):
+        '''
+        projects the given jointspace trajectory into the taskspace
+        The phase starts from phi_start and added by delta_phi in each step.
+        if at any time the joint values are not feasible, the process is stopped.
+        '''
+        if phi_end == None:
+            phi_end = js_traj.phi_end
+
+        ori_traj = trajlib.Orientation_Trajectory_Segment()
+        ori_traj.capacity = 200
+        pos_traj = trajlib.Polynomial_Trajectory()
+        if phi_end > js_traj.phi_end:
+            phi_end = js_traj.phi_end
+
+        phi = phi_start
+        js_traj.set_phi(phi)
+
+        while (phi < phi_end) and (self.set_config(js_traj.current_position)):
+            pos_traj.add_point(phi - phi_start, self.endeffector_position())
+            print self.endeffector_position()
+            ori_traj.add_point(phi - phi_start, self.endeffector_orientation())
+            phi = phi + delta_phi
+            if phi > phi_end:
+                phi = phi_end
+            js_traj.set_phi(phi)
             
-            q2= self.q + Delta_q*eta
+        pos_traj.add_point(phi - phi_start, self.endeffector_position())
+        ori_traj.add_point(phi - phi_start, self.endeffector_orientation())
+        return (pos_traj, ori_traj)
 
-            assert self.set_config(q2)
 
-            [s0, s1, s2, s3, s4, s5, s6] = self.rarm.config.s
-            [c0, c1, c2, c3, c4, c5, c6] = self.rarm.config.c
-
-            e = self.q[7] + c1*self.rarm.d2 + (c3*c1 - c2*s3*s1)*self.rarm.d4 + nz*self.d7 - zd
-
-            print "e = ", e
-
-        #compare with the previous e, make sure it has reduced
-        
-        
-                        
