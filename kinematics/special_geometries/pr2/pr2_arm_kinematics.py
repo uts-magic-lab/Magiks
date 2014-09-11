@@ -14,20 +14,26 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  6 July 2013
+@version:	    3.0
+Last Revision:  12 September 2014
 
-Changes from ver 1.0:
-   added property self.orientation_respected which is True by default
-   if this property is False, desired orientation self.Rd is not respected in IK solver
-                
-
+Changes from ver 2.0:
+    the class is now supported by an instance of class Inverse_Kinematics() from package inverse_kinematics.py
+    This class is for numeric(velocity based IK) and contains the Geometric, Analytic and Error Jacobians.
+    The instance is called pr2_arm_ik and becomes a property of the main class PR2_ARM() and is always synced with the configuration.       
+    This property is usded to compute joint velocities for trajectory projection.
+    function project_to_js() now uses velocity-based ik to find an approximation to the joint values, then 
+    these approximations are corrected using IK_config() function that implements an analytic(position-based) IK.
+    The phi(redundant parameter) is extracted from joint approximations.
+    previous function project_to_js() is now changed name to project_to_js_analytic()  
 '''
-import sympy, copy
+
+import copy, time, math
+import numpy as np
 import packages.nima.mathematics.general as gen
-from sympy import Symbol, simplify
 from interval import interval, inf, imath
 from sets import Set
+
 
 '''
 The most convenient way to install "pyinterval" library is by means of easy_install:
@@ -38,8 +44,9 @@ from sets import Set
 Please refer to:
 http://pyinterval.googlecode.com/svn-history/r25/trunk/html/index.html
 '''
-import numpy, math
 import packages.nima.robotics.kinematics.kinematicpy.general as genkin
+import packages.nima.robotics.kinematics.kinematicpy.inverse_kinematics as iklib
+import packages.nima.robotics.kinematics.kinematicpy.manipulator_library as maniplib
 import packages.nima.robotics.kinematics.joint_space.configuration as configlib
 import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
 import packages.nima.robotics.kinematics.joint_space.trajectory as jtrajlib
@@ -47,105 +54,10 @@ import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.trigonometry as trig
 import packages.nima.mathematics.vectors_and_matrices as vecmat
 
-drc     = math.pi/180.00
-
-class PR2_Arm_Symbolic():
-    '''
-    This class provides a parametric representation of the kinematics of PR2 arm
-    The position, orientation and the Jacobian can be expressed in terms of DH parameters and sine and cosine of the joint angles
-    It uses sympy as a tool for symbols algebra
-    '''
-    def __init__(self):
-
-        n = 7
-
-        c = [Symbol('c' + str(i)) for i in range(n)]
-        s = [Symbol('s' + str(i)) for i in range(n)]
-        a = [Symbol('a0'), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        d = [0.0, 0.0, Symbol('d2'), 0.0, Symbol('d4'), 0.0, 0.0]
-        alpha = [- math.pi/2, math.pi/2, - math.pi/2, math.pi/2, - math.pi/2, math.pi/2, 0.0]    
-        
-        ca    = [math.cos(alpha[i]) for i in range(n)]
-        sa    = [math.sin(alpha[i]) for i in range(n)]
-
-        for i in range(len(ca)):
-            ca[i] = gen.round(ca[i])
-            sa[i] = gen.round(sa[i])
-        
-        # A[i] transfer matrix from link i-1 to i  according to standard DH parameters:
-        self.A = [numpy.array([[ c[i],  -ca[i]*s[i],  sa[i]*s[i], a[i]*c[i] ], 
-                               [ s[i],   ca[i]*c[i], -sa[i]*c[i], a[i]*s[i] ],
-                               [ 0   ,   sa[i]     ,  ca[i]     , d[i]      ],
-                               [ 0   ,   0         ,  0         , 1         ]]) for i in range(n)]
-                               
-        # B[i] transfer matrix from link i to i-1 or B[i] = inv(A[i])
-        self.B = [numpy.array([[        c[i],         s[i], 0     ,  0          ], 
-                               [ -ca[i]*s[i],   ca[i]*c[i], sa[i] , -d[i]*sa[i] ],
-                               [  ca[i]*s[i],  -sa[i]*c[i], ca[i] , -d[i]*ca[i] ],
-                               [  0         ,   0         , 0     ,  1          ]]) for i in range(n)]
-
-        # R[i] rotation matrix from link i-1 to i  according to standard DH parameters:
-        self.R = [numpy.array([[ c[i],  -ca[i]*s[i],  sa[i]*s[i]], 
-                               [ s[i],   ca[i]*c[i], -sa[i]*c[i]],
-                               [ 0   ,   sa[i]     ,  ca[i]     ]]) for i in range(n)]
-
-        # T[i] transfer matrix from link -1(ground) to i
-        self.T = numpy.copy(self.A)
-        for i in range(n-1):
-            self.T[i + 1] = numpy.dot(self.T[i],self.A[i + 1])
-
-        # Desired Pose:
-        T_d = numpy.array([[ Symbol('r11'), Symbol('r12') , Symbol('r13') , Symbol('px') ], 
-                           [ Symbol('r21'), Symbol('r22') , Symbol('r23') , Symbol('py') ],
-                           [ Symbol('r31'), Symbol('r32') , Symbol('r33') , Symbol('pz') ],
-                           [ 0           , 0            ,  0           , 1               ]])
-
-        self.x_d = T_d[0:3, 3]
-        self.R_d = T_d[0:3, 0:3]
-
-        '''
-        "p_W" denotes the position vector of the wrist joint center
-        "R_W" denotes the orientation of the gripper (Endeffector Orientation) 
-        '''
-        self.T_W = self.T[6]
-        self.p_W = self.T_W[0:3, 3]
-        self.R_W = self.T_W[0:3, 0:3]
-
-        '''
-        "p_EF_W" denotes the position of the arm endeffector (end of the gripper) relative to the wrist joint center 
-        in the coordinates system of the right gripper.
-        '''
-
-        self.p_EF_W = numpy.array([0.0, 0.0, Symbol('d7')])
-    
-        self.H = numpy.copy(self.T)
-        self.H[n - 1] = numpy.copy(T_d)
-        
-        # H[i] transfer matrix from link -1(ground) to i calculated from inverse transform
-        for i in range(n-1):
-            self.H[n - i - 2] = numpy.dot(self.H[n - i - 1], self.B[n - i - 1])
-
-        self.div_theta_err = sympy.Matrix([
-        [ 0 , 0 , -2*d[2]*d[4]*s[3] , 0 , 0 , 0   ],
-        [0 , - 2*c[2]*s[2]*s[3]**2 , Symbol('e23') , 0 , 0 , 0   ],
-        [Symbol('e31') , d[4]*Symbol('s321') , Symbol('e33') , 0 , 0 , 0   ],
-        [Symbol('e41') , Symbol('e42') , Symbol('e43') , 0 , - s[5] , 0   ],
-        [Symbol('e51') , Symbol('e52') , 0 , c[4]*s[5] , c[5]*s[4] , 0   ],
-        [Symbol('e61') , Symbol('e62') , Symbol('e63') , 0 , Symbol('c65') , - Symbol('s65') ]]) 
-
-        self.div_phi_err = sympy.Matrix([Symbol('e10') , 0 , 0 , Symbol('e40') , Symbol('e50') , Symbol('e60')   ])
-
-        e = self.div_theta_err
-        J3 = - Symbol('e10')/e[0,2] 
-        J2 = - e[1,2]*J3/e[1,1]
-        J1 = - (e[2,1]*J2 + e[2,2]*J3)/e[2,0]
-        J5 = - (Symbol('e40') + e[3,0]*J1 + e[3,1]*J2 + e[3,2]*J3)/e[3,4]
-        J4 = - (Symbol('e50') + e[4,0]*J1 + e[4,1]*J2 + e[4,4]*J5)/e[4,3]
-        J6 = - (Symbol('e60') + e[5,0]*J1 + e[5,1]*J2 + e[5,2]*J3 + e[5,3]*J4 + e[5,4]*J5)/ e[5,5]
-
-        self.RJ = sympy.Matrix([J1,J2,J3,J4,J5,J6])
-        #self.redundancy_jacobian = self.div_theta_err.inv().transpose()*self.div_phi_err
-
+drc        = math.pi/180.00
+default_ql = drc*np.array([-130.0, 60.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
+default_qh = drc*np.array([  40.0, 170.0,   44.0, 130.0,  180.0, 130.0,  180.0])
+default_W  = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
 class PR2_ARM_Configuration():
 
@@ -167,8 +79,33 @@ class PR2_ARM_Configuration():
         '''
         flag = True
         for i in range(0, 7):
-            flag = flag and self.joint_in_range(i, qd[i])
+            if not gen.equal(self.w[i], 0.0):
+                flag = flag and self.joint_in_range(i, qd[i])
         return flag
+
+    def midrange_error(self):
+        return trig.angles_standard_range(self.q - self.qm)*self.w 
+
+    def joint_stepsize_interval(self, direction, max_speed = gen.infinity, delta_t = 0.001):
+        etta_l = []
+        etta_h = []
+
+        for i in range(7):
+            if not gen.equal(direction[i], 0.0):
+                if (self.w[i] != 0.0):
+                    a = (self.ql[i] - self.q[i])/direction[i]    
+                    b = (self.qh[i] - self.q[i])/direction[i]
+                    etta_l.append(gen.sign_choice(a, b, direction[i]))
+                    etta_h.append(gen.sign_choice(b, a, direction[i]))
+
+                a = delta_t*max_speed/direction[i]
+                etta_l.append(gen.sign_choice(-a, a, direction[i]))
+                etta_h.append(gen.sign_choice( a,-a, direction[i]))
+
+        if (etta_l == []) or (etta_h == []):
+            return (0.0, 0.0)
+        else:
+            return (max(etta_l), min(etta_h))
 
     def set_config(self, qd):
         '''
@@ -181,8 +118,11 @@ class PR2_ARM_Configuration():
             return False
 
         if self.all_joints_in_range(qd):
-         
-            self.q = trig.angles_standard_range(qd)
+            for i in range(0, 7):
+                if gen.equal(self.w[i], 0.0):
+                    self.q[i] = qd[i]
+                else:
+                    self.q[i] = trig.angle_standard_range(qd[i])
 
             self.c = [math.cos(self.q[i]) for i in range(0,7)]
             self.s = [math.sin(self.q[i]) for i in range(0,7)]
@@ -193,72 +133,76 @@ class PR2_ARM_Configuration():
             self.s1_mult1 = [s1*s0]
             [s10]         = self.s1_mult1
 
-            self.s2_mult1 = s2*numpy.array([s0, s1, s2, s10])
+            self.s2_mult1 = s2*np.array([s0, s1, s2, s10])
             [s20,s21, s22, s210]  = self.s2_mult1
 
-            self.s3_mult1 = s3*numpy.array([s0, s1, s2, s10, s20, s21, s22, s3,s210])
+            self.s3_mult1 = s3*np.array([s0, s1, s2, s10, s20, s21, s22, s3,s210])
             [s30, s31, s32, s310, s320, s321, s322, s33,s3210] = self.s3_mult1
 
-            self.c0_mult = c0*numpy.array([s0,s1,s2,s10,s20,s21,s30,s31,s32,s321])
+            self.c0_mult = c0*np.array([s0,s1,s2,s10,s20,s21,s30,s31,s32,s321])
             [c0s0,c0s1,c0s2,c0s10,c0s20,c0s21,c0s30,c0s31,c0s32,c0s321] = self.c0_mult
 
-            self.c1_mult = c1*numpy.array([c0, s0, s1, s2, s3, s10, s20,s30,s32, s320])
+            self.c1_mult = c1*np.array([c0, s0, s1, s2, s3, s10, s20,s30,s32, s320])
             [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = self.c1_mult
 
-            self.c2_mult = c2*numpy.array([c0,c1,c2,c10,s0,s1,s2,s3,s10,s20,s30,s31,s310, c1s30,c0s31])
+            self.c2_mult = c2*np.array([c0,c1,c2,c10,s0,s1,s2,s3,s10,s20,s30,s31,s310, c1s30,c0s31])
             [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.c2_mult
 
-            self.c3_mult = c3*numpy.array([c0,c1,c2,c3, s0,s1,s2,s3,s10,s20,s21,s30,c10,c20,c21,c210,c2s0,c2s10])
+            self.c3_mult = c3*np.array([c0,c1,c2,c3, s0,s1,s2,s3,s10,s20,s21,s30,c10,c20,c21,c210,c2s0,c2s10])
             [c30,c31,c32,c33,c3s0,c3s1,c3s2,c3s3,c3s10,c3s20,c3s21,c3s30,c310,c320,c321,c3210,c32s0,c32s10] = self.c3_mult
 
-            self.s0_mult = s0*numpy.array([c21,c31,c321])
+            self.s0_mult = s0*np.array([c21,c31,c321])
             [c21s0,c31s0,c321s0]  = self.s0_mult
 
-            self.s1_mult2 = s1*numpy.array([c10,c20,c30, c32,c320])
+            self.s1_mult2 = s1*np.array([c10,c20,c30, c32,c320])
             [c10s1,c20s1,c30s1, c32s1,c320s1] = self.s1_mult2
 
-            self.s2_mult2 = s2*numpy.array([c10,c20,c30, c32,c310])
+            self.s2_mult2 = s2*np.array([c10,c20,c30, c32,c310])
             [c10s2,c20s2,c30s2, c32s2,c310s2]  = self.s2_mult2
 
-            self.s3_mult2 = s3*numpy.array([c10, c20, c30, c21, c210,s32])
+            self.s3_mult2 = s3*np.array([c10, c20, c30, c21, c210,s32])
             [c10s3, c20s3, c30s3, c21s3, c210s3,s332]  = self.s3_mult2
 
             self.cs_mult = [c10*s32, c31*s20, s5*s4]
             [c10s32, c31s20, s54] = self.cs_mult
 
-            self.c5_mult = c5*numpy.array([c4, s4, s5])
+            self.c5_mult = c5*np.array([c4, s4, s5])
             [c54, c5s4, c5s5] = self.c5_mult
 
-            self.s6_mult = s6*numpy.array([s4, s5, c4, c5, c54, s54])
+            self.s6_mult = s6*np.array([s4, s5, c4, c5, c54, s54])
             [s64, s65, c4s6, c5s6, c54s6, s654] = self.s6_mult
 
-            self.c6_mult = c6*numpy.array([c4, c5, s4, s5, c54, s54])
+            self.c6_mult = c6*np.array([c4, c5, s4, s5, c54, s54])
             [c64, c65, c6s4, c6s5, c654, C6s54] = self.c6_mult
 
-            self.mid_dist_sq_computed = False
+            self.mid_dist_sq = None
             '''
             Do not set any other environmental variables here
             '''    
             return True
         else:
-            print "set_config error: Given joints are not in their feasible range"
+            print "Error from PR2_ARM.set_config(): Given joints are not in their feasible range"
+            print "Lower Limit  :", self.ql
+            print "Upper Limit  :", self.qh
+            print "Desired Value:", qd
             return False
-        
+       
+    def closest_config_metric(self, q):
+        dist = 0
+        cc   = np.zeros(7)
+        for i in range(7):
+            (qq, dd) = trig.closest_angle_metric(self.q[i], q[i])
+            dist  = dist + dd
+            cc[i] = qq
+        return (cc, dd)
+
     def objective_function(self):
-        if not self.mid_dist_sq_computed:
-            """
-            self.mid_dist_sq = 0
-            for i in range(0,7):
-                wi        = (self.qh[i] - self.ql[i])**(-2)
-                self.mid_dist_sq  = self.mid_dist_sq + wi*(self.q[i] - self.qm[i])**2
-            self.mid_dist_sq_computed = True
-            """
-            e = trig.angles_standard_range(self.q - self.qm)*self.w    
-            self.mid_dist_sq = numpy.dot(e.T,e)
-            self.mid_dist_sq_computed = True
+        if self.mid_dist_sq == None:
+            e = self.midrange_error()
+            self.mid_dist_sq = np.dot(e.T,e)
         return self.mid_dist_sq
 
-    def __init__(self, ql = drc*numpy.array([-130, 60, -180, 0, -180, 0, -180]), qh = drc*numpy.array([40, 170, 44, 130, 180, 130, 180]), W = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]):
+    def __init__(self, ql = default_ql, qh = default_qh, W = default_W):
         '''
         ql and qh define the lower and higher bounds of the joints
         '''    
@@ -269,28 +213,33 @@ class PR2_ARM_Configuration():
         self.qh = qh
         self.qm = (qh + ql)/2
 
-        self.delta_phi_interval_computed = False
-        self.permission_set_position_computed = False
+        self.Delta  = None
+        self.Phi    = None
+
+        self.w = np.zeros(7)
+        self.q = np.copy(self.qm)
+        for i in range(0,7):
+            self.w[i] = math.sqrt(W[i])
 
         # sets all angles to the midrange by default
         self.set_config(self.qm)
-        self.w = numpy.zeros(7)
-        for i in range(0,7):
-            self.w[i] = math.sqrt(W[i])
 
 
 class PR2_ARM():
 
     def set_config(self, qd):
         if self.config.set_config(qd):
-            self.wrist_position_updated         = False
-            self.wrist_orientation_updated      = False
-            self.geometric_jacobian_updated     = False
-            self.in_target_updated              = False
-            self.joint_jacobian_updated         = False
-            self.div_theta_err_updated          = False
-            self.div_phi_err_updated            = False
-            self.delta_phi_interval_computed    = False
+            self.wrist_position_vector    = None
+            self.wrist_orientation_matrix = None
+            self.JJ          = None
+            self.E           = None
+            self.F           = None
+            self.Delta       = None
+            if self.velocity_based_ik_required:
+                self.ik.configuration.q = np.copy(qd)
+                self.ik.configuration.initialize()
+                self.ik.forward_update()
+    
             return True
         else:
             print "Could not set the given joints."
@@ -301,7 +250,7 @@ class PR2_ARM():
         sets the endeffector target to the given position and orientation
         variables self.xd and self.Rd should not be manipulated by the user. Always use this function
         '''    
-        assert gen.equal(numpy.linalg.det(target_orientation), 1.0)
+        assert gen.equal(np.linalg.det(target_orientation), 1.0)
         self.xd = target_position
         self.Rd = target_orientation
 
@@ -319,25 +268,23 @@ class PR2_ARM():
         betta = - 2*R2*Q/foura00d44
         gamma = - T2/foura00d44
 
-        self.in_target_updated = False
-        self.permission_set_position_computed = False
-        self.delta_phi_interval_computed = False
+        self.Phi            = None
+        self.Delta          = None
 
         self.target_parameters = [r2, ro2, R2, T2, alpha, betta, gamma, sai]
-
 
     def elbow_position(self):        
         X =  self.a0*self.config.c[0] + self.config.c[0]*self.d2*self.config.s[1]
         Y =  self.a0*self.config.s[0] + self.d2*self.config.s[0]*self.config.s[1]
         Z =  self.config.c[1]*self.d2
-        return numpy.array([X,Y,Z])
+        return np.array([X,Y,Z])
     
             
     def wrist_position(self):        
         '''
         Returns the cartesian coordiantes of the origin of the wrist. The origin of the wrist is the wrist joint center 
         '''    
-        if not self.wrist_position_updated:
+        if self.wrist_position_vector == None:
             [s0, s1, s2, s3, s4, s5, s6] = self.config.s
             [c0, c1, c2, c3, c4, c5, c6] = self.config.c
             [s10]         = self.config.s1_mult1
@@ -354,14 +301,13 @@ class PR2_ARM():
 
             Z =  c1*self.d2 + (c31 - c2s31)*self.d4
         
-            self.wrist_position_vector = numpy.array([X, Y, Z])
-            self.wrist_position_updated = True
+            self.wrist_position_vector = np.array([X, Y, Z])
 
         return copy.copy(self.wrist_position_vector)
 
     def wrist_orientation(self):        
 
-        if not self.wrist_orientation_updated:
+        if self.wrist_orientation_matrix == None:
             [s0, s1, s2, s3, s4, s5, s6] = self.config.s
             [c0, c1, c2, c3, c4, c5, c6] = self.config.c
             [s10]         = self.config.s1_mult1
@@ -375,27 +321,29 @@ class PR2_ARM():
             [s64, s65, c4s6, c5s6, c54s6, s654] = self.config.s6_mult
             [c64, c65, c6s4, c6s5, c654, C6s54] = self.config.c6_mult
 
-            R03 = numpy.array([[-s20 + c210, -c0s1, -c2s0 - c10s2],
+            R03 = np.array([[-s20 + c210, -c0s1, -c2s0 - c10s2],
                                [c0s2 + c21s0, -s10, c20 - c1s20],                
                                [-c2s1, -c1, s21]]) 
 
-            R47 = numpy.array([[-s64 + c654, -c6s4 - c54s6, c4*s5],
+            R47 = np.array([[-s64 + c654, -c6s4 - c54s6, c4*s5],
                                [c4s6 + c65*s4, c64 - c5*s64, s54],                
                                [-c6s5, s65, c5]]) 
 
-            R34 =  numpy.array([[  c3,     0,     s3 ],
+            R34 =  np.array([[  c3,     0,     s3 ],
                                 [  s3,     0,    -c3 ],
                                 [  0,      1,     0  ]])
 
-            self.wrist_orientation_matrix = numpy.dot(numpy.dot(R03, R34), R47)
-            self.wrist_orientation_updated = True
+            self.wrist_orientation_matrix = np.dot(np.dot(R03, R34), R47)
 
         return copy.copy(self.wrist_orientation_matrix)
+
+    def in_target(self, norm_precision = 0.1):
+        return vecmat.equal(self.xd, self.wrist_position(), epsilon = norm_precision) and vecmat.equal(self.Rd, self.wrist_orientation(), epsilon = norm_precision)
 
     def div_phi_err(self):
         '''
         '''
-        if not self.div_phi_err_updated:
+        if self.F == None:
             self.div_theta_err()
 
         return copy.copy(self.F)
@@ -403,7 +351,7 @@ class PR2_ARM():
     def div_theta_err(self):
         '''
         '''
-        if not self.div_theta_err_updated:
+        if self.E == None:
             [[r11, r12, r13],
             [r21, r22, r23],
             [r31, r32, r33]] = self.Rd
@@ -431,8 +379,8 @@ class PR2_ARM():
 
             [r2, ro2, R2, T2, alpha, betta, gamma, sai] = self.target_parameters
 
-            self.E = numpy.zeros((7,7))
-            self.F = numpy.zeros(7)
+            self.E = np.zeros((7,7))
+            self.F = np.zeros(7)
 
             self.E[0,0] = 1.0
             
@@ -468,38 +416,35 @@ class PR2_ARM():
             self.F[5] = r13*(-c20 + c1s20) - r23*(c2s0 + c10s2)
             self.F[6] = - r11*(c0s32 + c21s30 + c3s10) + r21*(- s320 + c210s3 + c30s1)
 
-            self.div_theta_err_updated = True
-            self.div_phi_err_updated   = True
-        
         return copy.copy(self.E)
         
     def joint_jacobian(self):  
         '''
+        Returns the Joint Jacobian (in this case a vector of 7 elements: rond q_i/rond phi)
         make sure that the IK is already run or:
         Current joints must lead to x_d and R_d  
+        
         '''
 
-        if not self.joint_jacobian_updated:
+        if self.JJ == None:
 
             E = self.div_theta_err()
             F = self.div_phi_err()
             if gen.equal(E[1,3],0.0) or gen.equal(E[2,2],0.0) or gen.equal(E[3,1],0.0) or gen.equal(E[4,5],0.0) or gen.equal(E[5,4],0.0) or gen.equal(E[6,6],0.0):
-                return []
+                return None
             else:
-                self.JJ = numpy.zeros(7)
+                self.JJ = np.zeros(7)
 
                 self.JJ[0] =   1.0
                 self.JJ[3] = - F[1]/E[1,3]
                 self.JJ[2] = - E[2,3]*self.JJ[3]/E[2,2]
                 self.JJ[1] = - (E[3,2]*self.JJ[2] + E[3,3]*self.JJ[3])/E[3,1]
 
-                self.JJ[5] = - (F[4] + numpy.dot(E[4,1:4],self.JJ[1:4]))/E[4,5]
+                self.JJ[5] = - (F[4] + np.dot(E[4,1:4],self.JJ[1:4]))/E[4,5]
                 #J[5] = - (F[4,0] + F[4,1]*J[1] + F[4,2]*J[2] + F[4,3]*J[3])/F[4,5]
                 self.JJ[4] = - (F[5] + E[5,1]*self.JJ[1] + E[5,2]*self.JJ[2] + E[5,5]*self.JJ[5])/E[5,4] 
-                self.JJ[6] = - (F[6] + numpy.dot(E[6,1:6],self.JJ[1:6]))/E[6,6]
+                self.JJ[6] = - (F[6] + np.dot(E[6,1:6],self.JJ[1:6]))/E[6,6]
                 #F60*J0 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5 + F66*J6 = 0  ==> J6 = - (F60 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5)/ J66
-
-                self.joint_jacobian_updated = True
 
         return copy.copy(self.JJ)
 
@@ -572,7 +517,7 @@ class PR2_ARM():
 
         return [int_X, int_Y, int_Z]
         
-    def inverse_update(self):    
+    def inverse_update_old(self):    
         '''
         Finds the inverse kinematic which is closest to the midrange of joints 
         The new joint angles will be set if all the kinematic equations are satisfied. 
@@ -604,7 +549,7 @@ class PR2_ARM():
         
         assert self.set_config(q_d)                        
         e = trig.angles_standard_range(q_d - self.config.qm)*self.config.w
-        new_error = numpy.linalg.norm(e)
+        new_error = np.linalg.norm(e)
         old_error = 10000
 
         while (new_error < old_error - gen.epsilon) and (q_d != None) and (new_error > gen.epsilon):
@@ -612,17 +557,17 @@ class PR2_ARM():
             assert self.set_config(q_d)
             phi     = self.config.q[0]
             J = self.joint_jacobian()
-            if len(J) == 0:
+            if J == None:
                 q_d = None
             else:
                 P = self.config.w*J
                 e = trig.angles_standard_range(q_d - self.config.qm)*self.config.w
-                den        = numpy.dot(P.T, P)
+                den        = np.dot(P.T, P)
                 if gen.equal(den, 0.0):
                     q_d = None
                 else:
-                    Delta_phi  = - numpy.dot(P.T, e) / den
-                    old_error  = numpy.linalg.norm(e)
+                    Delta_phi  = - np.dot(P.T, e) / den
+                    old_error  = np.linalg.norm(e)
                     new_phi    = self.grown_phi(Delta_phi)
                     q_d        = self.IK_config(new_phi)
 
@@ -630,11 +575,246 @@ class PR2_ARM():
                 new_error = 0
             else:
                 e = trig.angles_standard_range(q_d - self.config.qm)*self.config.w
-                new_error  = numpy.linalg.norm(e)
+                new_error  = np.linalg.norm(e)
           
         assert vecmat.equal(self.wrist_position(), self.xd)
         if self.orientation_respected:
             assert vecmat.equal(self.wrist_orientation(), self.Rd)
+        return True
+
+    def restore_config(self, q_old):
+        q = np.copy(self.config.q)
+        assert self.set_config(q_old)
+        return q 
+
+    def pose_metric(self):
+        d  = np.linalg.norm(self.xd - self.wrist_position())
+        d += np.linalg.norm(self.Rd - self.wrist_orientation())
+        return d
+        
+    def optimal_config(self, show = False):
+        '''
+        Returns the optimal value for phi that minimizes the cost function. This function does not change the configuration
+        If show = True, the values of phi and objective function are printed on the console
+        '''
+        
+        keep_q     = np.copy(self.config.q)
+        counter = 0
+        while True:
+            J   = self.joint_jacobian()
+            e   = self.config.midrange_error()
+            if show:
+                print "Iteration          : ", counter
+                print "Value of redundancy: ", self.config.q[0]
+                print "Objective Function : ", self.config.objective_function()
+            if J == None:
+                if show:
+                    print "No Jacobian! Optimum phi = ", self.config.q[0]
+                return self.restore_config(keep_q)
+            P   = self.config.w*J    
+            den = np.dot(P.T, P)
+            if gen.equal(den, 0.0):
+                if show:
+                    print "Division by Zero! Optimum phi = ", self.config.q[0]
+                return self.restore_config(keep_q)
+            Delta_phi  = - np.dot(P.T, e) / den
+            old_err    = self.config.objective_function()
+            new_phi    = self.grown_phi(Delta_phi)
+            q          = self.IK_config(new_phi)
+            if q == None:
+                if show:
+                    print "No solution for the updated phi! Optimum phi = ", self.config.q[0]
+                return self.restore_config(keep_q)
+
+            if not self.set_config(q):
+                if show:
+                    print "Solution found but not feasible! This should not happen. Optimum phi = ", self.config.q[0]
+                return self.restore_config(keep_q)
+
+            if show:
+                print "A better phi is found: ", new_phi
+
+            new_err = self.config.objective_function()
+
+            if new_err > old_err - 0.01:
+                if show:
+                    print "Error is not reduced any more. Optimum phi = ", self.config.q[0]
+                return self.restore_config(keep_q)
+
+            counter = counter + 1
+            
+    def reduce_error(self, max_speed = gen.infinity, ttr = 0.001):
+        if self.in_target():
+            q0        = np.copy(self.config.q)
+            err       = self.config.objective_function()
+            q_opt     = self.optimal_config()
+            (el, eh)  = self.config.joint_stepsize_interval(direction = q_opt - q0, max_speed = max_speed, delta_t = ttr) 
+            assert el < 1.0
+            if eh > 1.0:
+                eh = 1.0
+            q = q0 + eh*(q_opt - q0)
+            if self.set_config(q):
+                if self.config.objective_function() > err:
+                    assert self.set_config(q0)
+                    return False
+            return True
+        else:
+            print "Error from PR2_ARM.reduce_error(): The endeffector is not in target."
+            print self.wrist_position() - self.xd
+            print self.wrist_orientation() - self.Rd
+            return False
+
+    def closest_feasible_phi(self, phi, PS, increment = math.pi/360.0):
+        '''
+        This function should be used when given phi is in permission set PS and yet
+        there is no IK solution for it. So the neighborhood of phi is searched for a feasible IK solution
+        If a solution is found, the config is set and a True is returned, 
+        If all the permission set is searched with no solution, False is returned and the configuration does not change
+        '''
+        (phi_l, phi_h) = gen.accommodating_interval(phi, PS)
+
+        assert (phi < phi_h) and (phi > phi_l)
+
+        phi_up   = phi
+        phi_down = phi
+        while True:
+            stay_up   = (phi_up < phi_h)
+            stay_down = (phi_down > phi_l)
+
+            if stay_up:
+                phi_up = phi_up + increment
+                q = self.IK_config(phi_up)
+                if q != None:
+                    if self.set_config(q):
+                        return True
+
+            if stay_down:
+                phi_down = phi_down - increment
+                q = self.IK_config(phi_down)
+                if q != None:
+                    if self.set_config(q):
+                        return True
+
+            if not (stay_up or stay_down):             
+                # Nothing found :-(
+                return False
+                
+    def ik_direction(self, phi = None, optimize = False):
+        '''
+        Solves the position based inverse kinematics and returns a direction in the jointspace (joint correction)
+        The configuration does not change
+        '''
+        q0 = np.copy(self.config.q)
+        if self.inverse_update(phi = phi, optimize = optimize):
+            q  = self.restore_config(q0)
+            return trig.angles_standard_range(q - q0)
+        else:
+            return np.zeros(7)
+    
+    def feasible_joint_stepsize(self, direction, max_speed, ttr):
+        q0        = np.copy(self.config.q)
+        err       = self.pose_metric()
+        (el, eh)  = self.config.joint_stepsize_interval(direction = direction, max_speed = max_speed, delta_t = ttr) 
+        assert el < 1.0
+        if eh > 1.0:
+            eh = 1.0
+        return eh
+
+    def move_joints_towards(self, direction, max_speed, ttr):
+        q = q0 + direction*self.feasible_joint_stepsize(direction, max_speed, ttr)
+        return self.set_config(q)
+
+    def move_towards_target(self, max_speed, ttr, phi = None, optimize = False, show = False):
+        q0        = np.copy(self.config.q)
+        err       = self.pose_metric()
+        jdir      = self.ik_direction(phi = phi, optimize = optimize)
+        # print "direction = ", jdir
+        if np.linalg.norm(jdir) > 0.001:
+            (el, eh)  = self.config.joint_stepsize_interval(direction = jdir, max_speed = max_speed, delta_t = ttr) 
+            # assert el < 0.0
+            if eh > 1.0:
+                eh = 1.0
+            q = q0 + eh*jdir
+            if self.set_config(q):
+                if self.pose_metric() < err:
+                    return True
+                else:
+                    print "Error is not reduced"
+            else:
+                print "set config failed"
+        else:
+            return True
+        if show:
+            print "Moving towards target Failed:"
+            print
+            print "direction = ", jdir
+            print "--------------------"
+            print "Old q: ", q0
+            print "New q: ", self.config.q
+            print "--------------------"
+            print "Old Error: ", err
+            print "New Error: ", self.pose_metric()
+            print "--------------------"
+
+        assert self.set_config(q0)
+        return False
+        
+
+    def inverse_update(self, phi = None, optimize = False, show = False):    
+        '''
+        Finds the inverse kinematic solution for the given redundant parameter phi
+        is phi is not feasible, the solution corresponding to the closest phi is returned.
+        If argument optimize is True, the solution will be optimized 
+        so that the joint values will be as close as possible to self.config.qm
+        If phi is not given, current q[0] will be selected as phi
+        
+        The new joint angles will be set if all the kinematic equations are satisfied. 
+        All kinematic parameters will be updated.
+        '''
+        # Finding a feasible phi (theta0)
+        if phi == None:
+            phi     = self.config.q[0]
+
+        PS = self.permission_set_position()
+        if show:
+            print "Permission Set for phi = ", PS
+            print "Initial phi            = ", phi
+        
+        if len(PS) == 0:
+            print "len(PS) = 0"
+            print "Error from PR2_ARM.inverse_update(): The target is out of workspace! No solution found."
+            return False
+        else:
+            if not (phi in PS):
+                phi = gen.closest_border(phi, PS, k = 0.01)
+                if show:
+                    print "Phi is not in PS"
+                    print "Closest phi in PS:", phi
+
+            q = self.IK_config(phi) 
+            if q == None:
+                if show:
+                    print phi, " is not a feasible phi. No solution found"
+                if not self.closest_feasible_phi(phi, PS):
+                    print "Error from PR2_ARM.inverse_update(): The target is out of workspace! No solution found."
+                    return False
+                if show:
+                    print "Next phi: ", self.config.q[0]
+            else:    
+                if not self.set_config(q):
+                    if show:
+                        print "Not expected to see. Solution exists but not feasible!"
+                    assert False
+
+            # when you reach here, the feasible q has been set    
+            
+            if optimize:
+                self.reduce_error()
+             
+        assert vecmat.equal(self.wrist_position(), self.xd)
+        if self.orientation_respected:
+            assert vecmat.equal(self.wrist_orientation(), self.Rd)
+
         return True
         
     def all_IK_solutions(self, phi):    
@@ -738,20 +918,20 @@ class PR2_ARM():
                                                 u3 = c2*s3*self.d4
                                                 u4 = self.d2+ c3*self.d4
                                                 u1 = self.a0 + u3*c1 + u4*s1
-                                                AA = numpy.array([[alpha*d44, d44*betta - 2*d42 , - self.d2**2 + d44*(gamma -1)],
+                                                AA = np.array([[alpha*d44, d44*betta - 2*d42 , - self.d2**2 + d44*(gamma -1)],
                                                                    [0.0 , 2*self.xd[2]*self.d4 , 2*self.xd[2]*self.d2],   
                                                                    [- d44*(1+alpha) , -betta*d44 , - self.xd[2]**2 + d44*(1-gamma) ]])
-                                                lnda = numpy.array([c1*c1, c1, 1.0])
-                                                vvct = numpy.array([v*v, v, 1.0])
+                                                lnda = np.array([c1*c1, c1, 1.0])
+                                                vvct = np.array([v*v, v, 1.0])
 
                                                 if vecmat.equal(self.xd, [X,Y,Z]):
                                                     if self.orientation_respected:
-                                                        R03 = numpy.array([[c20*c1 - s20, -c0*s1, -c2s0 - c1*c0*s2],
+                                                        R03 = np.array([[c20*c1 - s20, -c0*s1, -c2s0 - c1*c0*s2],
                                                                            [c0s2 + c1*c2*s0, -s1*s0, c20 - c1*s20],   
                                                                            [-c2*s1, -c1, s2*s1 ]])
 
-                                                        R04 = numpy.dot(R03, R34)
-                                                        R47 = numpy.dot(R04.T, self.Rd)
+                                                        R04 = np.dot(R03, R34)
+                                                        R47 = np.dot(R04.T, self.Rd)
                                                         tt5 = trig.arccos(R47[2,2])
                                                         l = 0
                                                         while (l < 2):
@@ -783,10 +963,10 @@ class PR2_ARM():
                                                                     assert self.config.joint_in_range(4, theta4)    
                                                                     assert self.config.joint_in_range(6, theta6)    
 
-                                                                    solution_set.append(numpy.array([phi, theta1, theta2, theta3, theta4, theta5, theta6]))
+                                                                    solution_set.append(np.array([phi, theta1, theta2, theta3, theta4, theta5, theta6]))
                                                             l = l + 1
                                                     else:
-                                                        solution_set.append(numpy.array([phi, theta1, theta2, theta3, self.config.q[4], self.config.q[5], self.config.q[6]]))
+                                                        solution_set.append(np.array([phi, theta1, theta2, theta3, self.config.q[4], self.config.q[5], self.config.q[6]]))
                                             k = k + 1
                                 j = j + 1
                             m = m + 1
@@ -805,17 +985,18 @@ class PR2_ARM():
         solution_set = self.all_IK_solutions(phi)
 
         if len(solution_set) == 0:
-            print "IK_config error: No solution found within the feasible joint ranges for given phi. Change the target or redundant parameter"
+            # print "IK_config error: No solution found within the feasible joint ranges for given phi. Change the target or redundant parameter"
+            print ".",
             return None
 
         delta_min = 1000
         for i in range(0, len(solution_set)):
             solution = solution_set[i]
             if self.ofuncode == 0:
-                delta    = numpy.linalg.norm(trig.angles_standard_range(solution - self.config.q))
+                delta    = np.linalg.norm(trig.angles_standard_range(solution - self.config.q))
             elif self.ofuncode == 1:
                 P = trig.angles_standard_range(solution - self.config.qm)*self.config.w
-                delta = numpy.dot(P.T,P)
+                delta = np.dot(P.T,P)
             else:
                 print "IK_config error: Value ",self.ofuncode," for argument ofuncode is not supported"
                 assert False
@@ -826,12 +1007,24 @@ class PR2_ARM():
 
         return solution_set[i_min]
 
-    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = drc*numpy.array([-130, 60, -180, 0, -180, 0, -180]), qh = drc*numpy.array([40, 170, 44, 130, 180, 130, 180]), W = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]):
+    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = default_ql, qh = default_qh, W = default_W, vts = False):
+
+        if vts:
+            self.velocity_based_ik_required = True
+            # create an instance of PR2 geometry and configuration 
+            pr2_geo    = maniplib.Manipulator_Geometry_PR2ARM()
+            cs         = configlib.Joint_Configuration_Settings(default_joint_handling = 'No Mapping')
+            pr2_config = maniplib.Manipulator_Configuration_PR2(cs)
+            # create an instance of inverse kinematic solver for PR2
+            iks = iklib.Inverse_Kinematics_Settings()
+            self.ik = iklib.Inverse_Kinematics(pr2_geo, pr2_config, iks)
+        else:
+            self.velocity_based_ik_required = False
 
         self.orientation_respected = True
         self.config = PR2_ARM_Configuration(ql = ql, qh = qh, W = W)
 
-        self.Rd = numpy.eye(3)    
+        self.Rd = np.eye(3)    
 
         self.a0 = a0
         self.d2 = d2
@@ -860,14 +1053,15 @@ class PR2_ARM():
         self.l_se = [0.0, - d2, 0.0]
         self.l_ew = [0.0, 0.0, d4]
 
-        self.ofuncode = 1
+        self.ofuncode = 0
 
-        self.wrist_position_updated         = False
-        self.wrist_orientation_updated      = False
-        self.jacobian_updated               = False
-        self.joint_jacobian_updated         = False
-        self.div_theta_err_updated            = False
-        self.div_phi_err_updated              = False
+        self.wrist_position_vector    = None
+        self.wrist_orientation_matrix = None
+        self.JJ                       = None
+        self.E                        = None
+        self.F                        = None
+        
+        self.set_target(self.wrist_position(), self.wrist_orientation())
 
     '''
     def confidence_set_analytic(self):
@@ -909,21 +1103,13 @@ class PR2_ARM():
         #Finding Sl
         '''
 
-    def trajectory_start(self):
-        '''
-        Returns a taskspace trajectory with the start point of current wrist position
-        '''
-        v0 = numpy.zeros(3)
-        p  = trajlib.Polynomial_Trajectory(dimension = 3)
-        p.add_point(0.0, self.wrist_position(), v0)
-        return p
-
     def project_to_ts(self,  js_traj, phi_start = 0.0, phi_end = None, delta_phi = 0.1):
         '''
         projects the given jointspace trajectory into the taskspace
         The phase starts from phi_start and added by delta_phi in each step.
         if at any time the joint values are not feasible, the process is stopped.
         '''
+        
         if phi_end == None:
             phi_end = js_traj.phi_end
 
@@ -935,22 +1121,139 @@ class PR2_ARM():
 
         phi = phi_start
         js_traj.set_phi(phi)
-    
-        while (phi < phi_end) and (self.set_config(js_traj.current_position)):
+        stay = True
+        while stay and (self.set_config(js_traj.current_position)):
+            if phi > phi_end:
+                phi = phi_end
+                stay = False
             pos_traj.add_point(phi - phi_start, self.wrist_position())
             ori_traj.add_point(phi - phi_start, self.wrist_orientation())
             phi = phi + delta_phi
-            if phi > phi_end:
-                phi = phi_end
             js_traj.set_phi(phi)
             
         pos_traj.add_point(phi - phi_start, self.wrist_position())
         ori_traj.add_point(phi - phi_start, self.wrist_orientation())
         return (pos_traj, ori_traj)
-
-    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True):
+    """
+    def project_to_js_vts(self, pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, relative = True):
         '''
-        projects the given taskspace pose trajectory into the jointspace 
+        projects the given taskspace pose trajectory into the jointspace using a combination of numeric and analytic inverse kinematics.
+        The phase starts from phi_start increased by time with rate phi_dot.
+        at any time, if a solution is not found, the process stops
+        '''
+        assert self.velocity_based_ik_required, "Error from PR2_ARM.project_to_js(): Velocity-Based mode is not active"
+        tp = self.ik.endeffector.reference_positions[0]
+        tf = self.ik.endeffector.reference_orientations[0]
+        keep_config  = np.copy(self.config.q)
+        if phi_dot   == None:
+            phi_dot  = (pos_traj.phi_end - phi_start)/duration
+        if ori_traj == None:
+            ori_traj = trajlib.Orientation_Trajectory()
+            ori_traj.current_orientation = self.wrist_orientation()
+        
+        jt           = jtrajlib.Joint_Trajectory(dof = 7)
+        jt.add_point(phi = 0.0, pos = self.config.q, vel = np.zeros(7))
+
+        tp.desired_trajectory    = pos_traj
+        tf.desired_trajectory    = ori_traj
+
+        pos_traj.set_phi(phi_start)
+        ori_traj.set_phi(phi_start)
+        if relative:
+            tp.target_offset = self.wrist_position() - pos_traj.current_position
+            tf.target_offset = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
+
+        t0           = time.time()
+        t            = 0.0
+    
+        while (t < duration + 0.00001):
+            t        = time.time() - t0
+            phi      = phi_start + phi_dot*t
+            self.ik.endeffector.update_target(phi)
+            '''
+            self.ik.endeffector.update_pose_error()
+            self.ik.endeffector.update_task_jacobian()
+            self.ik.endeffector.update_error_jacobian(self.ik)
+            '''
+            self.ik.run()
+            if self.ik.endeffector.in_target:
+                print "In target: one point added :-)"
+                if self.set_config(self.ik.configuration.q):
+                    self.ofuncode = 1
+                    self.qm = np.copy(self.config.q)
+                    self.set_target(tp.rd, tf.rd)    
+                    if self.inverse_update():
+                        jt.add_point(phi = phi - phi_start, pos = self.config.q)
+
+        jt.interpolate()
+        self.set_config(keep_config)
+        return jt
+    """
+
+    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 1.0, relative = True):
+        '''
+        projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
+        The phase starts from phi_start and added by delta_phi in each step.
+        at any time, if a solution is not found, the process stops
+        '''
+        keep_q = np.copy(self.config.q)
+
+        if phi_end == None:
+            phi_end = pos_traj.phi_end
+
+        if ori_traj == None:
+            ori_traj = trajlib.Orientation_Trajectory()
+            ori_traj.current_orientation = self.wrist_orientation()
+
+        if phi_end > pos_traj.phi_end:
+            phi_end = pos_traj.phi_end
+
+        jt          = trajlib.Polynomial_Trajectory(dimension = 7)
+        jt.capacity = 2
+
+        jt.add_point(phi = 0.0, pos = np.copy(self.config.q), vel = np.zeros(7))
+
+        phi   = phi_start
+        pos_traj.set_phi(phi)
+        ori_traj.set_phi(phi)
+        if relative:
+            p0    = self.wrist_position() - pos_traj.current_position
+            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
+        else:
+            p0    = np.zeros(3)
+            R0    = np.eye(3)  
+        
+        phi       = phi + delta_phi
+        stay      = True
+
+        while stay:
+            if phi > phi_end:
+                phi = phi_end
+            if phi == phi_end:
+                stay = False
+            pos_traj.set_phi(phi)
+            ori_traj.set_phi(phi)
+            p = p0 + pos_traj.current_position
+            R = np.dot(R0, ori_traj.current_orientation)
+            self.set_target(p, R)
+            self.config.qm = np.copy(self.config.q)
+            if self.move_towards_target(phi = self.config.q[0], optimize = False, max_speed = max_speed, ttr = delta_phi):
+                # self.reduce_error(max_speed = max_speed, ttr = delta_phi)
+                jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
+            else:
+                print "Error is not reduced. Point is not Added"
+
+            phi = phi + delta_phi
+
+        jt.interpolate()
+        self.config.qm = 0.5*(self.config.qh + self.config.ql)
+        self.set_config(keep_q)
+
+        return jt
+
+    def project_to_js_vts(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True, silent = True):
+        '''
+        projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
         The phase starts from phi_start and added by delta_phi in each step.
         at any time, if a solution is not found, the process stops
         '''
@@ -969,45 +1272,173 @@ class PR2_ARM():
 
         # jt.capacity = 5
         qd          = trig.angles_standard_range(self.config.q)
-        # jt.add_point(phi = 0.0, pos = qd, vel = numpy.zeros(7))
-        jt.add_point(phi = 0.0, pos = self.config.q, vel = numpy.zeros(7))
+        # jt.add_point(phi = 0.0, pos = qd, vel = np.zeros(7))
+        jt.add_point(phi = 0.0, pos = self.config.q, vel = np.zeros(7))
 
         phi   = phi_start
         pos_traj.set_phi(phi)
         ori_traj.set_phi(phi)
         if relative:
             p0    = self.wrist_position() - pos_traj.current_position
-            R0    = numpy.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
+            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
         else:
-            p0    = numpy.zeros(3)
-            R0    = numpy.eye(3)  
+            p0    = np.zeros(3)
+            R0    = np.eye(3)  
         
         phi       = phi + delta_phi
         stay      = True
 
         while (phi <= phi_end) and stay:
-            if phi == phi_end:
+            if gen.equal(phi, phi_end):
                 stay = False
+
             pos_traj.set_phi(phi)
             ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
-            R = numpy.dot(R0, ori_traj.current_orientation)
+            R = np.dot(R0, ori_traj.current_orientation)
             self.set_target(p, R)
-            self.config.qm = numpy.copy(self.config.q)
-            if self.inverse_update():
-                qd = trig.angles_standard_range(self.config.q)
-                # jt.add_point(phi = phi - phi_start, pos = qd)
-                jt.add_point(phi = phi - phi_start, pos = self.config.q)
-                phi = phi + delta_phi
-                if phi > phi_end:
-                    phi = phi_end
-            else:
+            self.config.qm = np.copy(self.config.q)
+            self.ik.endeffector.reference_positions[0].rd = np.copy(self.xd)
+            self.ik.endeffector.reference_orientations[0].rd = np.copy(self.Rd)
+            err_old = self.ik.endeffector.error_norm
+            q_dot   = self.ik.joint_speed()
+            self.ik.configuration.q += q_dot
+            if self.config.all_joints_in_range(self.ik.configuration.q):
+                self.ik.forward_update()
+                err_new = self.ik.endeffector.error_norm
+                if err_new < err_old:
+                    self.set_config(self.ik.configuration.q)
+                    if self.inverse_update():
+                        if not silent:
+                            print
+                            print "phi = ", phi, phi_end
+                            print self.xd - self.wrist_position()
+                            print self.Rd - self.wrist_orientation()
+                            print self.ik.configuration
+                            print self.config.q
+
+                        jt.add_point(phi = phi - phi_start, pos = self.config.q)
+                        #jt.plot()
+
+            phi = phi + delta_phi
+            if phi > phi_end:
+                phi = phi_end
                 stay = False
 
         jt.interpolate()
 
         return jt
 
+    def project_to_js_vts_realtime(self,  pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, max_speed = 1.0, relative = True, silent = True):
+        '''
+        projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
+        The phase starts from phi_start and added by delta_phi in each step.
+        at any time, if a solution is not found, the process stops
+        '''
+        phi_min = 5.0
+        phi_max = 6.1
+        if phi_dot == None:
+            phi_dot = pos_traj.phi_end/duration
+
+        if ori_traj == None:
+            ori_traj = trajlib.Orientation_Trajectory()
+            ori_traj.current_orientation = self.wrist_orientation()
+
+        jt          = jtrajlib.Joint_Trajectory(dof = 7)
+        # jt          = trajlib.Polynomial_Trajectory(dimension = 7)
+
+        jt.capacity = 2
+        qd          = trig.angles_standard_range(self.config.q)
+        # jt.add_point(phi = 0.0, pos = qd, vel = np.zeros(7))
+        jt.add_point(phi = 0.0, pos = np.copy(self.config.q), vel = np.zeros(7))
+        if (not silent):
+            print "Initial config:", (180.0/math.pi)*self.config.q
+
+
+        phi   = phi_start
+        pos_traj.set_phi(phi)
+        ori_traj.set_phi(phi)
+        if relative:
+            p0    = self.wrist_position() - pos_traj.current_position
+            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
+        else:
+            p0    = np.zeros(3)
+            R0    = np.eye(3)  
+        
+        t0        = time.time()
+        t         = 0.0
+        tp        = 0.0   
+        k         = 0.1      
+        while (t < duration + 0.00001):
+            t        = time.time() - t0
+            dt       = t - tp
+            tp       = t
+            phi      = phi_start + phi_dot*t
+
+            pos_traj.set_phi(phi)
+            ori_traj.set_phi(phi)
+            p = p0 + pos_traj.current_position
+            R = np.dot(R0, ori_traj.current_orientation)
+            self.set_target(p, R)
+            self.ik.endeffector.reference_positions[0].rd    = np.copy(self.xd)
+            self.ik.endeffector.reference_orientations[0].rd = np.copy(self.Rd)
+            self.ik.endeffector.update_pose_error()            
+            self.ik.endeffector.update_error_jacobian(self.ik)
+
+            err_old = self.ik.endeffector.error_norm
+            # q_dot   = self.ik.joint_speed()
+            err = - k*self.ik.endeffector.pose_error + np.append(pos_traj.current_velocity, np.zeros(3))
+            # err = - k*self.ik.endeffector.pose_error
+            Je  =   self.ik.endeffector.EJ
+            Je_dagger = np.linalg.pinv(Je)
+            q_dot = np.dot(Je_dagger, err)
+
+            etta    = self.feasible_joint_stepsize(direction = q_dot, max_speed = max_speed, ttr = dt)
+            if (not silent) and (phi > phi_min) and (phi < phi_max):
+                print
+                print "phi = ", phi - phi_start
+                print "q_dot: ", (180.0/math.pi)*q_dot
+                print "etta:  ", etta
+                
+            self.ik.configuration.q += q_dot*etta
+            assert self.config.all_joints_in_range(self.ik.configuration.q)
+            self.ik.forward_update()
+            err_new = self.ik.endeffector.error_norm
+            if (not silent) and (phi > phi_min) and (phi < phi_max):
+                print "I am here: joint are in range"
+                print "Old Error = ", err_old
+                print "New Error = ", err_new
+            if err_new < err_old:
+                self.set_config(self.ik.configuration.q)
+                if (not silent) and (phi > phi_min) and (phi < phi_max):
+                    print "I am here: IK could reduce error, Point Added."
+                    print "ik config: ", self.ik.configuration
+                    print self.xd - self.wrist_position()
+                    print self.Rd - self.wrist_orientation()
+                assert self.set_config(self.ik.configuration.q)
+                jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
+            else:
+                if (not silent) and (phi > phi_min) and (phi < phi_max):
+                    print "I am here: IK could not reduce error"
+                self.config.qm = np.copy(self.ik.configuration.q)
+                if self.move_towards_target(phi = self.config.q[0], optimize = True, max_speed = max_speed, ttr = dt):
+                    self.ik.configuration.q = np.copy(self.config.q)
+                    self.ik.forward_update()
+                    if (not silent) and (phi > phi_min) and (phi < phi_max):
+                        print
+                        print "I am here: Analytic IK could get closer"
+                        print "Final Config:", self.ik.configuration
+                        print "Final Err=   ", self.ik.endeffector.error_norm
+                        print self.xd - self.wrist_position()
+                        print self.Rd - self.wrist_orientation()
+                    jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
+                else:
+                    if (not silent) and (phi > phi_min) and (phi < phi_max):
+                        print "I am here: Analytic IK could not get closer. Point not added :-("
+               
+        jt.interpolate()
+
+        return jt
 
     def project_to_js_binary(self,  pos_traj, ori_traj, phi_start = 0.0, phi_end = 1.0, delta_phi = 0.1, k = 2.0, relative = True):
         '''
@@ -1030,17 +1461,17 @@ class PR2_ARM():
         ori_traj.set_phi(phi)
         if relative:
             p0    = self.wrist_position() - pos_traj.current_position
-            R0    = numpy.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
+            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
         else:
-            p0    = numpy.zeros(3)
-            R0    = numpy.eye(3)  
+            p0    = np.zeros(3)
+            R0    = np.eye(3)  
         
         phi = phi + d_phi
         while (phi < phi_end) and (d_phi > 0.0001):
             pos_traj.set_phi(phi)
             ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
-            R = numpy.dot(R0, ori_traj.current_orientation)
+            R = np.dot(R0, ori_traj.current_orientation)
             self.set_target(p, R)
             if self.inverse_update():
                 q_list.append(self.config.q) 
@@ -1059,8 +1490,8 @@ class PR2_ARM():
         # Create a joint trajectory by connecting the key points in the jointspace:
         n = len(q_list)
         q_dot_list      = [None for i in range(n)]
-        q_dot_list[0]   = numpy.zeros(7)
-        q_dot_list[n-1] = numpy.zeros(7)
+        q_dot_list[0]   = np.zeros(7)
+        q_dot_list[n-1] = np.zeros(7)
 
         jt          = trajlib.Polynomial_Trajectory(dimension = 7)
         jt.capacity = 5
@@ -1088,7 +1519,7 @@ class PR2_ARM():
         if relative:
             p0 = self.wrist_position()
         else:
-            p0 = numpy.zeros(3)
+            p0 = np.zeros(3)
 
         d_phi      = ts_traj.phi_end/(n - 1)
         for i in range(n):
@@ -1107,8 +1538,8 @@ class PR2_ARM():
     
         lsi = len(jt.segment) - 1
         lpi = len(jt.segment[lsi].point) - 1
-        jt.segment[0].point[0].vel     = numpy.zeros(7)
-        jt.segment[lsi].point[lpi].vel = numpy.zeros(7)
+        jt.segment[0].point[0].vel     = np.zeros(7)
+        jt.segment[lsi].point[lpi].vel = np.zeros(7)
 
         jt.interpolate()
         if smooth:
@@ -1130,7 +1561,7 @@ class PR2_ARM():
         The output depends on the defined joint limits and the desired endeffector pose but does not depend 
         on the current position of the joints.
         """
-        if self.permission_set_position_computed:
+        if self.Phi != None:
             return self.Phi
 
         [r2, ro2, R2, T2, alpha, betta, gamma, sai] = self.target_parameters
@@ -1142,7 +1573,7 @@ class PR2_ARM():
         int_lnda   = imath.cos(int_theta1)
         int_lnda2   = int_lnda**2
 
-        AA = numpy.array([[alpha*d44, d44*betta - 2*d42 , - self.d2**2 + d44*(gamma -1)],
+        AA = np.array([[alpha*d44, d44*betta - 2*d42 , - self.d2**2 + d44*(gamma -1)],
                           [0.0 , 2*self.xd[2]*self.d4 , 2*self.xd[2]*self.d2],   
                           [- d44*(1+alpha) , -betta*d44 , - self.xd[2]**2 + d44*(1-gamma) ]])
 
@@ -1210,7 +1641,6 @@ class PR2_ARM():
         Phi0 = interval([self.config.ql[0], self.config.qh[0]])
         
         self.Phi = gen.connect_interval(Phi0 & Phi1_3)
-        self.permission_set_position_computed = True
 
         return self.Phi
 
@@ -1220,13 +1650,12 @@ class PR2_ARM():
         Updates the feasible interval for the growth of the redundant parameter according to
         the specified joint limits and the current value of the joints
         '''
-        if not self.delta_phi_interval_computed:
-            
+        if self.Delta == None:
             J    = self.joint_jacobian()
             self.Delta  = self.permission_set_position() - interval(self.config.q[0])  # set initial Delta based on the position permission set for phi
 
             for i in range(0, 7):
-                if not gen.equal(J[i], 0.0):  # if Ji is not zero
+                if (not gen.equal(J[i], 0.0)) and (not gen.equal(self.config.w[i], 0.0)):  # if Ji and wi are not zero
                     d1  = (self.config.ql[i] - self.config.q[i])/J[i]    
                     d2  = (self.config.qh[i] - self.config.q[i])/J[i]    
                     dli = gen.binary_choice(d1,d2,J[i])
@@ -1240,7 +1669,6 @@ class PR2_ARM():
                     assert dhi >= 0.0
                     self.Delta   = self.Delta & interval([dli, dhi])
 
-            self.delta_phi_interval_computed = True    
         return self.Delta
         
 
