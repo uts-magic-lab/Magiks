@@ -7,15 +7,19 @@
                 Faculty of Engineering and Information Technology
                 University of Technology Sydney (UTS)
                 Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
+                Room No.: CB11.07.
+                Phone:    
                 Mobile:   04 5027 4611
                 Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    0.3
-Last Revision:  23 October 2012
+@version:	    1.0
+Last Revision:  12 September 2014
+
+Changes from version 0.3 (previous version):
+    Added VTS feature for moving targets
+    The reference points now possess a trajectory for the position
 '''
 
 # BODY
@@ -26,6 +30,7 @@ import metric
 
 from packages.nima.mathematics import vectors_and_matrices as vecmat
 import packages.nima.robotics.kinematics.jacobian.jacobian as jaclib 
+import trajectory as trajlib 
 
 
 class Reference_Position() : 
@@ -56,14 +61,31 @@ class Reference_Position() :
         # "rd" represents the desired position for the reference position in respect to the ground coordinate system
         self.rd = numpy.zeros((3))
 
+        # "va" represents the current velocity vector of the reference position in respect to the ground coordinate system.
+        self.va  = numpy.zeros((3))
+        
+        # "vd" represents the desired velocity for the reference position in respect to the ground coordinate system
+        self.vd = numpy.zeros((3))
+
         # "error" is an instance of class "Position_Metric" which represents the error between the desired and actual positions of the reference point
-        self.error = metric.Position_Metric()        
+        self.error = metric.Position_Metric()
+
+        # This offset is added to the target when target is set from trajectory
+        # It is used for relative trajectory setting
+        self.target_offset = numpy.zeros(3)
+
+        self.desired_trajectory = trajlib.Polynomial_Trajectory(dimension = 3)
 
     def __str__(self):
         s  =  "        Actual Position (mm):                   " +  str(vecmat.format_vector(1000*(self.ra))) + "\n"
         s +=  "        Desired Position (mm):                  " +  str(vecmat.format_vector(1000*(self.rd))) + "\n"
         s +=  "        Position Error   (mm):                  " +  str(vecmat.format_vector(1000*(self.error.value))) + "\n"
         return(s)
+
+    def set_target_from_trajectory(self, phi = 0.0):
+        self.desired_trajectory.set_phi(phi)
+        self.rd = self.target_offset + self.desired_trajectory.current_position
+        self.vd = self.desired_trajectory.current_velocity
 
     def update_position(self, transfer_matrices):
         '''
@@ -90,4 +112,11 @@ class Reference_Position() :
         self.error_jacobian = jaclib.Error_Jacobian(config.DOF)
         self.error_jacobian.update_for_position(self, config)
 
+    def update_task_jacobian(self):
+        '''
+        Calclates and updates the value of "task_jacobian" which represents the actual task jacobian matrix
+        of the reference_position.
+        '''
+        self.task_jacobian = jaclib.Task_Jacobian()
+        self.task_jacobian.update_for_position(self)
 
