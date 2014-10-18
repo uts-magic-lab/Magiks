@@ -15,14 +15,11 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    4
+@version:	    5
 
-Last Revision:  22 August 2014
+Last Revision:  19 October 2014
 
 Major changes from version 3:
-    1- Trajectories now comprise of "segments" and "key_points". each segment, contains a number of key points.
-       if the interpolation is "velocity_consistent" then the velocity in the sharing key_points must be eual
-    2- In this stage, two segments can and must only have one keypoint in commomn.  
 
 '''
 import matplotlib as mpl
@@ -131,7 +128,17 @@ class Trajectory_Segment(object):
             self.interpolated = False
         else:
             print "Error from Trajectory_Segment.add_point(): Can not take more points than its capacity"
-        
+       
+    def points_dist(self):
+        '''
+        Computes the euclidean distances of each key point from its next and return the result in a vector
+        '''
+        n_pnt = len(self.point)
+        dist  = np.zeros(n_pnt - 1)
+        for i in range(n_pnt - 1):
+            dist[i] = np.linalg.norm(self.point[i+1].pos - self.point[i].pos)
+        return dist
+
     def set_phi(self, phi):
         if not self.interpolated:
             self.interpolate()
@@ -143,6 +150,36 @@ class Trajectory_Segment(object):
             self.current_position[j]     = self.traj[j].position( t = phi )
             self.current_velocity[j]     = self.traj[j].velocity( t = phi )
             self.current_acceleration[j] = self.traj[j].acceleration( t = phi )
+
+    def map_phi(self, phi_start = 0, phi_end = 1.0):
+        '''
+        Maps the current trajectory phase interval to the given interval (phi_start, phi_end)
+        and adjusts all keypoint phases, velocities and accelerations accordingly
+        The segment will be interpolated after that
+        Also the current_phi will be changed to the mapped value
+        '''
+        self.phi_start = self.point[0].phi
+        delta_phi = self.phi_end - self.phi_start
+        delta_the = phi_end - phi_start
+        r         = delta_the/delta_phi
+        for pnt in self.point:
+            x       = (pnt.phi - self.phi_start)/delta_phi # x must be between 0 and 1
+            the     = phi_start + x*delta_the
+            pnt.phi = the
+            for j in range(self.dim):
+                if pnt.vel[j] != None:
+                    pnt.vel[j] = pnt.vel[j]/r
+                if pnt.acc[j] != None:
+                    pnt.acc[j] = pnt.acc[j]/(r*r)
+
+        x       = (self.current_phi - self.phi_start)/delta_phi # x must be between 0 and 1
+        self.current_phi = phi_start + x*delta_the
+        
+        self.phi_start = phi_start    
+        self.phi_end   = phi_end
+        self.interpolated = False
+        self.interpolate()
+
 
     def current_value(self, field_name= 'position', axis = 0):
 
@@ -244,6 +281,7 @@ class Trajectory(object):
         self.segment = []
         self.segment_start = []
         self.phi_end = 0.0
+        self.current_phi = 0.0
 
     def __str__( self ):
         s  = "Trajectory Phase Length : " + str(self.phi_end) + '\n' 
@@ -279,6 +317,26 @@ class Trajectory(object):
         seg.add_point(0.0, lslp.pos, nn, np.copy(nn))
         self.add_segment(seg)
 
+    def points_dist(self):
+        dist = np.array([])
+        for seg in self.segment:
+            dist = np.append(dist, seg.points_dist())
+        return dist
+
+    def adjust_phase_by_distance(self, gain = 1.0):
+        n_seg = len(self.segment)
+        self.segment_start[0] = 0.0
+        self.phi_start        = 0.0
+        for i in range(n_seg - 1):
+            d = gain*sum(self.segment[i].points_dist())
+            self.segment[i].map_phi(phi_end = d)
+            self.segment_start[i + 1] = self.segment_start[i] + self.segment[i].phi_end
+
+        d = gain*sum(self.segment[n_seg - 1].points_dist())        
+        self.segment[n_seg - 1].map_phi(phi_end = d)                
+        self.phi_end   = self.segment_start[n_seg - 1] + self.segment[n_seg - 1].phi_end
+        self.interpolate()
+
     def set_phi(self, phi):
 
         if phi > self.phi_end:
@@ -296,10 +354,35 @@ class Trajectory(object):
         self.current_position = self.segment[i].current_position
         self.current_velocity = self.segment[i].current_velocity
         self.current_acceleration = self.segment[i].current_acceleration
-       
+ 
+    def map_phi(self, phi_start = 0, phi_end = 1.0):
+        '''
+        Maps the current trajectory phase interval to the given interval (phi_start, phi_end)
+        and adjusts all keypoint phases, velocities and accelerations accordingly
+        All the segments will be interpolated after that
+        Also the current_phi will be changed to the mapped value
+        '''
+        self.phi_start = self.segment_start[0]
+        n_seg     = len(self.segment)
+        delta_phi = self.phi_end - self.phi_start
+        delta_the = phi_end - phi_start
+        r         = delta_the/delta_phi
+        for i in range(n_seg):
+            x       = (self.segment_start[i] - self.phi_start)/delta_phi # x must be between 0 and 1
+            the     = phi_start + x*delta_the
+            self.segment[i].map_phi(0.0, self.segment[i].phi_end*r)
+            self.segment_start[i] = the
+
+        x       = (self.current_phi - self.phi_start)/delta_phi # x must be between 0 and 1
+        self.current_phi = phi_start + x*delta_the
+        
+        self.phi_start = phi_start    
+        self.phi_end   = phi_end
+      
     def interpolate(self):
         for seg in self.segment:
             seg.interpolate()
+    
 
     def plot(self, axis = 0, n = 100, y_text = "", wtp = 'position', show_points = False):
         if y_text == "":
@@ -446,6 +529,42 @@ class Polynomial_Trajectory(Trajectory):
             seg.interpolated = False
 
         self.interpolate()         
+
+    def consistent_accelerations(self):
+        if not self.interpolated:
+            self.interpolate()
+        lsi = len(self.segment) - 1
+        self.segment[0].point[0].acc = np.zeros(self.dim)
+        for i in range(lsi + 1):
+            lp  = self.segment[i].point[len(self.segment[i].point) - 1]  # last point of segment i
+            ip1 = i + 1
+            if ip1 > lsi:
+                ip1 = 0 
+            for j in range(self.dim):
+                self.segment[i].set_phi(lp.phi)
+                self.segment[ip1].set_phi(0.0)
+                if lp.acc[j] == None:
+                    if self.segment[ip1].point[0].acc[j] == None:
+                        a = 0.5*(self.segment[i].current_acceleration[j] + self.segment[ip1].current_acceleration[j])
+                        lp.acc[j] = a
+                        self.segment[ip1].point[0].acc[j] = a
+                    else:
+                        lp.acc[j] = self.segment[ip1].point[0].acc[j]
+                elif self.segment[ip1].point[0].acc[j] == None:
+                    self.segment[ip1].point[0].acc[j] = lp.acc[j]
+                elif not gen.equal(lp.acc[j], self.segment[ip1].point[0].acc[j]):
+                    a = 0.5*(lp.acc[j] + self.segment[ip1].point[0].acc[j])
+                    lp.acc[j] = a
+                    self.segment[ip1].point[0].acc[j] = a
+                else:
+                    # Already Consistent! Do nothing
+                    assert True
+    
+        for seg in self.segment:
+            seg.interpolated = False
+
+        self.interpolate()         
+
 
 class Orientation_Trajectory_Segment(object):
     def __init__(self):
