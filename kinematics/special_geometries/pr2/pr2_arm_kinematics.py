@@ -14,18 +14,12 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    3.0
-Last Revision:  12 September 2014
+@version:	    4.0
+Last Revision:  19 October 2014
 
-Changes from ver 2.0:
-    the class is now supported by an instance of class Inverse_Kinematics() from package inverse_kinematics.py
-    This class is for numeric(velocity based IK) and contains the Geometric, Analytic and Error Jacobians.
-    The instance is called pr2_arm_ik and becomes a property of the main class PR2_ARM() and is always synced with the configuration.       
-    This property is usded to compute joint velocities for trajectory projection.
-    function project_to_js() now uses velocity-based ik to find an approximation to the joint values, then 
-    these approximations are corrected using IK_config() function that implements an analytic(position-based) IK.
-    The phi(redundant parameter) is extracted from joint approximations.
-    previous function project_to_js() is now changed name to project_to_js_analytic()  
+Changes from ver 3.0:
+
+    all project_to_js reduced to one function accommodating all the options (real-time, simulation) (velocity-based, position-based) (binary, simple)
 '''
 
 import copy, time, math
@@ -1134,63 +1128,8 @@ class PR2_ARM():
         pos_traj.add_point(phi - phi_start, self.wrist_position())
         ori_traj.add_point(phi - phi_start, self.wrist_orientation())
         return (pos_traj, ori_traj)
-    """
-    def project_to_js_vts(self, pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, relative = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using a combination of numeric and analytic inverse kinematics.
-        The phase starts from phi_start increased by time with rate phi_dot.
-        at any time, if a solution is not found, the process stops
-        '''
-        assert self.velocity_based_ik_required, "Error from PR2_ARM.project_to_js(): Velocity-Based mode is not active"
-        tp = self.ik.endeffector.reference_positions[0]
-        tf = self.ik.endeffector.reference_orientations[0]
-        keep_config  = np.copy(self.config.q)
-        if phi_dot   == None:
-            phi_dot  = (pos_traj.phi_end - phi_start)/duration
-        if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
-            ori_traj.current_orientation = self.wrist_orientation()
-        
-        jt           = jtrajlib.Joint_Trajectory(dof = 7)
-        jt.add_point(phi = 0.0, pos = self.config.q, vel = np.zeros(7))
 
-        tp.desired_trajectory    = pos_traj
-        tf.desired_trajectory    = ori_traj
-
-        pos_traj.set_phi(phi_start)
-        ori_traj.set_phi(phi_start)
-        if relative:
-            tp.target_offset = self.wrist_position() - pos_traj.current_position
-            tf.target_offset = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-
-        t0           = time.time()
-        t            = 0.0
-    
-        while (t < duration + 0.00001):
-            t        = time.time() - t0
-            phi      = phi_start + phi_dot*t
-            self.ik.endeffector.update_target(phi)
-            '''
-            self.ik.endeffector.update_pose_error()
-            self.ik.endeffector.update_task_jacobian()
-            self.ik.endeffector.update_error_jacobian(self.ik)
-            '''
-            self.ik.run()
-            if self.ik.endeffector.in_target:
-                print "In target: one point added :-)"
-                if self.set_config(self.ik.configuration.q):
-                    self.ofuncode = 1
-                    self.qm = np.copy(self.config.q)
-                    self.set_target(tp.rd, tf.rd)    
-                    if self.inverse_update():
-                        jt.add_point(phi = phi - phi_start, pos = self.config.q)
-
-        jt.interpolate()
-        self.set_config(keep_config)
-        return jt
-    """
-
-    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 1.0, relative = True):
+    def project_to_js_old(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 1.0, relative = True):
         '''
         projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
         The phase starts from phi_start and added by delta_phi in each step.
@@ -1251,85 +1190,8 @@ class PR2_ARM():
 
         return jt
 
-    def project_to_js_vts(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True, silent = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
-        The phase starts from phi_start and added by delta_phi in each step.
-        at any time, if a solution is not found, the process stops
-        '''
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
 
-        if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
-            ori_traj.current_orientation = self.wrist_orientation()
-
-        if phi_end > pos_traj.phi_end:
-            phi_end = pos_traj.phi_end
-
-        jt          = jtrajlib.Joint_Trajectory(dof = 7)
-        # jt          = trajlib.Polynomial_Trajectory(dimension = 7)
-
-        # jt.capacity = 5
-        qd          = trig.angles_standard_range(self.config.q)
-        # jt.add_point(phi = 0.0, pos = qd, vel = np.zeros(7))
-        jt.add_point(phi = 0.0, pos = self.config.q, vel = np.zeros(7))
-
-        phi   = phi_start
-        pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
-        if relative:
-            p0    = self.wrist_position() - pos_traj.current_position
-            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-        else:
-            p0    = np.zeros(3)
-            R0    = np.eye(3)  
-        
-        phi       = phi + delta_phi
-        stay      = True
-
-        while (phi <= phi_end) and stay:
-            if gen.equal(phi, phi_end):
-                stay = False
-
-            pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
-            p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation)
-            self.set_target(p, R)
-            self.config.qm = np.copy(self.config.q)
-            self.ik.endeffector.reference_positions[0].rd = np.copy(self.xd)
-            self.ik.endeffector.reference_orientations[0].rd = np.copy(self.Rd)
-            err_old = self.ik.endeffector.error_norm
-            q_dot   = self.ik.joint_speed()
-            self.ik.configuration.q += q_dot
-            if self.config.all_joints_in_range(self.ik.configuration.q):
-                self.ik.forward_update()
-                err_new = self.ik.endeffector.error_norm
-                if err_new < err_old:
-                    self.set_config(self.ik.configuration.q)
-                    if self.inverse_update():
-                        if not silent:
-                            print
-                            print "phi = ", phi, phi_end
-                            print self.xd - self.wrist_position()
-                            print self.Rd - self.wrist_orientation()
-                            print self.ik.configuration
-                            print self.config.q
-
-                        jt.add_point(phi = phi - phi_start, pos = self.config.q)
-                        #jt.plot()
-
-            phi = phi + delta_phi
-            if phi > phi_end:
-                phi = phi_end
-                stay = False
-
-        jt.interpolate()
-
-        return jt
-
-    def project_to_js_vts_realtime(self,  pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, max_speed = 1.0, relative = True, silent = True):
+    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, max_speed = 1.0, relative = True, silent = True):
         '''
         projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
         The phase starts from phi_start and added by delta_phi in each step.
@@ -1440,112 +1302,6 @@ class PR2_ARM():
 
         return jt
 
-    def project_to_js_binary(self,  pos_traj, ori_traj, phi_start = 0.0, phi_end = 1.0, delta_phi = 0.1, k = 2.0, relative = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using binary stepwise approach
-        The phase starts from phi_start and added by delta_phi in each step.
-        if a solution is not found, the phase is returned to the previous state (phi - d_phi) and 
-        d_phi becomes half and is added to phi again
-        if a solution is found, d_phi is multiplied by 2.0 provided it does not exceed given delta_phi
-        The process continues until phi reaches phi_end and the corresponding jointspace trajectory is returned.
-        '''
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
-
-        q_list     = [self.config.q]
-        phi_list   = [0.0]
-
-        d_phi = delta_phi
-        phi   = phi_start
-        pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
-        if relative:
-            p0    = self.wrist_position() - pos_traj.current_position
-            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-        else:
-            p0    = np.zeros(3)
-            R0    = np.eye(3)  
-        
-        phi = phi + d_phi
-        while (phi < phi_end) and (d_phi > 0.0001):
-            pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
-            p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation)
-            self.set_target(p, R)
-            if self.inverse_update():
-                q_list.append(self.config.q) 
-                phi_list.append(phi - phi_start)
-                d_phi = d_phi*k
-                if d_phi > delta_phi:
-                    d_phi = delta_phi
-                phi = phi + d_phi
-            else:
-                phi   = phi - d_phi
-                d_phi = d_phi/k            
-                phi   = phi + d_phi
-        if d_phi <= 0.0001:
-            print "Warning from PR2_ARM.project_to_js(): The trajectory could not be completed!"
-        
-        # Create a joint trajectory by connecting the key points in the jointspace:
-        n = len(q_list)
-        q_dot_list      = [None for i in range(n)]
-        q_dot_list[0]   = np.zeros(7)
-        q_dot_list[n-1] = np.zeros(7)
-
-        jt          = trajlib.Polynomial_Trajectory(dimension = 7)
-        jt.capacity = 5
-    
-        for i in range(n):
-            jt.add_point(phi = phi_list[i], pos = q_list[i], vel = q_dot_list[i])
-
-        jt.interpolate()
-
-        return jt
-
-    
-    def project_to_js_keypoints(self, ts_traj, num_key_points = 10, smooth = True, relative = True):
-        '''
-        ts_traj is a cartesian trajectory of the endeffector in the operational taskspace.
-        this function projects the given trajectory into the jointspace of PR2 arm and returns a 7 dim trajectory 
-        in the jointspace
-        while the objective function is expected to be minimized in each key point.
-        If there is no solution for any of the keypoints in the path(trajectory), then that point will be skipped.
-        '''
-        n          = num_key_points
-        assert n > 1   # n must be at least 2 or greater
-
-        jt = trajlib.Polynomial_Trajectory(dimension = 7)
-        if relative:
-            p0 = self.wrist_position()
-        else:
-            p0 = np.zeros(3)
-
-        d_phi      = ts_traj.phi_end/(n - 1)
-        for i in range(n):
-            phi = i*d_phi
-            ts_traj.set_phi(phi)
-            pos = ts_traj.current_position
-            self.set_target(p0 + pos, self.Rd)
-            if self.inverse_update():
-                jt.add_point(phi, self.config.q)
-            else:
-                print "Solution not found for key point number ", i, ". Point skipped!"
-
-        if n == 0:
-            print "All points skipped! No solution found for any of the key points"
-            return False
-    
-        lsi = len(jt.segment) - 1
-        lpi = len(jt.segment[lsi].point) - 1
-        jt.segment[0].point[0].vel     = np.zeros(7)
-        jt.segment[lsi].point[lpi].vel = np.zeros(7)
-
-        jt.interpolate()
-        if smooth:
-            jt.consistent_velocities()
-        
-        return jt
 
     def permission_set_position(self):
         """
