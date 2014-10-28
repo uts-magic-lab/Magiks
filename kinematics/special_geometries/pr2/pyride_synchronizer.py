@@ -16,11 +16,11 @@
                 Email(5): nima_ramezani@yahoo.com
                 Email(6): ramezanitn@alum.sharif.edu
 
-@version:	    2.0
+@version:	    3.0
 Start date:     9 April 2014
-Last Revision:  9 April 2014
+Last Revision:  29 October 2014
 
-Changes from ver 1.0:
+Changes from ver 2.0:
 '''
 
 import pr2_kinematics as pr2lib
@@ -178,13 +178,22 @@ class PyRide_PR2(pr2lib.PR2):
         self.set_target(self.endeffector_position(), self.endeffector_orientation())
         self.rarm.set_target(self.rarm.wrist_position(), self.rarm.wrist_orientation())
         self.larm.set_target(self.larm.wrist_position(), self.larm.wrist_orientation())
-    
+
+
+    def height_synced(self):
+        '''
+        Returns True if robot and object body heights are identical
+        '''    
+        p  = PyPR2.getRelativeTF('base_footprint', 'torso_lift_link')['position']
+        return gen.equal(p[2] , self.q[7], epsilon = 0.01)
+
     def body_synced(self):
         '''
         Returns True if robot and object body positions are identical
         '''    
         bp = pint.body_position()
         ba = pint.body_angle(in_degrees = False)
+
         fx = gen.equal(bp[0], self.q[8], epsilon = 0.1)
         fy = gen.equal(bp[1], self.q[9], epsilon = 0.1)
         ft = gen.equal(ba   , self.q[10], epsilon = 0.1)
@@ -264,7 +273,7 @@ class PyRide_PR2(pr2lib.PR2):
         '''
         '''
         if not self.body_synced():
-            pint.set_config_smooth(self.larm.config.q, ttr = ttr)
+            self.set_config_smooth(self.q, ttr = ttr)
 
         if not self.rarm_synced():
             pint.take_rarm_to(self.rarm.config.q, time_to_reach = ttr)
@@ -377,7 +386,7 @@ class PyRide_PR2(pr2lib.PR2):
             self.sync_object()    
             return False
 
-    def arm_back(self, dx = 0.1, speed = 0.1):
+    def arm_back(self, dx = 0.1, speed = 0.1, relative = False):
         '''
         pulls the arm back as much as dx (m) maintaining the orientation
         '''    
@@ -385,11 +394,17 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[0] = pos[0] - dx
+        if relative:
+            n = ori[:,2]
+        else:
+            n = rot.i_uv
+
+        pos = pos - dx*n
+
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_forward(self, dx = 0.1, speed = 0.1):
+    def arm_forward(self, dx = 0.1, speed = 0.1, relative = False):
         '''
         pulls the arm back as much as dx (m) maintaining the orientation
         '''    
@@ -397,11 +412,15 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[0] = pos[0] + dx
+        if relative:
+            n = ori[:,2]
+        else:
+            n = rot.i_uv
+        pos = pos + dx*n
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_down(self, dx = 0.1, speed = 0.1):
+    def arm_down(self, dx = 0.1, speed = 0.1, relative = False):
         '''
         moves the arm downward as much as dx (m) maintaining the orientation
         '''    
@@ -409,11 +428,15 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[2] = pos[2] - dx
+        if relative:
+            h = ori[:,1]
+        else:
+            h = rot.k_uv
+        pos = pos - dx*h
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_up(self, dx = 0.1, speed = 0.1):
+    def arm_up(self, dx = 0.1, speed = 0.1, relative = False):
         '''
         moves the arm upward as much as dx (m) maintaining the orientation
         '''    
@@ -421,11 +444,15 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[2] = pos[2] + dx
+        if relative:
+            h = ori[:,1]
+        else:
+            h = rot.k_uv
+        pos = pos + dx*h
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_right(self, dx = 0.1, speed = 0.1):
+    def arm_right(self, dx = 0.1, speed = 0.1, relative = False):
         '''
         moves the arm to the right as much as dx (m) maintaining the orientation
         '''    
@@ -433,11 +460,15 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[1] = pos[1] - dx
+        if relative:
+            w = ori[:,0]
+        else:
+            w = rot.j_uv
+        pos = pos - dx*w
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_left(self, dx = 0.1, speed = 0.1):
+    def arm_left(self, dx = 0.1, speed = 0.1, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -445,11 +476,15 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[1] = pos[1] + dx
+        if relative:
+            w = ori[:,0]
+        else:
+            w = rot.j_uv
+        pos = pos + dx*w
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_left_down(self, dx = 0.1, dy = 0.1, speed = 0.1):
+    def arm_left_down(self, dx = 0.1, dy = 0.1, speed = 0.1, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -457,12 +492,17 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[1] = pos[1] + dx
-        pos[2] = pos[2] - dy
+        if relative:
+            w = ori[:,0]
+            h = ori[:,1]
+        else:
+            w = rot.j_uv
+            h = rot.k_uv
+        pos   = pos + dx*w - dy*h
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_left_up(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True):
+    def arm_left_up(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -470,12 +510,17 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[1] = pos[1] + dx
-        pos[2] = pos[2] + dy
+        if relative:
+            w = ori[:,0]
+            h = ori[:,1]
+        else:
+            w = rot.j_uv
+            h = rot.k_uv
+        pos   = pos + dx*w + dy*h
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
-    def arm_right_up(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True):
+    def arm_right_up(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -483,12 +528,17 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[1] = pos[1] - dx
-        pos[2] = pos[2] + dy
+        if relative:
+            w = ori[:,0]
+            h = ori[:,1]
+        else:
+            w = rot.j_uv
+            h = rot.k_uv
+        pos = pos - dx*w + dy*h
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
     
-    def arm_right_down(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True):
+    def arm_right_down(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -496,8 +546,13 @@ class PyRide_PR2(pr2lib.PR2):
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
-        pos[1] = pos[1] - dx
-        pos[2] = pos[2] - dy
+        if relative:
+            w = ori[:,0]
+            h = ori[:,1]
+        else:
+            w = rot.j_uv
+            h = rot.k_uv
+        pos = pos - dx*w - dy*h
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
