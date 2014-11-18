@@ -16,11 +16,19 @@
                 Email(5): nima_ramezani@yahoo.com
                 Email(6): ramezanitn@alum.sharif.edu
 
-@version:	    3.0
+@version:	    4.0
 Start date:     9 April 2014
-Last Revision:  29 October 2014
+Last Revision:  19 November 2014
 
-Changes from ver 2.0:
+Changes from ver 3.0:
+    function arm_trajectory() modified
+        In ver 3, the joint trajectory was a list dictionaries containing joint positions and velocities
+        in the new version, the joint trajectory is generated via function project_to_js() of each arm
+        then function run_config_trajectory() in module pyride_interpreter is used to run the action
+        also argument delta_phi is replaced by resolution where delta_phi = pos_traj.phi_end/resolution
+
+        all speed arguments are replaced by property self.arm_speed that determines the speed of arm motion
+        all max_speed arguments are replaced by property self.arm_max_speed that determines the maximum speed of arm joints
 '''
 
 import pr2_kinematics as pr2lib
@@ -35,6 +43,7 @@ import packages.nima.mathematics.vectors_and_matrices as vecmat
 import packages.nima.robotics.kinematics.task_space.special_trajectories as strajlib
 import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
 
+import packages.nima.robotics.computer_vision.laser_scan_support as lss
 
 r_arm_joint_names =['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint']
 l_arm_joint_names =['l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint', 'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint']
@@ -178,7 +187,11 @@ class PyRide_PR2(pr2lib.PR2):
         self.set_target(self.endeffector_position(), self.endeffector_orientation())
         self.rarm.set_target(self.rarm.wrist_position(), self.rarm.wrist_orientation())
         self.larm.set_target(self.larm.wrist_position(), self.larm.wrist_orientation())
-
+        
+        self.arm_speed     = 0.02
+        self.arm_max_speed = 1.0
+        self.base_laser_scan_range = range(400, 640)
+        self.tilt_laser_scan_range = range(80, 300)
 
     def height_synced(self):
         '''
@@ -196,7 +209,7 @@ class PyRide_PR2(pr2lib.PR2):
 
         fx = gen.equal(bp[0], self.q[8], epsilon = 0.1)
         fy = gen.equal(bp[1], self.q[9], epsilon = 0.1)
-        ft = gen.equal(ba   , self.q[10], epsilon = 0.1)
+        ft = gen.equal(ba   , self.q[10], epsilon = 0.02)
 
         return(fx and fy and ft)
 
@@ -205,6 +218,9 @@ class PyRide_PR2(pr2lib.PR2):
 
     def larm_synced(self):
         return vecmat.equal(trig.angles_standard_range(pint.larm_joints(in_degrees = False)), trig.angles_standard_range(self.larm.config.q), epsilon = 0.01)
+
+    def say(self, s):
+        PyPR2.say(s)
 
     def synced(self, target_list = ['body', 'rarm', 'larm']):
         sn = True
@@ -386,11 +402,11 @@ class PyRide_PR2(pr2lib.PR2):
             self.sync_object()    
             return False
 
-    def arm_back(self, dx = 0.1, speed = 0.1, relative = False):
+    def arm_back(self, dx = 0.1, relative = False):
         '''
         pulls the arm back as much as dx (m) maintaining the orientation
         '''    
-        ttr = dx/speed
+        ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -404,11 +420,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_forward(self, dx = 0.1, speed = 0.1, relative = False):
+    def arm_forward(self, dx = 0.1, relative = False):
         '''
         pulls the arm back as much as dx (m) maintaining the orientation
         '''    
-        ttr = dx/speed
+        ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -420,11 +436,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_down(self, dx = 0.1, speed = 0.1, relative = False):
+    def arm_down(self, dx = 0.1, relative = False):
         '''
         moves the arm downward as much as dx (m) maintaining the orientation
         '''    
-        ttr = dx/speed
+        ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -436,11 +452,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_up(self, dx = 0.1, speed = 0.1, relative = False):
+    def arm_up(self, dx = 0.1, relative = False):
         '''
         moves the arm upward as much as dx (m) maintaining the orientation
         '''    
-        ttr = dx/speed
+        ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -452,11 +468,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_right(self, dx = 0.1, speed = 0.1, relative = False):
+    def arm_right(self, dx = 0.1, relative = False):
         '''
         moves the arm to the right as much as dx (m) maintaining the orientation
         '''    
-        ttr = dx/speed
+        ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -468,11 +484,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_left(self, dx = 0.1, speed = 0.1, relative = False):
+    def arm_left(self, dx = 0.1, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
-        ttr = dx/speed
+        ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -484,11 +500,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_left_down(self, dx = 0.1, dy = 0.1, speed = 0.1, relative = False):
+    def arm_left_down(self, dx = 0.1, dy = 0.1, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
-        ttr = math.sqrt(dx*dx + dy*dy)/speed
+        ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -502,11 +518,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
-    def arm_left_up(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True, relative = False):
+    def arm_left_up(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
-        ttr = math.sqrt(dx*dx + dy*dy)/speed
+        ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -520,11 +536,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
-    def arm_right_up(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True, relative = False):
+    def arm_right_up(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
-        ttr = math.sqrt(dx*dx + dy*dy)/speed
+        ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -538,11 +554,11 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
     
-    def arm_right_down(self, dx = 0.1, dy = 0.1, speed = 0.1, wait = True, relative = False):
+    def arm_right_down(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
-        ttr = math.sqrt(dx*dx + dy*dy)/speed
+        ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
         ori = arm.wrist_orientation()    
@@ -556,7 +572,7 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
-    def arm_arc(self, center = numpy.array([0.0, -0.05, 0.0]), angle = math.pi, normal = numpy.array([1.0, 0.0, 0.0]), speed = 0.05, N = 100, wait = True):
+    def arm_arc(self, center = numpy.array([0.0, -0.05, 0.0]), angle = math.pi, normal = numpy.array([1.0, 0.0, 0.0]), N = 100, wait = True):
         '''
         draws an arc around the given center starting from the current point with the given angle
         the arc is drawn in a plane specified by the given normal vector
@@ -569,7 +585,7 @@ class PyRide_PR2(pr2lib.PR2):
         #jt = trajlib.Polynomial_Trajectory(dimension = 7)
         d_theta = angle/N
         r       = numpy.linalg.norm(center)
-        ttr     = r*d_theta/speed
+        ttr     = r*d_theta/self.arm_speed
 
         arm  = self.reference_arm()
         p0   = arm.wrist_position()    
@@ -601,7 +617,7 @@ class PyRide_PR2(pr2lib.PR2):
             pos  = p0 + center - numpy.dot(R, center)
             arm.set_target(pos, ori)
             arm.config.qm = numpy.copy(arm.config.q)
-            if arm.move_towards_target(max_speed = 1.0, ttr = d_theta):
+            if arm.move_towards_target(max_speed = self.arm_max_speed, ttr = d_theta):
                 if i == N - 1:
                     vel = numpy.zeros(7)
                 else:
@@ -658,98 +674,97 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
-    def arm_trajectory(self, pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True, speed = 0.1, wait = True):
+    def activate_base_laser(self):
+        pint.bl_cnt = 0
+        PyPR2.registerBaseScanCallback( pint.on_base_laser )
+
+    def activate_tilt_laser(self):
+        pint.tl_cnt = 0
+        PyPR2.registerTiltScanCallback( pint.on_tilt_laser )
+
+    def front_line_tilt(self):
+        '''
+        Returns the front line of tilt scan
+        '''
+        if not pint.tl_active:
+            self.activate_tilt_laser()
+
+        (a, b, r) = lss.front_line(dist = pint.tl_dist, position_range = self.tilt_laser_scan_range, angle_min = -0.829031407833, angle_step = 0.00436332309619)
+
+        return (a, b, numpy.linalg.norm(r) )
+
+    def front_line_base(self):
+        '''
+        Returns the front line of tilt scan
+        '''
+        if not pint.bl_active:
+            self.activate_base_laser()
+
+        (a, b, r) = lss.front_line(dist = pint.bl_dist, position_range = self.base_laser_scan_range, angle_min = -2.26892805099, angle_step = 0.00436332309619)
+
+        return (a, b, numpy.linalg.norm(r) )
+
+    '''
+    def front_plane(self):
+
+        # Start:
+        dist = copy.copy(pint.dist)
+
+        (beta, intercept, residuals) = front_line(dist)
+        stay = True
+        while stay:
+            outliers = rlib.which(residuals , '<' , 0.1 )
+            dist     = rlib.pick(dist, - outliers)
+            (beta, intercept, residuals) = front_line(dist)
+    '''
+
+    def deactivate_base_laser(self):
+        PyPR2.registerBaseScanCallback( None )
+        pint.bl_active = False
+        
+    def deactivate_tilt_laser(self):
+        PyPR2.registerBaseScanCallback( None )
+        pint.tl_active = False
+
+    def arm_trajectory(self, pos_traj, ori_traj = None, resolution = 20, relative = True, wait = True):
         '''
         First, projects the given taskspace pose trajectory into the jointspace 
         using both velocity-based and position-based inverse kinematics of the arm and
-        creates is a list of dictionaries containing the configurations and their velocities.
-        Then the config list is given to the PyRide to run on the robot.
-        at any time, if a solution is not found, the process stops
-        Argument "speed" specifies the endeffector speed in m/sec
+        creates a joint trajectory.
+        Then the joint trajectory is given to function run_config_trajectory of pyride_interpreter to run on the robot.
         '''
         L = sum(pos_traj.points_dist())  # You will need to accommodate for orientation as well
-        duration = L/speed
 
         self.sync_object()
         arm     = self.reference_arm()
-
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
 
         if ori_traj == None:
             ori_traj = trajlib.Orientation_Trajectory()
             ori_traj.current_orientation = arm.wrist_orientation()
 
-        if phi_end > pos_traj.phi_end:
-            phi_end = pos_traj.phi_end
+        assert resolution > 4, "Error from PyRide_PR2.arm_trajectory(): Invalid Resolution"
 
-        phi_dot = phi_end/duration
+        arm = self.reference_arm()
+        jt  = arm.project_to_js(pos_traj, ori_traj, phi_start = 0.0, delta_phi = pos_traj.phi_end/resolution, max_speed = self.arm_max_speed, relative = relative)
 
-        jt = []
-
-        if self.larm_reference:
-            g  = pint.gen_larm_joint_posvel_dict(arm.config.q, numpy.zeros(7), 0.0)
-        else:
-            g  = pint.gen_rarm_joint_posvel_dict(arm.config.q, numpy.zeros(7), 0.0)
-
-        jt.append(g)
-
-        phi   = phi_start
-        pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
-        if relative:
-            p0    = arm.wrist_position() - pos_traj.current_position
-            R0    = numpy.dot(arm.wrist_orientation(), ori_traj.current_orientation.T)  
-        else:
-            p0    = numpy.zeros(3)
-            R0    = numpy.eye(3)  
+        jt.consistent_velocities()
+        '''
+        jt.plot()
+        jt.plot(1)
+        jt.plot(4)
         
-        phi       = phi + delta_phi
-        stay      = True
+        (pt, ot) = arm.project_to_ts(jt)
+        pt.plot3d()
+        '''    
 
-        while stay:
-            if phi > phi_end:
-                phi = phi_end
-            if gen.equal(phi, phi_end):
-                stay = False
-
-            pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
-            p = p0 + pos_traj.current_position
-            R = numpy.dot(R0, ori_traj.current_orientation)
-            arm.set_target(p, R)
-            arm.config.qm = numpy.copy(arm.config.q)
-            q0 = numpy.copy(arm.config.q)
-            if arm.move_towards_target(max_speed = 1.0, ttr = delta_phi/phi_dot):
-                arm.reduce_error(max_speed = 1.0, ttr = delta_phi/phi_dot)
-                if stay:
-                    q_dot = (arm.config.q - q0)*phi_dot/delta_phi
-                else:   
-                    q_dot = numpy.zeros(7)    
-
-                if self.larm_reference:
-                    g  = pint.gen_larm_joint_posvel_dict(arm.config.q , q_dot, delta_phi/phi_dot)
-                else:
-                    g  = pint.gen_rarm_joint_posvel_dict(arm.config.q , q_dot, delta_phi/phi_dot)
-                jt.append(g)
-            else:
-                print "No Solution Found: Process Stopped!"
-                stay = False
-
-            phi = phi + delta_phi
+        pint.run_config_trajectory(jt, duration = L/self.arm_speed, dt = None, phi_dot = None, is_left_arm = self.larm_reference)
 
         if self.larm_reference:
-            pint.larm_failed  = False
-            pint.larm_reached = False
             moving_limbs = ['larm']
         else:
-            pint.rarm_failed  = False
-            pint.rarm_reached = False
             moving_limbs = ['rarm']
 
-        PyPR2.moveArmWithJointTrajectoryAndSpeed(jt)
-        arm.config.qm = 0.5*(arm.config.ql+arm.config.qh)
         if wait:
-            pint.wait_until_finished(target_list = moving_limbs, max_time = 10*duration)
+            pint.wait_until_finished(target_list = moving_limbs, max_time = 10*L/self.arm_speed)
         
         self.sync_object()
