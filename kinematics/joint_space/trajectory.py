@@ -24,6 +24,7 @@ Last Revision:  10 September 2014
 
 import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
 from packages.nima.mathematics import general as gen
+import math
 
 
 class Joint_Trajectory(trajlib.Polynomial_Trajectory):
