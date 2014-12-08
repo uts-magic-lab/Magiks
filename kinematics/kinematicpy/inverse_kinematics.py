@@ -15,8 +15,11 @@
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
 
-@version:	    2.0
-Last Revision:  12 September 2014
+@version:	    3.0
+Last Revision:  01 December 2014
+
+Changes from Version 2.0:
+    1 - Function optimum_stepsize() added 
 '''
 # BODY
 
@@ -33,29 +36,35 @@ from packages.nima.mathematics import discrete
 class Inverse_Kinematics_Settings():
     '''
     '''    
+    err_head       = "Error from inverse_kinematics.Inverse_Kinematics_Settings." 
     # Class Sets:
     all_run_modes  = [ 'normal_run', 'binary_run' ]
-    all_algorithms = [ 'Jacobian Inverse', 'Jacobian Transpose', 'Jacobian Pseudo Inverse', 'DLS Method' ]
+    all_algorithms = [ 'JI', 'JT', 'JPI', 'DLS(CDF)', 'DLS(VDF)' ]
 
     # Class Dictionaries:
-    alg_dic = {'Jacobian Inverse':'JI','Jacobian Transpose':'JT', 'Jacobian Pseudo Inverse':'JPI', 'DLS Method':'DLS'}
+    key_dic = {
+    'JI'            : 'Jacobian Inverse',
+    'JT'            : 'Jacobian Transpose',
+    'JPI'           : 'Jacobian Pseudo Inverse',
+    'DLS(CDF)'      : 'Damped Least Squares Method(Constant Damping Factor)',
+    'DLS(VDF)'      : 'Damped Least Squares Method(Variable Damping Factor)'
+    }
 
+    def __init__(self, algorithm = 'JPI', run_mode = 'normal_run', num_steps = 100, step_size = 1.0): 
 
-    def __init__(self, algorithm = 'Jacobian Pseudo Inverse',run_mode = 'normal_run', num_steps = 100, step_size = 1.0, representation_of_orientation_for_binary_run = 'vectorial_identity'): 
+        func_name = "__init__()"
 
-        assert run_mode in self.__class__.all_run_modes
-        assert algorithm in self.__class__.all_algorithms
+        assert run_mode in self.__class__.all_run_modes, self.__class__.err_head + func_name + ": The given run_mode is not known!"
+        assert algorithm in self.__class__.all_algorithms, self.__class__.err_head + func_name + ": The given algorithm is not known!"
         
         self.algorithm            = algorithm
         self.ef_settings          = eflib.Endeffector_Settings(default_orientation_error_function = 'Axis Inner Product')  
-        self.run_mode             = run_mode # 'normal_run' by default
-        
-        self.number_of_steps      = num_steps
-        self.step_size            = step_size
-        self.method               = "Jacobian Pseudo-Inverse"
-        # self.method               = "Jacobian Transpose"
 
-        self.representation_of_orientation_for_binary_run = representation_of_orientation_for_binary_run
+        self.run_mode             = run_mode
+        self.number_of_steps      = num_steps
+        self.damping_factor       = 0.1
+
+        self.representation_of_orientation_for_binary_run = 'vectorial_identity'
         self.include_current_config = True
         
     def __str__( self ) : 
@@ -68,6 +77,7 @@ class Inverse_Kinematics_Settings():
         else:    
             s += '\n'
             
+        s += 'Algorithm       : ' + key_dic[self.algorithm] + '\n'
         s += 'Number of Steps : ' + str(self.number_of_steps) + '\n'
         
     def algorithm_key(self):
@@ -87,6 +97,7 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
     # step_forward (SINGLE STEP)            -- one update_step() 
     
     '''
+    err_head       = "Error from inverse_kinematics.Inverse_Kinematics." 
     
     def __init__(self, manip_geometry, manip_config, settings ):
         ### def __init__( self, geometry ) : # njoint):
@@ -156,8 +167,7 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         
         return vecmat.collapse(q_dot, 0.1)
 
-
-    def update_rule_nul_space(self, step_size):
+    def update_rule_null_space(self, step_size):
         '''
         In this update rule the null space of jacobian is used to keep the joints in their feasible range. Should be used with no Mapping
         '''
@@ -165,9 +175,9 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         A    = numpy.zeros((self.configuration.DOF))
         
         for i in range(0,self.configuration.DOF):
-            if self.configuration.settings.joint_handling[i] == 'Trigonometric Mapping':
+            if self.configuration.settings.joint_handling[i] == 'CM':
                 A[i] = - 0.1*self.configuration.qstar[i]/(self.configuration.DOF*((2*math.pi)**2))
-            elif self.configuration.settings.joint_handling[i] == 'No Mapping':
+            elif self.configuration.settings.joint_handling[i] == 'NM':
                 mean = 0.5*(self.configuration.qh[i] + self.configuration.ql[i])
                 A[i] = - 0.1*(self.configuration.qstar[i] - mean)/(self.configuration.DOF*((self.configuration.qh[i] - self.configuration.ql[i])**2))
             else:
@@ -181,7 +191,6 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         In_minus_J_dag_J = numpy.eye(self.configuration.DOF) - J_dag_J
         
         delta_qs        = - numpy.dot(J_dag, err) + numpy.dot(In_minus_J_dag_J, A)
-        #delta_qs        = - numpy.dot(J_dag, err)
         
         self.configuration.grow_qstar(delta_qs)
         self.forward_update()
@@ -196,28 +205,44 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         Returns the joint direction (joint update correction) expected to lead the endeffector closer to the target.
         This direction should be multiplied by a proper stepsize to ensure that the pose error norm is reduced.
         '''        
+        func_name = "ik_direction()"
         # Pose Error is multiplied by step_size
         err = self.endeffector.pose_error
         # Error jacobian is placed in Je
         Je  = self.endeffector.EJ
         # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
         #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
-        if self.settings.method == "Jacobian Pseudo-Inverse":
+        if self.settings.algorithm == "JPI":
             Je_dagger = numpy.linalg.pinv(Je)
-        elif self.settings.method == "Jacobian Transpose":
-            Je_dagger = Je.T
+        elif self.settings.algorithm == "JT":
+            Je_dagger = - Je.T
+        elif self.settings.algorithm in ["DLS(CDF)", "DLS(VDF)"]:
+            Je_dagger = vecmat.right_dls_inverse(Je, self.settings.damping_factor)
+        else:
+            assert False, self.__class__.err_head + func_name + ": " + self.settings.algoritm + " is an unknown value for algorithm"
         # Joint Correction is calculated
         delta_qs = - numpy.dot(Je_dagger, err)
         return delta_qs       
 
-    def update_step(self, step_size):
+    def optimum_stepsize(self, direction):
+        func_name = ".optimum_stepsize(): "
+        if self.settings.algorithm == 'JPI':
+            return 1.0
+        elif self.settings.algorithm in ['JT', 'DLS(CDF)', 'DLS(VDF)']:
+            J_delta_q = numpy.dot(self.endeffector.EJ, direction)        
+            return - numpy.sum(J_delta_q*J_delta_q)/numpy.sum(J_delta_q*self.endeffector.pose_error)
+        else:
+            assert False, "Error from: " + __name__ + func_name + self.settings.algorithm + " is an unknown value for algorithm"
+
+    def update_step(self):
         '''
         Implements an update rule for the joint configuration. This function performs one iteration of the algorithm.
         '''
         start_kinematic_inversion = time.time()
 
-
-        delta_qs = step_size*self.ik_direction()
+        jdir     = self.ik_direction()
+        k        = self.optimum_stepsize(jdir)
+        delta_qs = k*jdir
 
         self.configuration.grow_qstar(delta_qs)
         
@@ -238,17 +263,68 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         self.transfer_matrices = copy.deepcopy(ik.transfer_matrices)    
         self.analytic_jacobian = copy.deepcopy(ik.analytic_jacobian)    
         self.endeffector       = copy.deepcopy(ik.endeffector)    
+        self.log_info          = copy.copy(ik.log_info)
+
+    def run_dls_vdf(self):
+        '''
+        runs the IK iterations following Damped Least Squares method with Variable Damping Factor
+        The damping factor starts from the initial value. 
+        At each time step, if the error norm is reduced, the joint correction is applied and the damping factor is reduced to half and 
+        if it is increased, the algorithm returns to previous configuration and the DF is multiplied by 2.
+        This will continue until the error norm is reduced or maximum number of iterations achieved.
+        '''
+        counter = 0
+
+        not_arrived = not self.endeffector.in_target
+        have_time   = (counter < self.settings.number_of_steps)
+        err_reduced = False
+        frontier    = copy.deepcopy(self)
+
+        while not_arrived and (have_time or err_reduced): 
+
+            try:
+                frontier.update_step()
+                counter     += 1
     
+            except numpy.linalg.linalg.LinAlgError:
+                    
+                print "******************************************************* Singular Matrix ***********************************************************";
+                break
+    
+            err_reduced = (frontier.endeffector.error_norm < self.endeffector.error_norm)
+
+            print
+            print "Current  Error : ", self.endeffector.error_norm
+            print "Frontier Error : ", frontier.endeffector.error_norm
+
+    
+            if err_reduced:
+                # print "Error Reduced by DF = ", frontier.settings.damping_factor
+                self.copy_from(frontier)
+                frontier.settings.damping_factor = frontier.settings.damping_factor/2
+            else:
+                # print "Error NOT Reduced by DF = ", frontier.settings.damping_factor
+                df       = frontier.settings.damping_factor*2
+                keep_log = copy.copy(frontier.log_info)
+                frontier = copy.deepcopy(self)
+                frontier.settings.damping_factor = df
+                frontier.log_info = copy.copy(keep_log)
+
+            not_arrived = not self.endeffector.in_target
+            have_time   = (counter < self.settings.number_of_steps)
+        
     def run(self):
         '''
-        SINGLE STEP 
-        
-        runs the inverse kinematic algorithm from the given starting point. 
+        Runs the inverse kinematic algorithm from the given starting point. 
         
         The stop criteria is the occurance of one of the following:
-            1- The counter exceeds property "number_of_steps" of the class and the norm of error is still more than the previous iteration
+            1- The counter exceeds property "number_of_steps" of the class and the norm of error is more than its value in the previous iteration
             2- The solution is found according to the defined precision
-        the running time and number of iteration is returned in the "log_info" property
+        when the stop criteria is met, the configuration corresponding to the minimum pose error norm is returned as the solution
+
+        The running time and number of iteration is returned in the "log_info" property.
+        This method should only be used for "Pose Projection" or "PP" application scenario.
+        
         '''
 
         run_time = 0.0
@@ -259,78 +335,42 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         have_time = (counter < self.settings.number_of_steps)
         err_reduced = False
 
-        while not_yet and (have_time or err_reduced): 
+        # while not_yet and (have_time or err_reduced): 
+        while not_yet and have_time: 
 
             try:
-                self.update_step(step_size = self.settings.step_size)
+                self.update_step()
                 #self.update_rule_new(step_size = 1.0)
                 counter     += 1
     
             except numpy.linalg.linalg.LinAlgError:
                     
-                print "********************************************************Singular Matrix ***********************************************************";
+                print "******************************************************* Singular Matrix ***********************************************************";
                 break
     
             not_yet = not self.endeffector.in_target
             have_time = (counter < self.settings.number_of_steps)
             err_reduced = (self.endeffector.error_norm < min_config.endeffector.error_norm)
-            if not err_reduced:
-                print "Current Error     : ", self.endeffector.error_norm
-                print "Min Error Achieved: ", min_config.endeffector.error_norm
-    
+            '''
+            print
+            print "Current Error     : ", self.endeffector.error_norm
+            print "Min Error Achieved: ", min_config.endeffector.error_norm
+            print "Position Error    : ", self.endeffector.reference_positions[0].error.value
+            print "Position in target: ", self.endeffector.reference_positions[0].error.in_target
+            print "Rotation Error    : ", self.endeffector.reference_orientations[0].error.value
+            print "Rotation in target: ", self.endeffector.reference_orientations[0].error.in_target
+            print "Rotation pr_base  : ", self.endeffector.reference_orientations[0].error.precision_base
+            '''
+
             if err_reduced:
                 min_config  = copy.deepcopy(self)
     
         if not_yet:
+            log = copy.copy(self.log_info)
             self.copy_from(min_config)
+            self.log_info = copy.copy(log)
+            
 
-    def run_new(self):
-        '''
-        SINGLE STEP 
-        
-        runs the inverse kinematic algorithm from the given starting point. 
-        
-        The stop criteria is the occurance of one of the following:
-            1- The counter exceeds property "number_of_steps" of the class and the norm of error is still more than the previous iteration
-            2- The solution is found according to the defined precision
-        the running time and number of iteration is returned in the "log_info" property
-        '''
-
-        run_time = 0.0
-        min_config = copy.deepcopy(self)
-        counter = 0
-
-        not_yet = not self.endeffector.in_target
-        have_time = (counter < self.settings.number_of_steps)
-        err_reduced = False
-        not_in_range = True
-
-        while (not_yet or not_in_range) and (have_time or err_reduced): 
-
-            try:
-                #self.update_step(step_size = 1.0)
-                self.update_rule_nul_space(step_size = 1.0)
-                counter     += 1
-    
-            except numpy.linalg.linalg.LinAlgError:
-                    
-                print "********************************************************Singular Matrix ***********************************************************";
-                break
-    
-            not_yet      = not self.endeffector.in_target
-            have_time    = (counter < self.settings.number_of_steps)
-            err_reduced  = (self.endeffector.error_norm < min_config.endeffector.error_norm)
-            not_in_range =  not self.configuration.joints_in_range()
-    
-            if err_reduced:
-                min_config  = copy.deepcopy(self)
- 
-        print 'I came out and in range: ', not not_in_range
-        
-        #assert False
-        if not_yet:
-            self.copy_from(min_config)
-    
     def run_binary(self, verbose):
         '''
         SINGLE STEP 
@@ -417,15 +457,19 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
                 num_iters += 1 
         
                 prev_norm = self.endeffector.error_norm
+
+                if self.settings.algorithm in ["JT","JPI","DLS(CDF)"]:
+                    self.run()
+                elif self.settings.algorithm == "DLS(VDF)":
+                    self.run_dls_vdf()
+                else:
+                    assert False, "Error from: " + __name__ + func_name + ": " + self.settings.algorithm + " is not a valid value for algorithm" 
     
-                self.run()
-                
                 if not self.endeffector.in_target:
                     assert not (prev_norm < self.endeffector.error_norm)
     
                 #run_time  += time_run  
                 #num_iters += num_iters_run
-                counter   += 1
     
                 in_target = self.endeffector.in_target
                 err_reduced = (self.endeffector.error_norm < prev_norm)
@@ -439,6 +483,14 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
                 
                 s = 0.5*s
     
+        print "oomadam birron: Chera?"    
+        print
+        print "err_changed: ", err_changed
+        print "end_of_path: ", end_of_path
+        print "in_target  : ", in_target
+        print "counter    : ", counter
+        print "s          : ", s
+
         # return the initial target pose(s)
         for i in range(0,len(self.endeffector.reference_positions)):
             self.endeffector.reference_positions[i].rd = numpy.copy(end_position[i])
@@ -447,7 +499,6 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
             self.endeffector.reference_orientations[i].rd = numpy.copy(end_orientation_matrix[i])
     
         self.forward_update()
-
 
     def inverse_update(self):
         '''
@@ -465,10 +516,13 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
                 
             if self.settings.run_mode == 'binary_run':
                 self.run_binary(True)
-                
             elif self.settings.run_mode == 'normal_run':
-                self.run()
-                #self.run_new()
+                if self.settings.algorithm in ["JT","JPI","DLS(CDF)"]:
+                    self.run()
+                elif self.settings.algorithm == "DLS(VDF)":
+                    self.run_dls_vdf()
+                else:
+                    assert False, "Error from: " + __name__ + func_name + ": " + self.settings.algorithm + " is not a valid value for algorithm" 
 
         self.start_node = 0
         p = len(self.initial_config_list) 
@@ -481,10 +535,14 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
             self.forward_update()
                 
             if self.settings.run_mode == 'binary_run':
-                self.run_binary(False)
+                self.run_binary(True)
             elif self.settings.run_mode == 'normal_run':
-                self.run()
-                #self.run_new()
+                if self.settings.algorithm in ["JT","JPI","DLS(CDF)"]:
+                    self.run()
+                elif self.settings.algorithm == "DLS(VDF)":
+                    self.run_dls_vdf()
+                else:
+                    assert False, "Error from: " + __name__ + func_name + ": " + self.settings.algorithm + " is not a valid value for algorithm" 
  
             self.start_node += 1
 
