@@ -63,7 +63,8 @@ def update_speed(vel):
 def listen():
     rospy.init_node('ts_listener', anonymous=True)
     rospy.Subscriber('/turtle1/pose', Pose, update_pose)
-    rospy.Subscriber('/turtle1/cmd_vel', Velocity, update_speed)
+    rospy.Subscriber('/turtle1/command_velocity', Velocity, update_speed) # for ROS Hydro use '/turtle1/cmd_vel'
+    
 
 def current_position():
     return numpy.array([x, y])

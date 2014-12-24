@@ -38,6 +38,7 @@ from turtlesim.msg import Pose
 from turtlesim.msg import Velocity
 
 def talk():
+    global pub
     pub = rospy.Publisher('/turtle1/command_velocity', Velocity)
     rospy.init_node('ts_talker')
 
