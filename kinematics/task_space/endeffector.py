@@ -16,8 +16,8 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    1.3
-Last Revision:  23 October 2012
+@version:	    2.0
+Last Revision:  11 December 2014
 '''
 # BODY
 
@@ -229,7 +229,7 @@ class Endeffector:
         cnt = 0
         np = 3*len(self.reference_positions)
         no = 3*len(self.reference_orientations)
-        self.GJ = numpy.zeros((np + no, fwd_kin.configuration.DOF))
+        self.GJ = numpy.zeros((np + no, fwd_kin.configuration.settings.DOF))
         #For reference_positions
         for i in range(0,len(self.reference_positions)):
             tp = self.reference_positions[i]
@@ -237,7 +237,7 @@ class Endeffector:
             tp.update_geometric_jacobian(fwd_kin.configuration, fwd_kin.analytic_jacobian)
             #Arranging geometric jacobian for position
             for k in range(0,3):
-                for j in range(0, fwd_kin.configuration.DOF):
+                for j in range(0, fwd_kin.configuration.settings.DOF):
                     self.GJ[3*i + k, j] = tp.geometric_jacobian.value[k,j]
         #For reference_orientations
         for i in range(0,len(self.reference_orientations)):
@@ -246,7 +246,7 @@ class Endeffector:
             tf.update_geometric_jacobian(fwd_kin)
             #Arranging geometric jacobian for orientation
             for k in range(0,3):
-                for j in range(0, fwd_kin.configuration.DOF):
+                for j in range(0, fwd_kin.configuration.settings.DOF):
                     self.GJ[np + 3*i + k,j] = tf.geometric_jacobian.value[k,j]
 
     def update_error_jacobian(self, fwd_kin):
@@ -255,14 +255,14 @@ class Endeffector:
         '''
         cnt = 0
         #Creation of the error jacobian matrix"
-        self.EJ = numpy.zeros((self.mp + self.mo, fwd_kin.configuration.DOF))
+        self.EJ = numpy.zeros((self.mp + self.mo, fwd_kin.configuration.settings.DOF))
         #For reference_positions
         for tp in self.reference_positions:
             # Calculating error jacobian for each reference_position
             tp.update_error_jacobian(fwd_kin.configuration)
             #Arranging error jacobian for position
             for k in range(0,len(tp.error.value)):
-                for j in range(0, fwd_kin.configuration.DOF):
+                for j in range(0, fwd_kin.configuration.settings.DOF):
                     self.EJ[cnt,j] = fwd_kin.configuration.jmc_c[j]*tp.error_jacobian.value[k,j]
                 cnt = cnt + 1
         #For reference_orientations
@@ -271,7 +271,7 @@ class Endeffector:
             tf.update_error_jacobian(fwd_kin)
             #Arranging error jacobian for orientation
             for k in range(0,len(tf.error.value)):
-                for j in range(0, fwd_kin.configuration.DOF):
+                for j in range(0, fwd_kin.configuration.settings.DOF):
                     self.EJ[cnt,j] = fwd_kin.configuration.jmc_c[j]*tf.error_jacobian.value[k,j]
                 cnt = cnt + 1
     

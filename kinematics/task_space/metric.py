@@ -168,6 +168,8 @@ class Position_Metric(Metric):
         if for each position coordinate (x, y, z), the absolute value of the difference of current and desired, does not exceed: 2 cm.
         '''
         self.precision            = 0.02
+        self.precision_base       = "Coordinate Difference"
+        # Another value is "Error Function"
 
         # define the default weighting matrix as Identity. It considers all three position coordinates in the error function
         self.W                    = numpy.eye(3)
@@ -402,7 +404,7 @@ class Orientation_Metric(Metric):
             assert False
 
         return f
-
+    """
     def basis_error_rate(self, R, Rd, R_dot, Rd_dot ) : 
         '''
         '''
@@ -426,6 +428,7 @@ class Orientation_Metric(Metric):
 
         return f_dot
 
+    """
     def update(self, current, target ) : 
         '''
         Calculates the error vector between the actual and desired orientations of the corresponding taskframe
@@ -443,22 +446,24 @@ class Orientation_Metric(Metric):
                 if self.required_identical_coordinate[k]:
                     cos_teta = numpy.dot(vecmat.uvect(target,k),vecmat.uvect(current,k))
                     if (cos_teta < 1.00000) and (cos_teta > -1.00000):
-                        deviation = abs((180/math.pi)*math.acos(cos_teta))
+                        deviation = abs((180.0/math.pi)*math.acos(cos_teta))
                         self.in_target = self.in_target and (deviation < self.precision) 
 
                     self.in_target =  self.in_target and (cos_teta > -1.00000)
         elif self.precision_base == 'Error Function':
-            self.in_target = (numpy.linalg.norm(self.value) < 0.00001)
+            self.in_target = (numpy.linalg.norm(self.value) < self.precision)
         else:
             assert False
 
-    def update(self, R, Rd, R_dot, Rd_dot ) : 
+    """
+    def update_rate(self, R, Rd, R_dot, Rd_dot ) : 
         '''
         Calculates the error rate vector between the actual and desired orientations of the corresponding taskframe
         '''
         ber = self.basis_error(R, Rd, R_dot, Rd_dot)
         assert self.W.shape[1] == len(ber)
         self.rate = numpy.dot(self.W, ber)
+    """
 
 
 class Pose_Metric(Metric):

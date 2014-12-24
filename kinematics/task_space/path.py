@@ -88,13 +88,13 @@ class Path(object):
 
     def set_phi(self, phi):
         if phi > self.phi_end:
-            phi = phi_end
+            phi = self.phi_end
         self.current_phi = phi
 
         lpi     = len(self.trajectory)-1 # last trajectory index
         phi_max = self.trajectory_start[lpi] + self.trajectory[lpi].phi_end 
 
-        phi = phi*phi_max/phi_end
+        phi = phi*phi_max/self.phi_end
 
         if phi > phi_max:
             phi = phi_max
@@ -114,7 +114,7 @@ class Path(object):
         else:
             s = wtp + " of: " + y_text
 
-        x = np.arange(0.0, phi_end, phi_end/n)
+        x = np.arange(0.0, self.phi_end, self.phi_end/n)
         y = copy.copy(x)
         for i in range(len(x)):
             self.set_phi(x[i])

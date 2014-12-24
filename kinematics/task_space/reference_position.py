@@ -7,26 +7,18 @@
                 Faculty of Engineering and Information Technology
                 University of Technology Sydney (UTS)
                 Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB11.07.
-                Phone:    
                 Mobile:   04 5027 4611
                 Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    1.0
-Last Revision:  12 September 2014
-
-Changes from version 0.3 (previous version):
-    Added VTS feature for moving targets
-    The reference points now possess a trajectory for the position
+@version:	    2.0
+Last Revision:  11 December 2014
 '''
 
 # BODY
 
-import numpy
-import math
-import metric
+import numpy, math, metric
 
 from packages.nima.mathematics import vectors_and_matrices as vecmat
 import packages.nima.robotics.kinematics.jacobian.jacobian as jaclib 
@@ -101,7 +93,7 @@ class Reference_Position() :
         Calclates and updates the value of "geometric_jacobian" which represents the actual geometric jacobian 
         of the reference_position according to the given configuration and analytic jacobian.
         '''
-        self.geometric_jacobian = jaclib.Geometric_Jacobian(config.DOF)
+        self.geometric_jacobian = jaclib.Geometric_Jacobian(config.settings.DOF)
         self.geometric_jacobian.update_for_position(self, config, anal_jacob)
 
     def update_error_jacobian(self,config):
@@ -109,7 +101,7 @@ class Reference_Position() :
         Calclates and updates the value of "error_jacobian" which represents the actual error jacobian 
         of the reference_position according to the given configuration.
         '''
-        self.error_jacobian = jaclib.Error_Jacobian(config.DOF)
+        self.error_jacobian = jaclib.Error_Jacobian(config.settings.DOF)
         self.error_jacobian.update_for_position(self, config)
 
     def update_task_jacobian(self):

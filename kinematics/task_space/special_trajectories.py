@@ -34,7 +34,7 @@ zv = np.zeros(3)
 
 class Circle_3D(trajlib.Trajectory):
 
-    def __init__(self, center = np.zeros(3), start_point = np.array([0.0, 1.0, 0.0]), normal_vector = np.array([1.0, 0.0, 0.0]), T = 2*math.pi):
+    def __init__(self, center = np.zeros(3), start_point = np.array([0.0, -1.0, 0.0]), normal_vector = np.array([1.0, 0.0, 0.0]), T = 2*math.pi):
         super(Circle_3D, self).__init__(dimension = 3)
         self.phi_end = T # phase period
         self.center  = center

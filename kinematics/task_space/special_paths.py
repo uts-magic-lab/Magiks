@@ -103,4 +103,50 @@ def nima_walk_ts_path_for_rft_wrt_lft(foot_dist, step_length, step_height):
 
     return(pth)
 
+def nima_walk_ts_path_for_lft_wrt_rft(foot_dist, step_length, step_height):
+    '''
+    Returns a taskspace path for walking for a humanoid robot or any biomechanical link-segment model
+    foot_dist is the distance between the foot centers in x direction.
+    step_length is the length of walking step
+
+    Axis y: forward walking direction
+    Axis z: upwards (from floor towards the sky)
+    Axis x: Determined according to the right hand rule
+
+    phase 0: moving from initial state to the start of walking when left foot is ahead of right foot as much as step_length/2
+    phase 1: right foot moves forward and reaches step_length/2 ahead of the left foot
+    phase 2: both feet are on the floor and their positions do not change. The COM comes forward.
+    phase 3: left leg moves ahead and reaches step_length/2 ahead of the right leg
+    phase 4: both legs are on the floor and their positions do not change. The COM comes forward. posture 4 = posture 0
+    '''
+
+    # Path for moving the right leg when left foot is the support foot
+    L     = 0.5*step_length
+    h     = step_height
+
+    p1    = np.array([- foot_dist, - L, 0.0])  # start of walk
+    p2    = np.array([- foot_dist, 0.0, h  ])  # middle of step 1
+    p3    = np.array([- foot_dist,   L, 0.0])  # end of step 1
+
+    v0    = np.zeros(3)
+    v2    = np.array([0.0, None  , 0.0])
+
+    # t0 = trajlib.Polynomial_Trajectory()  # moving from initial state to the start of walking when left foot is ahead of right foot as much as step_length/2
+    t1 = trajlib.Polynomial_Trajectory()  # both feet are on the floor and their positions do not change. The COM comes forward.
+    t2 = trajlib.Polynomial_Trajectory()  # right foot moves forward and reaches step_length/2 ahead of the left foot
+    t3 = trajlib.Polynomial_Trajectory()  # both feet are on the floor and their positions do not change. The COM comes forward.
+
+    # t0.interpolate([0.0, 1.0]     , positions = [p0, p1]    , velocities = [v0, v0])
+    t1.interpolate([0.0], positions = [p1])
+    t2.interpolate([0.0, 0.5, 1.0], positions = [p1, p2, p3], velocities = [v0, v2, v0])
+    t3.interpolate([0.0], positions = [p3])
+
+    t1.phi_end = 0.15
+    t3.phi_end = 0.15
+
+    pth = pathlib.Path()
+    pth.connect_trajectories([t1, t2, t3])
+
+
+    return(pth)
 

@@ -1,13 +1,24 @@
+# HEADER
 '''   
 @file:          reference_orientation.py
 @brief:    	    This module provides a class representing the reference orientation of an endeffector and the desired value for it.
-@author:        Nima Ramezani; DFKI Bremen
+@author:        Nima Ramezani Taghiabadi
+                PhD Researcher
+                Faculty of Engineering and Information Technology
+                University of Technology Sydney (UTS)
+                Broadway, Ultimo, NSW 2007, Australia
+                Room No.: CB10.03.512
+                Phone:    02 9514 4621
+                Mobile:   04 5027 4611
+                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
+                Email(2): nima.ramezani@gmail.com
+                Email(3): nima_ramezani@yahoo.com
+                Email(4): ramezanitn@alum.sharif.edu
 @start date:    February 2010
-@version:	    0.2
-Last Revision:  27 June 2011
+@version:	    2.0
+Last Revision:  11 December 2014
 '''
 
-# HEADER
 import numpy, math, metric
 
 from packages.nima.mathematics import vectors_and_matrices as vecmat
@@ -62,7 +73,7 @@ class Reference_Orientation :
         update the actual (current) geometric jacobian of the reference orientation. Change property "geometric_jacobian" 
         require "fwd_kin" which contains kinematic data of the manipulator (including "configuration", "transfer_matrices" and "analytic_jacobian")
         '''
-        self.geometric_jacobian = jaclib.Geometric_Jacobian(fwd_kin.configuration.DOF)
+        self.geometric_jacobian = jaclib.Geometric_Jacobian(fwd_kin.configuration.settings.DOF)
         self.geometric_jacobian.update_for_orientation(self, fwd_kin)
 
     def update_error_jacobian(self, fwd_kin):
@@ -70,7 +81,7 @@ class Reference_Orientation :
         update the actual (current) error jacobian of the reference orientation. Change property "geometric_jacobian" 
         require "fwd_kin" which contains kinematic data of the manipulator (including "configuration", "transfer_matrices" and "analytic_jacobian")
         '''
-        self.error_jacobian = jaclib.Error_Jacobian(fwd_kin.configuration.DOF)
+        self.error_jacobian = jaclib.Error_Jacobian(fwd_kin.configuration.settings.DOF)
         self.error_jacobian.update_for_orientation(self, fwd_kin.configuration, fwd_kin.analytic_jacobian)
                     
     def update_task_jacobian(self):

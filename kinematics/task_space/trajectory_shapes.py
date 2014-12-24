@@ -15,12 +15,14 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    1
+@version:	    2
 
-Last Revision:  02 September 2014
+Last Revision:  01 October 2014
 
-Hello
-
+Changes from Version 1:
+    1- direction changed to a Rotation Matrix where width, height and normal directions can be specified
+    2- shapes can be added to the trajectory. by this you can connect shapes and make one trajectory containing multiple shapes
+    3- functions get_sign() and get_dir() are removed
 
 '''
 
@@ -28,55 +30,11 @@ import numpy as np
 import copy, math
 
 from packages.nima.mathematics import general as gen
+from packages.nima.mathematics import rotation as rot
+
 from packages.nima.robotics.kinematics.task_space import trajectory as trajlib
 
-
-def get_sign(d):
-    if d == '+':
-        return 1.0
-    elif d == '-':
-        return -1.0
-    else:
-        assert False, "Invalid Direction"
-
-def get_dir(d):
-    if d == '':
-        p = np.zeros(3)
-    elif d == 'x':
-        p = np.array([1.0, 0.0, 0.0])
-    elif d == 'y':
-        p = np.array([0.0, 1.0, 0.0])
-    elif d == 'z':
-        p = np.array([0.0, 0.0, 1.0])
-    else:
-        assert False, "Invalid Direction"
-    return p
-
-def dir_vect(direction):
-
-    n  = len(direction)
-    s1 = 0.0
-    a1 = ''
-    s2 = 0.0
-    a2 = ''
-
-    if n in [2, 4, 6]:
-        s0 = get_sign(direction[0])
-        a0 = direction[1]
-        if n in [4, 6]:
-            s1 = get_sign(direction[2])
-            a1 = direction[3]
-        if n == 6:
-            s2 = get_sign(direction[4])
-            a2 = direction[5]
-    else:
-        assert False, "Invalid Direction"
-
-    p = s0*get_dir(a0) + s1*get_dir(a1) + s2*get_dir(a2)
-    return p
-
-    
-def line_3D(initial_pos, final_pos, initial_vel = np.zeros(3), final_vel = np.zeros(3)):
+def line(initial_pos, final_pos, initial_vel = np.zeros(3), final_vel = np.zeros(3)):
     dim = len(initial_pos)
     assert dim == len(final_pos)
     assert dim == len(initial_vel)
@@ -90,50 +48,63 @@ def line_3D(initial_pos, final_pos, initial_vel = np.zeros(3), final_vel = np.ze
 
 def square_3D(length = 0.1, initial_pos = np.zeros(3), direction = "+z+x", smooth = False):
     
-    p = trajlib.Polynomial_Trajectory(dimension = 3)
-    p.add_point(0.0, initial_pos)
+    traj = trajlib.Polynomial_Trajectory(dimension = 3)
+    traj.add_point(0.0, initial_pos)
 
-    p.add_vector(1.0,   length*dir_vect(direction[0:2]))
-    p.new_segment()
-    p.add_vector(1.0,   length*dir_vect(direction[2:4]))
-    p.new_segment()
-    p.add_vector(1.0, - length*dir_vect(direction[0:2]))
-    p.new_segment()
-    p.add_vector(1.0, - length*dir_vect(direction[2:4]))
+    traj.add_vector(1.0,   length*dir_vect(direction[0:2]))
+    traj.new_segment()
+    traj.add_vector(1.0,   length*dir_vect(direction[2:4]))
+    traj.new_segment()
+    traj.add_vector(1.0, - length*dir_vect(direction[0:2]))
+    traj.new_segment()
+    traj.add_vector(1.0, - length*dir_vect(direction[2:4]))
 
     if smooth:
         p.consistent_velocities()
     
-    return p
+    return traj
 
-'''
-def arc(initial_pos = np.zeros(3), center= np.array([0.0, 0.1, 0.0]), normal_vector = np.array([1.0, 0.0, 0.0]), angle = 360.0, d_theta = 10.0, in_degrees = True):
-    assert mathgen.equal(numpy.dot(center-initial_pos, normal_vector), 0.0), "Error from trajectory_shapes.arc(): The given normal vector is not perpendicular to the circle"
+def decode_arguments(traj, direction, static_ends):
+    if static_ends:
+        vel = np.zeros(3)
+    else:
+        vel = np.array([None, None, None])
     
-    r       = np.linalg.norm(initial_pos - center)
-    i_vect  = (start_point - center)/r
-    j_vect  = np.cross(normal_vector, i_vect)
-    R       = np.append(np.append([i_vect],[j_vect],axis = 0), [normal_vector], axis = 0).T
-    later I will complete this function
-'''    
+    if traj == None:
+        p = trajlib.Polynomial_Trajectory(dimension = 3)
+        p.add_point(0.0, np.zeros(3), vel)
+    else:
+        traj.new_segment()
+        p = copy.copy(traj)
 
-def arc(trj = None, center_dy = 0.1, center_dz = 0.0, angle = 2*math.pi, d_theta = 0.5, clockwise = True):
+    if direction == None:
+        direction = rot.point_forward_orientation
+
+    w = direction[:,0]
+    h = direction[:,1]
+    n = direction[:,2]
+
+    return (p, w, h, n, vel)
+
+def arc(traj = None, center_dw = 0.1, center_dh = 0.0, direction = None, angle = 360.0, d_theta = 10.0, clockwise = True, static_ends = True, in_degrees = True):
     '''
     adds a set of points to the given trajectory establishing an arc in a plane parallel to the yz plane starting from initial_pos, 
     The points follow an arc with given angle around the center
     input trj must be a Polynomial_Trajectory
     if trj is not given, a new trajectory will be created
     '''
+    if in_degrees:
+        angle = angle*math.pi/180.0
+        d_theta = d_theta*math.pi/180.0
+
+    (trj, w, h, n, v) = decode_arguments(traj, direction, static_ends)
+
     if clockwise:
         sgn = 1
     else:
         sgn = - 1
     
-    if trj == None:
-        trj = trajlib.Polynomial_Trajectory()
-        trj.add_point(0.0, pos = np.zeros(3), vel = np.zeros(3))
-    else:
-        trj.new_segment()    
+    center = center_dw*w + center_dh*h
 
     nseg = len(trj.segment)
     npnt = len(trj.segment[nseg-1].point)
@@ -141,166 +112,444 @@ def arc(trj = None, center_dy = 0.1, center_dz = 0.0, angle = 2*math.pi, d_theta
     initial_pos = np.copy(trj.segment[nseg-1].point[npnt - 1].pos)
     initial_phi = trj.phi_end
 
-    r    = math.sqrt(center_dy**2 + center_dz**2)
-    t0   = math.acos(- center_dy/r)
+    r    = math.sqrt(center_dw**2 + center_dh**2)
+    t0   = math.acos(- center_dw/r)
     t    = 0.0
     stay = True
     pos  = np.zeros(3)
-    vel  = np.zeros(3)
     while stay:
         t = t + d_theta  
         if t > angle:  
             t = angle
-            stay = False
-        pos[0] = initial_pos[0]
-        pos[1] = initial_pos[1] + center_dy + r*math.cos(sgn*t + t0)
-        pos[2] = initial_pos[2] + center_dz + r*math.sin(sgn*t + t0)
-        vel[1] = - sgn*r*math.sin(sgn*t + t0)
-        vel[2] =   sgn*r*math.cos(sgn*t + t0)
 
+        pos    = initial_pos + center + r*math.cos(sgn*t + t0)*w + r*math.sin(sgn*t + t0)*h
+        vel    = - r*sgn*math.sin(sgn*t + t0)*w + r*sgn*math.cos(sgn*t + t0)*h
         # trj.new_segment()
-        trj.add_point(phi = initial_phi + t, pos = np.copy(pos), vel = np.copy(vel), acc = None)
+        trj.add_point(phi = initial_phi + t, pos = np.copy(pos), vel = vel)
+
+        if gen.equal(t, angle):
+            stay = False
 
     nseg = len(trj.segment)
-    trj.segment[nseg - 1].point[1].vel = np.array([None, None, None])
+    npnt = len(trj.segment[nseg - 1].point)
+    trj.segment[nseg - 1].point[npnt-1].vel = v
     
     return trj
 
 
-def M(p = None, width = 0.04, height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    if p == None:
-        p = trajlib.Polynomial_Trajectory(dimension = 3)
-        p.add_point(0.0, initial_pos)
+def M(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
 
-    p.add_vector(1.0, np.array([0.0, 0.0, height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, width/2, - height/2]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, width/2, + height/2]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, 0.0, - height]))
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    if complete:
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
+
+    traj.add_vector(1.0, height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, 0.5*width*w - 0.5*height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, 0.5*width*w + 0.5*height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, - height*h, vel)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, 0.2*width*w - height*h - 0.2*height*n, vel)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+
+    return traj
+
+def N(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    w = -w
+    if complete:
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
+    traj.add_vector(1.0, height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, width*w - height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, height*h, vel)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(0.2, - 0.2*height*n, vel)
+        traj.new_segment()
+        traj.add_vector(1.0, 0.2*width*w - height*h, vel)
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def V(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    w = - w
+    if complete:
+        traj.add_vector(1.2, height*h + 0.2*height*n, vel)
+        traj.new_segment()
+    traj.add_vector(1.0, 0.5*width*w - height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, 0.5*width*w + height*h, vel)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, - height*h + 0.2*width*w - 0.2*height*n, vel)
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def W(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    w = - w
+    if complete:
+        traj.add_vector(1.2, height*h + 0.2*height*n, vel)
+        traj.new_segment()
+    traj.add_vector(1.0, 0.15*width*w - height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, 0.35*width*w + 0.6*height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, 0.35*width*w - 0.6*height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, 0.15*width*w + height*h, vel)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, - height*h - 0.2*height*n + 0.2*width*w, vel)
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def U(traj = None, width = 0.05, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    if complete:
+        traj.add_vector(1.2, height*h + 0.2*height*n, vel)
+        traj.new_segment()
+    traj.add_vector(1.0,  - h*(height- width/2))
+    traj = arc(traj, center_dw = - width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    traj.new_segment()
+    traj.add_vector(1.0, h*(height- width/2), vel)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, 0.2*width*w - height*h - 0.2*height*n, vel)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def O(traj = None, width = 0.05, height = 0.1, depth = 0.02, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    if complete:
+        traj.add_vector(1.0, (height-width/2)*h, vel)
+        traj.new_segment()
+        traj.add_vector(0.2, depth*n, vel)
+        traj.new_segment()
+    traj.add_vector(1.0,  - h*(height- width))
+    traj = arc(traj, center_dw = - width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    traj.new_segment()
+    traj.add_vector(1.0, h*(height- width), vel)
+    traj = arc(traj, center_dw = width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(0.2, - depth*n, vel)
+        traj.new_segment()
+        traj.add_vector(1.0, - 1.2*width*w - (height-width/2)*h, vel)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def G(traj = None, width = 0.05, height = 0.1, depth = 0.02, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    assert height > width, "Error from trajectory_shapes.G(): Height must be greater than width"
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    if complete:
+        traj.add_vector(1.0, h*(height- width/2) - w*width, vel)
+        traj.new_segment()
+        traj.add_vector(0.2, depth*n, vel)
+        traj.new_segment()
+    traj = arc(traj, center_dw = width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    traj.new_segment()
+    traj.add_vector(1.0,  - h*(height- width))
+    traj = arc(traj, center_dw = - width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    traj.add_vector(1.0,  0.5*h*(height- width))
+    traj.new_segment()
+    traj.add_vector(1.0,  0.25*w*width)
+    traj.new_segment()
+    if complete:
+        traj.new_segment()
+        traj.add_vector(0.2, - depth*n, vel)
+        traj.new_segment()
+        traj.add_vector(1.0, - 0.5*h*height - 0.45*w*width, vel)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def C(traj = None, width = 0.05, height = 0.1, depth = 0.02, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    assert height > width, "Error from trajectory_shapes.C(): Height must be greater than width"
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
     
-def N(p = None, width = 0.04, height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    if p == None:
-        p = trajlib.Polynomial_Trajectory(dimension = 3)
-        p.add_point(0.0, initial_pos)
-
-    p.add_vector(1.0, np.array([0.0, 0.0, height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, width, - height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, 0.0, height]))
+    if complete:
+        traj.add_vector(1.0, h*(height- width/2) - w*width, vel)
+        traj.new_segment()
+        traj.add_vector(0.2, depth*n, vel)
+        traj.new_segment()
+    traj = arc(traj, center_dw = width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    traj.new_segment()
+    traj.add_vector(1.0,  - h*(height- width))
+    traj = arc(traj, center_dw = - width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    if complete:
+        traj.new_segment()
+        traj.add_vector(0.2, - depth*n, vel)
+        traj.new_segment()
+        traj.add_vector(1.0, - h*width/2 - 0.2*w*width, vel)
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+    return traj
 
-def V(width = 0.04, height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    sy = get_sign(direction[0])
-    sz = get_sign(direction[2])
-    if p == None:
-        p = trajlib.Polynomial_Trajectory(dimension = 3)
-        p.add_point(0.0, initial_pos)
-
-    p.add_vector(1.0, np.array([0.0, sy*width/2, -sz*height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, sy*width/2,  sz*height]))
+def J(traj = None, width = 0.05, height = 0.1, depth = 0.02, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    if complete:
+        traj.add_vector(1.0, h*(height- width/2) - w*width, vel)
+        traj.add_vector(0.2, depth*n, vel)
+        traj.new_segment()
+    traj = arc(traj, center_dw = - width/2, center_dh = 0.0, angle = 180.0, clockwise = False, static_ends = False, direction=direction)
+    traj.new_segment()
+    traj.add_vector(1.0, h*(height- width/2), vel)
     if smooth:
-        p.consistent_velocities()
-    return p
-   
-def W(width = 0.04, height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    p = trajlib.Polynomial_Trajectory(dimension = 3)
+        traj.consistent_velocities()
+    return traj
 
-    sy = get_sign(direction[0])
-    sz = get_sign(direction[2])
+def P(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    w = -w
+    if complete:
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
 
-    p.add_point(0.0, initial_pos)
-    p.add_vector(1.0, np.array([0.0, sy*0.15*width, - sz*height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, sy*0.35*width,   sz*0.6*height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, sy*0.35*width, - sz*0.6*height]))
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, sy*0.15*width,   sz*height]))
+    traj.add_vector(1.0, height*h, vel)
+    traj = arc(traj, center_dh = -height/4, center_dw = 0.0, angle = 180.0, clockwise = True, static_ends = static_ends, direction=direction)
+
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, - 0.2*height*n + 1.2*width*w - 0.5*height*h, vel)
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+    return traj
 
-def O(diameter = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = True, N = 50): 
-    p   = trajlib.Polynomial_Trajectory(dimension = 3)
-    dt  = 2*math.pi/N
-    t   = math.pi
-    r   = diameter/2
-    cen = initial_pos + np.array([0.0, r, 0.0])
-    for i in range(N+1):
-        p.add_point(phi = i, pos = cen + np.array([0.0, r*math.cos(t), r*math.sin(t)]))
-        t = t - dt        
-        if i < N :
-            p.new_segment()
+def B(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+
+    if complete:
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
+
+    traj.add_vector(1.0, height*h, vel)
+    traj = arc(traj, center_dh = - height/4, center_dw = 0.0, angle = 180.0, clockwise = True, static_ends = static_ends, direction=direction)
+    traj = arc(traj, center_dh = - height/4, center_dw = 0.0, angle = 180.0, clockwise = True, static_ends = static_ends, direction=direction)
+
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, -1.2*width*w - 0.2*height*n, vel)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
 
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+    return traj
 
-def U(width = 0.04, height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    p = trajlib.Polynomial_Trajectory(dimension = 3)
+def D_old(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
 
-    sy = get_sign(direction[0])
-    sz = get_sign(direction[2])
+    if complete:
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
 
-    p.add_point(0.0, initial_pos)
-    p.add_vector(1.0, np.array([0.0, 0.0, - sz*(height- width/2)]))
-    p.new_segment()
-    p = arc(p, center_dy = sy*width/2, center_dz = 0.0, angle = math.pi, clockwise = False)
-    p.new_segment()
-    p.add_vector(1.0, np.array([0.0, 0.0, sz*(height- width/2)]))
+    traj.add_vector(1.0, height*h, vel)
+    traj = arc(traj, center_dh = - height/2, center_dw = 0.0, angle = 180.0, clockwise = True, static_ends = static_ends, direction=direction)
+
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, -1.2*width*w - 0.2*height*n, vel)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+    return traj
 
-def P(height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    p = trajlib.Polynomial_Trajectory(dimension = 3)
+def D(traj = None, width = 0.05, height = 0.1, depth = 0.02, direction = None, static_ends = True, adjust = False, smooth = True, complete = False):
+    assert height > width, "Error from D(): height must be greater than width"
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
 
-    sy = get_sign(direction[0])
-    sz = get_sign(direction[2])
+    assert height >= 2*width, "Error from D(): height must be greater than or equal twice width"
+    if complete:
+        traj.add_vector(0.2, depth*n, vel)
+        traj.new_segment()
 
-    p.add_point(0.0, initial_pos)
-    p.add_vector(1.0, np.array([0.0, 0.0, sz*height]))
-    p.new_segment()
-    p = arc(p, center_dz = -sz*height/4, center_dy = 0.0, angle = math.pi, clockwise = False)
+    traj.add_vector(1.0, height*h, vel)
+    traj = arc(traj, center_dh = - width, center_dw = 0.0, angle = 90.0, clockwise = True, static_ends = static_ends, direction=direction)
+    traj.new_segment()
+    traj.add_vector(1.0, - (height- 2*width)*h, vel)
+    traj = arc(traj, center_dh = 0, center_dw = width, angle = 90.0, clockwise = True, static_ends = static_ends, direction=direction)
+
+    if complete:
+        traj.new_segment()
+        traj.add_vector(1.2, -1.2*width*w - depth*n, vel)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+    return traj
 
-def B(height = 0.05, initial_pos = np.zeros(3), direction = "-y+z", smooth = False):
-    p = trajlib.Polynomial_Trajectory(dimension = 3)
+def C_old(traj = None, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
 
-    sy = get_sign(direction[0])
-    sz = get_sign(direction[2])
+    if complete:
+        print "Not Tested!"
+        traj.add_vector(1.0, (2+math.sqrt(3))*height*h/4.0 - 0.75*height*w, vel)
+        traj.new_segment()
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
 
-    p.add_point(0.0, initial_pos)
-    p.add_vector(1.0, np.array([0.0, 0.0, sz*height]))
-    p.new_segment()
-    p = arc(p, center_dz = -sz*height/4, center_dy = 0.0, angle = math.pi, clockwise = False)
-    p = arc(p, center_dz = -sz*height/4, center_dy = 0.0, angle = math.pi, clockwise = False)
+    traj = arc(traj, center_dh = - height*math.sqrt(3)/4.0, center_dw = height/4.0, angle = 250.0, clockwise = False, static_ends = static_ends, direction=direction)
+
+    if complete:
+        traj.new_segment()
+        traj.add_vector(0.2, - 0.2*height*n, vel)
+        traj.new_segment()
+        traj.add_vector(1.0, -0.2*height*h -0.2*width*w, vel)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+
     if smooth:
-        p.consistent_velocities()
-    return p
+        traj.consistent_velocities()
+    return traj
 
+def S(traj = None, height = 0.1, depth = 0.02, direction = None, static_ends = True, adjust = False, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    w = - w
+    cth = math.cos(math.pi/3)
+    sth = math.sin(math.pi/3)
+    width = height/2
+    if complete:
+        traj.add_vector(1.0, 0.5*h*width*(3+cth) + 0.5*w*width*(1+sth), vel)
+        traj.new_segment()
+        traj.add_vector(0.2, depth*n, vel)
+        traj.new_segment()
+
+    traj = arc(traj, center_dh = - 0.5*width*cth, center_dw = 0.5*width*sth, angle = 240.0, clockwise = False, static_ends = static_ends, direction=direction)
+    traj = arc(traj, center_dh = - 0.5*width, center_dw = 0, angle = 240.0, clockwise = True, static_ends = static_ends, direction=direction)
+    if complete:
+        traj.add_vector(0.2, - depth*n, vel)
+        traj.new_segment()
+        traj.add_vector(1.0, 0.5*h*width*(cth-1) + 0.6*w*width*(1+sth), vel)
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def G_old(traj = None, height = 0.1, direction = None, static_ends = True, adjust = False, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+
+    if complete:
+        print "Not Supported!"
+
+    traj = arc(traj, center_dh = - height*math.sqrt(3)/4.0, center_dw = height/4.0, angle = 300.0, clockwise = False, static_ends = static_ends, direction=direction)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def O_old(traj = None, height = 0.1, direction = None, static_ends = True, adjust = False, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+
+    if complete:
+        print "Not Supported!"
+
+    traj = arc(traj, center_dh = - height/2.0, center_dw = 0.0, angle = 360.0, clockwise = False, static_ends = static_ends, direction=direction)
+
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+
+    if smooth:
+        traj.consistent_velocities()
+    return traj
+
+def A(traj = None, width = 0.08, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, complete = False):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
+    if complete:
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
+
+    traj.add_vector(1.0, - 0.5*width*w + height*h, vel)
+    traj.new_segment()
+    traj.add_vector(1.0, - 0.5*width*w - height*h, vel)
+
+    if complete:
+        traj.new_segment()
+        traj.add_vector(0.2, 0.75*width*w + 0.5*height*h - 0.2*height*n, vel)
+        traj.new_segment()
+        traj.add_vector(0.2, 0.2*height*n, vel)
+        traj.new_segment()
+        traj.add_vector(0.5, - 0.5*width*w, vel)
+        traj.new_segment()
+        traj.add_vector(1.2, - 0.2*height*n - 0.45*width*w - 0.5*height*h, vel)
     
-'''
-def A(width = 0.05, height = 0.1, initial_pos = np.zeros(3), direction = "+y+z", smooth = False):
-    a_axis = dir_vect("+x+y+z") - abs(dir_vect(direction))
-    p = trajlib.Polynomial_Trajectory(dimension = 3)
-    p.add_point(0.0, initial_pos)
-    
-    p.add_vector(1.0, width*get_sign(direction[0])*get_dir(direction[1]) + height*get_sign(direction[2])*get_dir(direction[3]))
-    p.new_segment()
-    p.add_vector(1.0, width*get_sign(direction[0])*get_dir(direction[1]) - height*get_sign(direction[2])*get_dir(direction[3]))
+    if adjust:
+        traj.adjust_phase_by_distance(gain = 100.0)
+    if smooth:
+        traj.consistent_velocities()
+    return traj
 
-    p.add_vector(1.0, width*get_sign(direction[0])*get_dir(direction[1]) - height*get_sign(direction[2])*get_dir(direction[3]))
+def canvas_shape_to_trajectory(shape, traj = None, width = 0.2, height = 0.1, direction = None, static_ends = True, adjust = True, smooth = True, width_pixels  = 640, height_pixels = 480):
+    (traj, w, h, n, vel) = decode_arguments(traj, direction, static_ends)
     
-'''
+    (X0, Y0) = shape[0] 
+    new_pos  = np.zeros(3)    
+
+    print "height ", h
+    print "width  ", w
+
+    for i in range(1, len(shape)):
+        (X, Y) = shape[i]
+        old_pos = np.copy(new_pos)
+        new_pos = width*(X - X0)*w/width_pixels + height*(-Y+Y0)*h/height_pixels
+        print "Num points: ", len(shape)
+        if i < 5:
+            print
+            print i
+            print "X0,Y0= ",X0,Y0
+            print "X ,Y = ",X,Y
+            print "Old Pos= ",old_pos
+            print "New Pos= ",new_pos
+            print "Delta= ",new_pos-old_pos
+
+        if i == len(shape) - 1:
+            v = np.copy(vel)
+        else:
+            v = np.array([None, None, None])
+
+        traj.add_vector(0.1, new_pos - old_pos, v)
+        traj.new_segment()
+        
+    if smooth:
+        traj.consistent_velocities()     
+
+    return traj
