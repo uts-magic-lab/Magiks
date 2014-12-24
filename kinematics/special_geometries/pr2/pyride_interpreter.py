@@ -543,6 +543,7 @@ def wait_until_finished(target_list = ['body', 'rarm', 'larm'], max_time = 20.0 
     t  = 0.0
     while (t < max_time) and (not finished(target_list)):
         t = time.time() - t0
+        time.sleep(0.01)    
     return finished(target_list)
 
 def run_navigation_trajectory(duration, pos_traj, ori_traj, phi_dot = 1.0, k = 1.0):

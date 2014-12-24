@@ -1,5 +1,5 @@
 '''   Header
-@file:          PR2_arm_symbolics.py
+@file:          PR2_symbolics.py
 @brief:    	    Contains functions to represent symbolic formulations of pr2 arm kinematics 
 
 @author:        Nima Ramezani Taghiabadi
@@ -20,6 +20,8 @@ Last Revision:  13 September 2014
 This file has been Separated from pr2_arm_kinematics on 13 September 2014
 '''
  
+from sympy import Symbol, simplify
+
 class PR2_Arm_Symbolic():
     '''
     This class provides a parametric representation of the kinematics of PR2 arm
@@ -117,4 +119,76 @@ class PR2_Arm_Symbolic():
         self.RJ = sympy.Matrix([J1,J2,J3,J4,J5,J6])
         #self.redundancy_jacobian = self.div_theta_err.inv().transpose()*self.div_phi_err
 
+class PR2_Symbolic():
+    '''
+    This class provides a parametric representation of the kinematics of PR2 robot
+    The position, orientation and the Jacobian can be expressed in terms of the kinematic parameters of the robot
+    It uses sympy as a tool for symbols algebra
+    '''
+    def __init__(self):
+
+        c = [Symbol('c' + str(i)) for i in range(7)]
+        s = [Symbol('s' + str(i)) for i in range(7)]
+        S = [Symbol('S' + str(i)) for i in range(7)]
+        C = [Symbol('C' + str(i)) for i in range(7)]
+        phi = [Symbol('p' + str(i)) for i in range(5)]
+        
+        a = [Symbol('a0'), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        d = [0.0, 0.0, Symbol('d2'), 0.0, Symbol('d4'), 0.0, 0.0]
+
+        self.right_arm = armlib.PR2_Arm_Symbolic()
+                
+        '''
+        we compromize that capital letters are used for the base
+        so X,Y,Z represent the position of the base
+        and C,S represent sin(theta) and cos(theta) where theta is the rotation of base around z axis 
+        '''
+        self.p_EFR_WR = numpy.array([0.0  ,  0.0 , Symbol('d7')])
+        self.p_BO    = numpy.array([Symbol('X')  ,  Symbol('Y') , Symbol('Z')])
+        self.p_BR_BO = numpy.array([Symbol('b0') ,  Symbol('l0'), Symbol('h')])        
+        self.p_BL_BO = numpy.array([Symbol('b0') ,- Symbol('l0'), Symbol('h')])     
+        self.R_B     = numpy.array([[ Symbol('C'),  Symbol('S') , 0.0 ], 
+                                    [-Symbol('S'),  Symbol('C') , 0.0 ],
+                                    [ 0.0        ,  0.0         , 1.0]]) 
+        '''
+        RRd and LRd represent the desired orientation of the right and left arm grippers respectively
+        '''
+
+        T_EFR = numpy.array([[ Symbol('nx'), Symbol('sx') , Symbol('ax') , Symbol('xd') ], 
+                             [ Symbol('ny'), Symbol('sy') , Symbol('ay') , Symbol('yd') ],
+                             [ Symbol('nz'), Symbol('sz') , Symbol('az') , Symbol('zd') ],
+                             [ 0.0           , 0.0            , 0.0            , 1.0           ]])
+
+        self.p_EFR = T_EFR[0:3, 3]
+        self.R_EFR = T_EFR[0:3, 0:3]
+
+        self.p_WR_BR = - self.p_BR_BO + numpy.dot(self.R_B.T,(self.p_EFR - self.p_BO - numpy.dot(self.R_EFR, self.right_arm.p_EF_W)))
+        self.R_WR_B  = numpy.dot(self.R_B.T, self.R_EFR)
+
+        import sympy
+
+        self.div_theta_e = sympy.Matrix([
+        [0 , 0 , -2*Symbol('d42')*s[3] , 0 , 0 , 0 , 0 , 0 , 0  ],
+        [0 , Symbol('e22') , Symbol('e23') , 0 , 0 , 0 , 0 , 0 , 0  ],
+        [Symbol('e31') , d[4]*Symbol('s321') , Symbol('e33') , 0 , 0 , 0 , 1 , 0 , 0  ],
+        [Symbol('e41') , Symbol('e42') , Symbol('e43') , 0 , - s[5] , 0  , 0 , 0 , 0 ],
+        [Symbol('e51') , Symbol('e52') , 0 , c[4]*s[5] , c[5]*s[4] , 0  , 0 , 0 , 0 ],
+        [Symbol('e61') , Symbol('e62') , Symbol('e63') , 0 , Symbol('c65') , - Symbol('s65')  , 0 , 0 , 0 ],
+        [0 , 0 , 0 , 0 , 0 , 0 , 1 , 0 , 0  ],
+        [0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 0  ],
+        [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1   ]])
+                
+        self.div_phi_e = sympy.Matrix([
+        [ Symbol('z11') , Symbol('z12') , -2*phi[3]     , Symbol('z14')     , 0   ],
+        [ 0             , Symbol('z22') , Symbol('z23') , 0                 , 0   ],
+        [ 0             , 0             , 0             , 0                 , 0   ],
+        [ Symbol('z41') , 0             , 0             , 0                 , - Symbol('z41')   ],
+        [ Symbol('z51') , 0             , 0             , 0                 , - Symbol('z51')    ],
+        [ Symbol('z61') , 0             , 0             , 0                 , - Symbol('z61')    ],
+        [ 0             , 0             , 1             , 0                 , 0   ],
+        [ 0             , Symbol('z82') , 0             , Symbol('z84')     , Symbol('z85')  ],
+        [ 0             , Symbol('z92') , 0             , Symbol('z94')     , Symbol('z95')  ]])
+
+        self.redundancy_jacobian = sympy.Matrix([
+        [Symbol('J' + str(j+1) + str(i+1)) for i in range(5)] for j in range(9)])
 

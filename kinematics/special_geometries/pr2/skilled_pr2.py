@@ -27,10 +27,10 @@ All actions of this module do not have any collision avoidance feature. So be pr
 
 '''
 import numpy as np
+import time
 
 import pyride_synchronizer as ps
 import pyride_interpreter as pint
-
 
 import packages.nima.robotics.kinematics.task_space.trajectory as traj
 import packages.nima.robotics.kinematics.task_space.trajectory_shapes as tsh
@@ -42,15 +42,24 @@ import sys
 sys.path.append()
 '''
 
+'''
+writing posture:
+array([ -1.26299826e-01,   1.77046412e+00,  -1.02862191e+00,
+        -1.36864905e+00,  -2.31195189e+00,  -1.29253137e+00,
+         1.71195615e-01,   8.02176174e-01,  -2.12167293e-03,
+         2.32811863e-04,   7.05358701e-03,   4.01010384e-01,
+         2.44565260e+00,   7.10476515e-01,  -1.30808585e+00,
+         1.15357810e+00,  -4.49485156e-01,  -2.46943329e+00])
+'''
 class Skilled_PR2(ps.PyRide_PR2):
     def __init__(self):
-        super(Skilled_PR2, self).__init__(vts = True)
-        self.height = 0.1
-        self.width  = 0.1
-        self.depth  = 0.03    
+        super(Skilled_PR2, self).__init__(vts = False)
+        self.height = 0.05
+        self.width  = 0.05
+        self.depth  = 0.02    
         self.write_from_shape = True
         self.write_from_shape_complete = False
-        self.writing_speed = 0.05  # 5 cm/sec
+        self.timeout = 20.0
 
         self.larm_startpoint      = None
         self.rarm_startpoint      = None
@@ -66,6 +75,8 @@ class Skilled_PR2(ps.PyRide_PR2):
         self.larm_endpoint_width  = np.array([ d-0.05,  + 0.1,  0.0])
         self.rarm_endpoint_height = np.array([ d-0.05,  - 0.1,  0.2])
         self.larm_endpoint_height = np.array([ d-0.05,  + 0.4,  0.2])
+
+        self.board_offset = np.array([0.1, 0.2, 0.05])
 
         self.box_width_rarm       = 0.3
         self.box_height_rarm      = 0.2
@@ -94,6 +105,61 @@ class Skilled_PR2(ps.PyRide_PR2):
             self.sync_object()        
         else:
             assert False, "This should not happen"
+
+    def catch_the_board(self):
+        # self.switch_arm()
+        qr = np.array([ 0.08842831,  2.34773988,  0.07718497, -1.32087472, -0.71994221, -1.02121596, -1.56155048])
+        self.rarm.set_config(qr)
+        self.sync_robot()
+        pint.set_rg(2)
+        self.say("Please,  put the bord in my right hand")
+        time.sleep(10)
+        pint.set_rg(0)
+        self.say("Thank you")
+
+    def catch_the_pen(self):
+        # self.switch_arm()
+        pint.set_lg(2)
+        self.say("Please,  put the pen in my left hand")
+        time.sleep(5)
+        pint.set_lg(1)
+        self.say("Thank you")
+
+    def prepare_to_write(self):
+        self.say("Let's draw something. Show me a board")
+        self.sync_object()
+        self.activate_tilt_laser()
+        while pint.tl_dist == None:
+            time.sleep(0.01)
+
+        N = len(pint.tl_dist)/2
+        d = pint.tl_dist[N]
+        while d > 1.0:
+            d = pint.tl_dist[N]
+        
+        self.catch_the_board()
+        time.sleep(3)
+        self.catch_the_pen()
+        time.sleep(5)
+        self.get_ready(False)
+        self.deactivate_tilt_laser()
+
+    def show_the_people(self, return_back = True):
+        ql = np.array([ 1.1742804 ,  2.04188103,  1.35847037, -1.99603627, -1.22890376, -1.16233047,  0.80086808])
+        self.larm.set_config(ql)
+        self.sync_robot() 
+        qr = np.array([-0.37128888,  2.08050452, -1.08169936, -1.27411378,  0.92031194, -1.3185062 ,  1.23221083])
+        self.rarm.set_config(qr)
+        self.sync_robot()   
+
+        self.say("How was it?") 
+        if return_back:
+            time.sleep(5)
+            qr = np.array([ 0.08842831,  2.34773988,  0.07718497, -1.32087472, -0.71994221, -1.02121596, -1.56155048])
+            self.rarm.set_config(qr)
+            self.sync_robot()   
+            self.larm_reference = True
+            self.get_ready(False)    
 
     def calibrate_startpoint(self):
         self.sync_object()
@@ -124,7 +190,44 @@ class Skilled_PR2(ps.PyRide_PR2):
         ql = np.array([ -3.57102700e-04,   1.59100714e+00,  -5.27852219e-04, -2.48833571e-01,   3.85286996e-03,  -3.36172240e-01,  1.43031683e-03])
         pint.take_rarm_to(qr, time_to_reach = 3.0)
         pint.take_larm_to(ql, time_to_reach = 3.0)
+        pint.wait_until_finished()
         self.sync_object()
+
+    def get_ready(self, only_orientation = True, reverse = False):
+        self.sync_object()
+        if self.larm_reference:
+            ori = self.rarm.wrist_orientation()
+            pos = self.rarm_endeffector_position()
+        else:
+            ori = self.larm.wrist_orientation()
+            pos = self.larm_endeffector_position()
+
+        if reverse:
+            ori = rot.reverse(ori)            
+        R   = rot.orthogonal(ori)
+
+        if only_orientation:
+            arm = self.reference_arm()
+            p   = arm.wrist_position()
+            arm.set_target(p, R)
+            self.arm_target()
+        else:
+            n = R[:,2]
+            h = R[:,1]
+            w = R[:,0]
+
+            p   = pos - (self.board_offset[0]+self.depth)*n + self.board_offset[2]*h + self.board_offset[1]*w
+                
+            self.set_target(p, R)
+            self.inverse_update()
+            self.sync_robot()        
+
+        if self.larm_reference:
+            pint.look_lg()
+        else:
+            pint.look_rg()
+
+        self.calibrate_startpoint()        
 
     def writing_posture(self):
         if self.larm_startpoint == None:
@@ -197,7 +300,7 @@ class Skilled_PR2(ps.PyRide_PR2):
             print "Warning from PyRide_PR2.draw_shape(): All the shape is not in the workspace. Part of it will be drawn !"
         
         L = sum(shape_trajectory.points_dist())
-        pint.run_config_trajectory(jt, duration = L/self.writing_speed, is_left_arm = self.larm_reference)
+        pint.run_config_trajectory(jt, duration = L/self.arm_speed, is_left_arm = self.larm_reference)
 
     def switch_arm(self):
         if self.larm_reference:
@@ -205,8 +308,9 @@ class Skilled_PR2(ps.PyRide_PR2):
         else:
             self.larm_reference = True
             
-    def draw_from_canvas(self, canvas_shapes, height = 0.2, width = 0.3, width_pixels = 640, height_pixels = 480, plot = False, silent=True):
+    def draw_from_canvas(self, canvas_shapes, width_pixels = 640, height_pixels = 480, plot = False, silent=True):
         self.sync_object()
+
         ori_l = self.larm.wrist_orientation()
         ori_r = self.rarm.wrist_orientation()
         wr = - ori_r[:,0]
@@ -218,12 +322,9 @@ class Skilled_PR2(ps.PyRide_PR2):
         
         self.control_mode   = "fixed_base"
         self.larm_reference = False
-        '''
-        rarm_lower_right    = np.array([0.5, - width - 0.1, self.box_offset_z - height/2])
-        rarm_lower_left     = np.array([0.5,         - 0.1, self.box_offset_z - height/2])
-        larm_lower_right    = np.array([0.5,           0.1, self.box_offset_z - height/2])
-        larm_lower_left     = np.array([0.5,   width + 0.1, self.box_offset_z - height/2])
-        '''
+
+        self.rarm_startpoint = self.rarm_startpoint + nr*self.depth
+        self.larm_startpoint = self.larm_startpoint + nl*self.depth
 
         pr_list = []
         pl_list = []
@@ -271,10 +372,15 @@ class Skilled_PR2(ps.PyRide_PR2):
         nlt  = len(pl_list)
         step_r = 0
         step_l = 0
+        t0     = time.time()
+
+        t      = 0.0
+        # while ((ir < nrt) or (il < nlt)) and (not pint.rarm_failed) and (not pint.larm_failed) and (t < self.timeout):
         while ((ir < nrt) or (il < nlt)) and (not pint.rarm_failed) and (not pint.larm_failed):
 
             # initial positioning:
             if (ir < nrt) and (step_r == 0):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", ir, " Step 0 for Right Arm"
                 pr     = pr_list[ir]
@@ -282,10 +388,11 @@ class Skilled_PR2(ps.PyRide_PR2):
                 pos    = pos - self.depth*nr
                 self.rarm.set_target(pos, ori_r)
                 assert self.rarm.inverse_update(optimize = True)
-                pint.take_rarm_to(self.rarm.config.q, time_to_reach = 1.0)
+                pint.take_rarm_to(self.rarm.config.q, time_to_reach = 2.0)
                 step_r += 1    
 
             if (il < nlt) and (step_l == 0):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", il, " Step 0 for Left Arm"
                 pl     = pl_list[il]
@@ -293,213 +400,99 @@ class Skilled_PR2(ps.PyRide_PR2):
                 pos    = pos - self.depth*nl
                 self.larm.set_target(pos, ori_l)
                 assert self.larm.inverse_update(optimize = True)
-                pint.take_larm_to(self.larm.config.q, time_to_reach = 1.0)
+                pint.take_larm_to(self.larm.config.q, time_to_reach = 2.0)
                 step_l += 1    
             # head forward:
             if (pint.rarm_reached) and (step_r == 1):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", ir, " Step 1 for Right Arm"
                 pos    = np.copy(pr.segment[0].point[0].pos)
                 self.rarm.set_target(pos, ori_r)
                 assert self.rarm.inverse_update(optimize = True)
-                pint.take_rarm_to(self.rarm.config.q, time_to_reach = 0.5)
+                pint.take_rarm_to(self.rarm.config.q, time_to_reach = 1.0)
                 step_r += 1    
 
             if (pint.larm_reached) and (step_l == 1):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", il, " Step 1 for Left Arm"
                 pos    = np.copy(pl.segment[0].point[0].pos)
                 self.larm.set_target(pos, ori_l)
                 assert self.larm.inverse_update(optimize = True)
-                pint.take_larm_to(self.larm.config.q, time_to_reach = 0.5)
+                pint.take_larm_to(self.larm.config.q, time_to_reach = 1.0)
                 step_l += 1    
 
             # run trajectory:
             if (pint.rarm_reached) and (step_r == 2):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", ir, " Step 2 for Right Arm"
                 self.larm_reference = False
-                # self.arm_trajectory(pr, relative = False, speed = self.writing_speed, delta_phi = 0.5, wait = False)
+                # self.arm_trajectory(pr, relative = False, delta_phi = 0.5, wait = False)
                 self.draw_shape(pr)
                 step_r += 1    
 
             if (pint.larm_reached) and (step_l == 2):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", il, " Step 2 for Left Arm"
                 self.larm_reference = True
-                # self.arm_trajectory(pl, relative = False, speed = self.writing_speed, delta_phi = 0.5, wait = False)
+                # self.arm_trajectory(pl, relative = False, delta_phi = 0.5, wait = False)
                 self.draw_shape(pl)
                 step_l += 1    
 
+            # head backward:
             if (pint.rarm_reached) and (step_r == 3):
+                t0 = time.time()
                 if not silent:
                     print "Trajectory: ", ir, " Step 3 for Right Arm"
+                pos    = self.rarm.wrist_position() - nr*self.depth
+                self.rarm.set_target(pos, ori_r)
+                assert self.rarm.inverse_update(optimize = True)
+                pint.take_rarm_to(self.rarm.config.q, time_to_reach = 1.0)
+                step_r += 1    
+
+            if (pint.larm_reached) and (step_l == 3):
+                t0 = time.time()
+                if not silent:
+                    print "Trajectory: ", il, " Step 3 for Left Arm"
+                pos    = self.larm.wrist_position() - nl*self.depth
+                self.larm.set_target(pos, ori_l)
+                assert self.larm.inverse_update(optimize = True)
+                pint.take_larm_to(self.larm.config.q, time_to_reach = 1.0)
+                step_l += 1    
+
+            if (pint.rarm_reached) and (step_r == 4):
+                t0 = time.time()
+                if not silent:
+                    print "Trajectory: ", ir, " Step 4 for Right Arm"
                 ir    += 1
                 step_r = 0
 
-            if (pint.larm_reached) and (step_l == 3):
+            if (pint.larm_reached) and (step_l == 4):
+                t0 = time.time()
                 if not silent:
-                    print "Trajectory: ", il, " Step 3 for Left Arm"
+                    print "Trajectory: ", il, " Step 4 for Left Arm"
                 il    += 1
                 step_l = 0
 
+            time.sleep(0.100)
+            t = time.time() - t0
+
         self.sync_object()
+        self.rarm_startpoint = self.rarm_startpoint - nr*self.depth
+        self.larm_startpoint = self.larm_startpoint - nl*self.depth
+
+        if t > self.timeout:
+            print "Action not completed! Time Out!"        
+        # Return back to start point:
+        if nrt > 0:
+            self.rarm.set_target(self.rarm_startpoint, ori_r)
+            self.reach_target_rarm(wait = True)    
+
+        if nlt > 0:
+            self.larm.set_target(self.larm_startpoint, ori_l)
+            self.reach_target_larm(wait = True)    
     
-    def write_A(self):
-        # speed unit is: m/sec
-        if self.larm_reference:
-            ori = self.larm.wrist_orientation()
-        else:
-            ori = self.rarm.wrist_orientation()
-        if self.write_from_shape_complete:
-            A_complete = tsh.A(width = self.width, height = self.height, complete = True, direction = ori)
-            self.arm_trajectory(A_complete, speed = self.writing_speed, delta_phi = 0.5)
-        else:
-            self.arm_forward(self.depth, speed = self.writing_speed/2, relative = True)
-            if self.write_from_shape:
-                A = tsh.A(width = self.width, height = self.height, direction = ori)
-                self.arm_trajectory(A, speed = self.writing_speed, delta_phi = 0.5)
-            else:
-                self.arm_right_up(dx   = 0.4*self.width, dy = self.height, speed = self.writing_speed, relative = True)
-                self.arm_right_down(dx = 0.4*self.width, dy = self.height, speed = self.writing_speed, relative = True)
 
-            self.arm_back(self.depth, speed = self.writing_speed/2, relative = True)
-            self.arm_left_up(0.6*self.width, 0.5*self.height, speed = self.writing_speed, relative = True)
-            self.arm_forward(self.depth, speed = self.writing_speed/2, relative = True)
-            self.arm_right(0.4*self.width, speed = self.writing_speed, relative = True)
-            self.arm_back(self.depth, speed = self.writing_speed/2, relative = True)
-            self.arm_right_down(0.3*self.width, 0.5*self.height, speed = self.writing_speed, relative = True)
-
-    def write_B(self):
-        if self.larm_reference:
-            ori = self.larm.wrist_orientation()
-        else:
-            ori = self.rarm.wrist_orientation()
-        if self.write_from_shape_complete:
-            B_complete = tsh.B(width = 0.4*self.height, height = self.height, complete = True, direction = ori)
-            self.arm_trajectory(B_complete, speed = self.writing_speed, delta_phi = 0.5)
-        else:
-            self.arm_forward(self.depth, speed = self.writing_speed/2, relative=True)
-            if self.write_from_shape:
-                B = tsh.B(width = 0.4*self.height, height = self.height, direction = ori)
-                self.arm_trajectory(B, speed = self.writing_speed, delta_phi = 0.5)
-            else:
-                self.arm_up(self.height, speed = self.writing_speed, relative=True)
-                self.arm_arc(center = np.array([0.0, 0.0, - 0.25*self.height]), speed = self.writing_speed)
-                self.arm_arc(center = np.array([0.0, 0.0, - 0.25*self.height]), speed = self.writing_speed)
-            self.arm_back(self.depth, speed = self.writing_speed/2, relative=True)
-            self.arm_right(0.5*self.height, speed = self.writing_speed, relative=True)
-
-    def write_P(self):
-        if self.larm_reference:
-            ori = self.larm.wrist_orientation()
-        else:
-            ori = self.rarm.wrist_orientation()
-        if self.write_from_shape_complete:
-            P_complete = tsh.P(width = 0.4*self.height, height = self.height, complete = True, direction = ori)
-            self.arm_trajectory(P_complete, speed = self.writing_speed, delta_phi = 0.5)
-        else:
-            self.arm_forward(self.depth, speed = self.writing_speed/2, relative=True)
-            if self.write_from_shape:
-                P = tsh.P(width = 0.4*self.height, height = self.height, direction = ori)
-                self.arm_trajectory(P, speed = self.writing_speed, delta_phi = 0.5)
-            else:
-                self.arm_up(self.height, speed = self.writing_speed, relative=True)
-                self.arm_arc(center = np.array([0.0, 0.0, - 0.25*self.height]), speed = self.writing_speed)
-            self.arm_back(self.depth, speed = self.writing_speed/2, relative=True)
-            self.arm_right_down(dy=0.5*self.height, dx=0.5*self.height, speed = self.writing_speed, relative=True)
-
-    def write_N(self):
-        if self.larm_reference:
-            ori = self.larm.wrist_orientation()
-        else:
-            ori = self.rarm.wrist_orientation()
-        if self.write_from_shape_complete:
-            N_complete = tsh.N(width = 0.4*self.height, height = self.height, complete = True, direction = ori)
-            self.arm_trajectory(P_complete, speed = self.writing_speed, delta_phi = 0.5)
-        else:
-            self.arm_forward(self.depth, speed = self.writing_speed/2, relative=True)
-            if self.write_from_shape:
-                N = tsh.N(width = 0.4*self.height, height = self.height, direction = ori)
-                self.arm_trajectory(N, speed = self.writing_speed, delta_phi = 0.5)
-            else:
-                assert False,"Not supported yet!"
-            self.arm_back(self.depth, speed = self.writing_speed/2, relative=True)
-            self.arm_right_down(dy=self.height, dx=0.1*self.height, speed = self.writing_speed, relative=True)
-
-    def write_W(self):
-        if self.larm_reference:
-            ori = self.larm.wrist_orientation()
-        else:
-            ori = self.rarm.wrist_orientation()
-        if self.write_from_shape_complete:
-            W_complete = tsh.W(width = 0.4*self.height, height = self.height, complete = True, direction = ori)
-            self.arm_trajectory(W_complete, speed = self.writing_speed, delta_phi = 0.5)
-        else:
-            self.arm_up(self.height, speed = self.writing_speed, relative=True)
-            self.arm_forward(self.depth, speed = self.writing_speed/2, relative=True)
-            if self.write_from_shape:
-                W = tsh.W(width = 0.4*self.height, height = self.height, direction = ori)
-                self.arm_trajectory(W, speed = self.writing_speed, delta_phi = 0.5)
-            else:
-                assert False,"Not supported yet!"
-            self.arm_back(self.depth, speed = self.writing_speed/2, relative=True)
-            self.arm_right_down(dy=self.height, dx=0.1*self.height, speed = self.writing_speed, relative=True)
-
-    def write_char(self, char):
-        # ori = self.endeffector_orientation()
-        self.sync_object()
-        if char == "A":
-            self.write_A()
-        elif char == "B":
-            self.write_B()
-        elif char == "P":
-            self.write_P()
-
-    def write_larm(self, c, height = 0.1):
-        '''
-        Writes the given charachter c with left arm
-        Before calling this function, make sure that the pen tip is 2 cm away from the board, 
-        because the arm will come forward 2cm to write the letter and will move backward again after the letter is written.
-        The arm will be placed a 0.1*height after the end of the written letter (down) to be prepared to write the next letter.
-        '''
-        self.sync_object()
-        self.larm_reference = True
-        if c == "W":
-            self.arm_up(height)
-            self.arm_forward(0.02)
-            self.arm_right_down(dx = 0.2*height, dy = height)
-            self.arm_right_up(dx   = 0.2*height, dy = 0.6*height)
-            self.arm_right_down(dx = 0.2*height, dy = 0.6*height)
-            self.arm_right_up(dx   = 0.2*height, dy = height)
-            self.arm_back(0.02)
-            self.arm_right_down(0.1*height, height)
-        elif c == "E":       
-            self.arm_right(0.8*height)
-            self.arm_forward(0.02)
-            self.arm_left(0.8*height)
-            self.arm_up(height)
-            self.arm_right(0.8*height)
-            self.arm_back(0.02)
-            self.arm_left_down(0.8*height, 0.5*height)
-            self.arm_forward(0.02)
-            self.arm_right(0.8*height)
-            self.arm_back(0.02)
-            self.arm_right_down(0.1*height, 0.5*height)
-        elif c == "M":
-            self.arm_forward(0.02)
-            self.arm_up(height)
-            self.arm_right_down(dx   = 0.4*height, dy = 0.6*height)
-            self.arm_right_up(dx     = 0.4*height, dy = 0.6*height)
-            self.arm_down(height)
-            self.arm_back(0.02)
-            self.arm_right(0.1*height)
-        elif c == "V":
-            self.arm_up(height)
-            self.arm_forward(0.02)
-            self.arm_right_down(dx = 0.4*height, dy = height)
-            self.arm_right_up(dx   = 0.4*height, dy = height)
-            self.arm_back(0.02)
-            self.arm_right_down(0.1*height, height)
-        else:
-            print "Error from Skilled_PR2.write_larm(): Given Charachter not known"

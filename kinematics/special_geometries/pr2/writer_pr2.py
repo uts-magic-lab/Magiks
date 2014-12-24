@@ -55,10 +55,10 @@ class Writer_PR2(spr.Skilled_PR2):
     def __init__(self):
         super(Writer_PR2, self).__init__()
         self.height = 0.05
-        self.width  = 0.025
+        self.width  = 0.02
         self.arm_speed = 0.01
 
-        self.board_offset   = np.array([ 0.08,  0.2 ,  0.1])
+        self.board_offset   = np.array([ 0.092,  0.2 ,  0.1])
         self.larm_reference = True
     
     def write_A(self):
@@ -87,21 +87,21 @@ class Writer_PR2(spr.Skilled_PR2):
     def write_C(self):
         arm  = self.reference_arm()
         ori  = arm.wrist_orientation()
-        self.arm_right_up(dx = 0.75*self.height, dy = (2.0+math.sqrt(3.0))*self.height/4.0, relative=True)
+        self.arm_right_up(dy = (self.height- self.width/2) , dx = self.width, relative=True)
         self.arm_forward(self.depth, relative=True)
-        C = tsh.C(height = self.height, direction = ori, adjust = False)
+        C = tsh.C(height = self.height, width = self.width, direction = ori, adjust = False)
         self.arm_trajectory(C)
         self.arm_back(self.depth, relative=True)
-        self.arm_right_down(dx=0.25*self.height + 0.1*self.width, dy=(2 - math.sqrt(3))*self.height/4.0, relative=True)
+        self.arm_right_down(dy = self.width/2 , dx = 0.3*self.width, relative=True)
 
     def write_D(self):
         arm  = self.reference_arm()
         ori  = arm.wrist_orientation()
         self.arm_forward(self.depth, relative=True)
-        D = tsh.D(width = 0.4*self.height, height = self.height, direction = ori)
+        D = tsh.D(height = self.height, width = self.width, direction = ori)
         self.arm_trajectory(D)
         self.arm_back(self.depth, relative=True)
-        self.arm_right(0.5*self.height + 0.3*self.width, relative=True)
+        self.arm_right(1.3*self.width, relative=True)
 
     def write_E(self):
         arm  = self.reference_arm()
@@ -134,16 +134,18 @@ class Writer_PR2(spr.Skilled_PR2):
     def write_G(self):
         arm  = self.reference_arm()
         ori  = arm.wrist_orientation()
-        self.arm_right_up(dx = 0.75*self.height, dy = (2.0+math.sqrt(3.0))*self.height/4.0, relative=True)
+        self.arm_right_up(dx = self.width, dy = self.height- self.width/2, relative=True)
         self.arm_forward(self.depth, relative=True)
-        G = tsh.G(height = self.height, direction = ori, adjust = False)
+        G = tsh.G(height = self.height, width = self.width, direction = ori, adjust = False)
         self.arm_trajectory(G)
+        '''
         self.arm_back(self.depth, relative=True)
         self.arm_left(dx= 0.25*self.height, relative=True)
         self.arm_forward(self.depth, relative=True)
         self.arm_right(dx= 0.4*self.height, relative=True)
+        '''
         self.arm_back(self.depth, relative=True)
-        self.arm_right_down(dx= 0.4*self.width, dy=self.height/2.0, relative=True)
+        self.arm_right_down(dx= 0.55*self.width, dy=self.height/2.0, relative=True)
 
     def write_H(self):
         arm  = self.reference_arm()
@@ -243,12 +245,12 @@ class Writer_PR2(spr.Skilled_PR2):
     def write_O(self):
         arm  = self.reference_arm()
         ori  = arm.wrist_orientation()
-        self.arm_right_up(dx = self.height/2, dy = self.height, relative=True)
+        self.arm_up(self.height - self.width/2, relative=True)
         self.arm_forward(self.depth, relative=True)
-        O = tsh.O(height = self.height, direction = ori, adjust = False)
+        O = tsh.O(height = self.height, width = self.width, direction = ori, adjust = False)
         self.arm_trajectory(O)
         self.arm_back(self.depth, relative=True)
-        self.arm_right_down(dx= self.height/2 + 0.3*self.width, dy = self.height, relative=True)
+        self.arm_right_down(dx= 1.2*self.width, dy = self.height - self.width/2, relative=True)
 
     def write_P(self):
         arm  = self.reference_arm()
@@ -262,16 +264,16 @@ class Writer_PR2(spr.Skilled_PR2):
     def write_Q(self):
         arm  = self.reference_arm()
         ori  = arm.wrist_orientation()
-        self.arm_right_up(dx = self.height/2, dy = self.height, relative=True)
+        self.arm_up(self.height - self.width/2, relative=True)
         self.arm_forward(self.depth, relative=True)
-        O = tsh.O(height = self.height, direction = ori, adjust = False)
+        O = tsh.O(height = self.height, width = self.width, direction = ori, adjust = False)
         self.arm_trajectory(O)
         self.arm_back(self.depth, relative=True)
         self.arm_right_down(dx= 0.3*self.height, dy = 0.6*self.height, relative=True)
         self.arm_forward(self.depth, relative=True)
         self.arm_right_down(dx= 0.3*self.height, dy = 0.1*self.height, relative=True)
         self.arm_back(self.depth, relative=True)
-        self.arm_right_down(dx= 0.3*self.width, dy = 0.3*self.height, relative=True)
+        self.arm_right_down(dx= 0.3*self.width, dy = - self.width/2 + 0.3*self.height, relative=True)
 
     def write_R(self):
         arm  = self.reference_arm()
@@ -282,6 +284,19 @@ class Writer_PR2(spr.Skilled_PR2):
         self.arm_right_down(dy=0.5*self.height, dx=0.25*self.height, relative=True)
         self.arm_back(self.depth, relative=True)
         self.arm_right(dx=0.3*self.width, relative=True)
+
+    def write_S(self):
+        cth = math.cos(math.pi/3)
+        sth = math.sin(math.pi/3)
+        arm  = self.reference_arm()
+        ori  = arm.wrist_orientation()
+
+        self.arm_right_up(dy = 0.25*self.height*(3+cth), dx = 0.4*self.width + 0.25*self.height*(1+sth), relative=True)
+        self.arm_forward(self.depth, relative=True)
+        S = tsh.S(height = self.height, direction = ori)
+        self.arm_trajectory(S)
+        self.arm_back(self.depth, relative=True)
+        self.arm_right_down(dy = 0.25*self.height*(1-cth), dx = 0.4*self.width + 0.6*self.width*(1+sth), relative=True)
 
     def write_T(self):
         arm  = self.reference_arm()
@@ -314,7 +329,7 @@ class Writer_PR2(spr.Skilled_PR2):
         W = tsh.W(width = 0.4*self.height, height = self.height, direction = ori)
         self.arm_trajectory(W)
         self.arm_back(self.depth, relative=True)
-        self.arm_right_down(dy=self.height, dx=0.1*self.height, relative=True)
+        self.arm_right_down(dy=self.height, dx=0.3*self.width, relative=True)
 
     def write_X(self):
         arm  = self.reference_arm()
