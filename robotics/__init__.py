@@ -21,5 +21,5 @@ def set_file_path( verbose=False ):
     sys.path.append(  super_path )
     
     # super package : 
-    import packages
-    return packages.set_file_path( verbose=verbose ) 
+    import nima
+    return nima.set_file_path( verbose=verbose ) 
