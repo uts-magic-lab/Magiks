@@ -25,8 +25,10 @@ Changes from ver 1.0:
 
 import nao_dynamics as nd
 import pyride_interpreter as pint
+import numpy as np
 import time
 
+import packages.nima.robotics.kinematics.task_space.trajectory as tj
 
 class PyRide_NAO(nd.NAO):
     '''
@@ -50,4 +52,19 @@ class PyRide_NAO(nd.NAO):
     def joint_speed(self, k = 1.0):
         return super(PyRide_NAO, self).joint_speed(k = k)
         self.set_config(pint.q)
+
+    def set_config_smooth(self, qd, time_to_reach = 1.0):
+        j_traj = tj.Polynomial_Trajectory(dimension = 21)
+        j_traj.interpolate(phi = [0.0, time_to_reach], positions = [pint.q, qd], velocities = [np.zeros(21), np.zeros(21)])
+        t0 = time.time()
+        t  = 0.0
+        while t < time_to_reach:
+            j_traj.set_phi(t)
+            self.set_config(j_traj.current_position)
+            t = time.time() - t0
+        
+    def reach_target_smooth(self, time_to_reach = 1.0):
+        nao = self.self_copy()
+        nao.reach_target()
+        self.set_config_smooth(qd = nao.q, time_to_reach = time_to_reach)
         

@@ -60,6 +60,7 @@ class NAO_Leg():
         # DH parameters:
         self.a = [0.0,  0.0 ,  0.0, thigh_length, tibia_length, 0.0]
         self.d = [0.0,  0.0 ,  0.0, 0.0         , 0.0         , 0.0]
+
         self.theta = [    math.pi/2,  - math.pi/4, 0.0      , 0.0, 0.0,   0.0      ]
         self.alpha = [  - math.pi/4,  math.pi/2, math.pi/2, 0.0, 0.0, math.pi/2]    
 
@@ -102,19 +103,14 @@ class NAO_Leg():
                 self.T[i + 1] = numpy.dot(self.T[i],self.A[i + 1])
 
 
-            X   = rotlib.trans_hemogeneous([self.a[i], 0.0, 0.0]) 
-            X   = numpy.dot(rotlib.rot_z(self.q[4]  , hemogeneous = True), rotlib.rot_x( 0.0 , hemogeneous = True))
-            X   = numpy.dot(X, numpy.dot(rotlib.rot_x(  self.alpha[5]  , hemogeneous = True), rotlib.rot_z( self.q[5]+math.pi  , hemogeneous = True)))
-            #Rz    = numpy.dot(self.A[5], rotlib.rot_z( math.pi  , hemogeneous = True))
+            Rz   = rotlib.rot_z(  math.pi  , hemogeneous = True)
             Ry   = rotlib.rot_y(  math.pi/2  , hemogeneous = True)
-            R    = numpy.dot(numpy.dot(X, Ry), rotlib.rot_z(  0.0  , hemogeneous = True))
+            R    = numpy.dot(Rz, Ry)
             RAE6 = numpy.dot(R, A_E6)
-            A0BT = numpy.dot(A_0B, self.T[n-3])
+            A0BT = numpy.dot(A_0B, self.T[5])
 
             # Transfer matrix of the Endeffector(foot bottom) with respect to the base(torso center):
-            self.TEB = numpy.dot(A0BT,RAE6) 
-
-            
+            self.TEB = numpy.dot(A0BT, RAE6) 
             
             self.fk_updated = True
         
@@ -134,5 +130,7 @@ class NAO_Leg():
         if not self.fk_updated:
             self.update_fk()
         return self.TEB[0:3, 0:3]
+
+    
 
 

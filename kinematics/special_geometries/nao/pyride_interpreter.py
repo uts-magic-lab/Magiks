@@ -31,6 +31,10 @@ import packages.nima.mathematics.rotation as rot
 # Service event functions
 
 q  = numpy.zeros(21)
+a  = numpy.zeros(3)
+Fl = numpy.zeros(3)
+Fr = numpy.zeros(3)
+
 ax  = []
 ay  = []
 az  = []
@@ -55,9 +59,9 @@ def stop_history():
 
 def sensor_data( data ):
     global q
-    global ax,ay,az
-    global Flx,Fly,Flz
-    global Frx,Fry,Frz
+    global a,ax,ay,az
+    global Fl,Flx,Fly,Flz
+    global Fr,Frx,Fry,Frz
     global history
     '''
     reads joint values from the server and stores it in global variable q
