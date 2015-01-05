@@ -1,26 +1,20 @@
 # HEADER
-'''   
-@file:          inverse_kinematics.py
-@brief:    	    This module provides a functor class regaring the inverse kinematic calculations of a manipulator.
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney
-                Broadway, Ultimo, NSW 2007
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
 
-@version:	    3.0
-Last Revision:  01 December 2014
+## @file        	inverse_kinematics.py
+#  @brief           This module provides a functor class regaring the inverse kinematic calculations of a manipulator
+#  @author      	Nima Ramezani Taghiabadi
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	4.0
+#
+#  Last Revision:  	03 January 2015
 
-Changes from Version 2.0:
-    1 - Function optimum_stepsize() added 
-'''
 # BODY
 
 import numpy, math, time, copy
@@ -212,21 +206,23 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
         Je  = self.endeffector.EJ
         # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
         #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
-        if self.settings.algorithm == "JPI":
+        if self.settings.algorithm == "JI":
+            Je_dagger = numpy.linalg.inv(Je)
+        elif self.settings.algorithm == "JPI":
             Je_dagger = numpy.linalg.pinv(Je)
         elif self.settings.algorithm == "JT":
             Je_dagger = - Je.T
         elif self.settings.algorithm in ["DLS(CDF)", "DLS(VDF)"]:
             Je_dagger = vecmat.right_dls_inverse(Je, self.settings.damping_factor)
         else:
-            assert False, self.__class__.err_head + func_name + ": " + self.settings.algoritm + " is an unknown value for algorithm"
+            assert False, self.__class__.err_head + func_name + ": " + self.settings.algorithm + " is an unknown value for algorithm"
         # Joint Correction is calculated
         delta_qs = - numpy.dot(Je_dagger, err)
         return delta_qs       
 
     def optimum_stepsize(self, direction):
         func_name = ".optimum_stepsize(): "
-        if self.settings.algorithm == 'JPI':
+        if self.settings.algorithm in ['JPI', 'JI']:
             return 1.0
         elif self.settings.algorithm in ['JT', 'DLS(CDF)', 'DLS(VDF)']:
             J_delta_q = numpy.dot(self.endeffector.EJ, direction)        
@@ -357,6 +353,7 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
             print "Min Error Achieved: ", min_config.endeffector.error_norm
             print "Position Error    : ", self.endeffector.reference_positions[0].error.value
             print "Position in target: ", self.endeffector.reference_positions[0].error.in_target
+            print "Precision for Pos : ", self.endeffector.settings.precision_for_position
             print "Rotation Error    : ", self.endeffector.reference_orientations[0].error.value
             print "Rotation in target: ", self.endeffector.reference_orientations[0].error.in_target
             print "Rotation pr_base  : ", self.endeffector.reference_orientations[0].error.precision_base
@@ -503,6 +500,8 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
     def inverse_update(self):
         '''
         '''
+        func_name = '.inverse_update()'
+
         self.log_info               = (0.000000, 0)
                 
         self.analytic_jacobian.evaluate_requirements(self.endeffector.reference_positions, self.endeffector.reference_orientations)
@@ -517,7 +516,7 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
             if self.settings.run_mode == 'binary_run':
                 self.run_binary(True)
             elif self.settings.run_mode == 'normal_run':
-                if self.settings.algorithm in ["JT","JPI","DLS(CDF)"]:
+                if self.settings.algorithm in ["JT","JPI","DLS(CDF)", "JI"]:
                     self.run()
                 elif self.settings.algorithm == "DLS(VDF)":
                     self.run_dls_vdf()
@@ -537,7 +536,7 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
             if self.settings.run_mode == 'binary_run':
                 self.run_binary(True)
             elif self.settings.run_mode == 'normal_run':
-                if self.settings.algorithm in ["JT","JPI","DLS(CDF)"]:
+                if self.settings.algorithm in ["JT","JPI","DLS(CDF)", "JI"]:
                     self.run()
                 elif self.settings.algorithm == "DLS(VDF)":
                     self.run_dls_vdf()

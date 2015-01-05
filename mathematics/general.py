@@ -1,26 +1,17 @@
-'''   Header
-@file:          general.py
-@brief:    	    This module provides general mathematical functions
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	0.3
-Last Revision:  12 March 2014
-
-Changes from last revision:
-
-	1- Function gauss_kernel_cosine added. (Translated from matlab code written by Gabriel)
-'''
-
+## @file        	general.py
+#  @brief     		This module provides general mathematical functions
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	1.0
+# 
+#  Last Revision:  	03 January 2015 
 
 import math, numpy
 from interval import interval, inf
@@ -28,13 +19,14 @@ from interval import interval, inf
 # global variables:
 two_pi   = 2*math.pi
 pi       = 1*math.pi
-epsilon  = 0.00001
-deg_to_rad_coeff = (math.pi/180.00)
-f0       = float(0)
-f1       = float(1)
+deg_to_rad    = (math.pi/180.00) #convert an angle from degree to radian by multiplying it by this variable
+rad_to_deg    = (180.00/math.pi) #convert an angle from radian to degree by multiplying it by this variable
+
+epsilon  = 0.00001 # a very small number 
+f0       = float(0) # constant number zero as a float
+f1       = float(1) # constant number one as a float
 err_code = 0
 infinity = float("inf")
-
 
 def sign_choice(x, y, z):
     if z > 0:

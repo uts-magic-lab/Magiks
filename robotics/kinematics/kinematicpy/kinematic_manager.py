@@ -1,131 +1,22 @@
-'''   Header
-@file:          kinematic_manager.py
-@brief:    	    This module contains the main class for handling the kinematics of a manipulator
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    2
-Last Revision:  09 December 2014
+# HEADER
 
-Changes from version old (0.5):
-    Test key Changed according to the followintg rules:  
-
-Standard code for the IK test project:
-
-AS:X1_RG:X2_
-
-in the form of:
-TAG1:v1-v2_TAG2:v1-v2_TAG3:v1-v2_ ... 
-*************************
-AS: is the Application Scenario and can take the following possible strings:
-
-Inverse Kinematics for a single pose target:
-    AS:PP (Pose Projection) - The problem is to find a feasible joint configuration (not a trajectory) corresponding to a single pose for the EE.
-Kinematic Control:
-    AS:TP (Trajectory Projection) - The problem is to find a feasible joint trajectory corresponding to a desired trajectory for the EE in the taskspace. 
-                                    Since the target is a trajectory (the target is changing) its a Variable Target Kinematic Control (VT)
-
-    AS:TG (Trajectory Generation) - The problem is to find a feasible joint trajectory that leads the EE to a desired target pose. 
-                                    Since the target is a single pose, its a Constant Target Kinematic Control (CT) 
-For example:
-AS:TG 
-    denotes for: Application Scenario: Trajectory Generation or (Kinematic Control-Constant Target)
-*************************
-RG: specifies the Robot Geometry (Manipulator Name) which specifies the geometry. This name is associated with a unique Geometry but may include various dimensions. 
-    (only non-zero "d" and "a" parameters in the table of DH parameters can change)
-
-examples:
-
-RG:PR2, RG:SRS, RG:PUMA, RG:PA10, RG:AILA, RG:NAO
-
-If a specific part of the robot is modelled (like PR2 Right Arm) the part is added by a dash like:
-Examples:
-RG:NAO(LF)-DOF6 (Robot Geometry: NAO-Left Foot-Degrees of Freedom is 6)
-RG:PR2(RA)-DOF7 (Robot Geometry: PR2-Right Arm-Degrees of Freedom is 7)
-RG:PR2(DA)-DOF14 (Robot Geometry: PR2-Dual Arm-Degrees of Freedom is 14) (Fixed Base)
-RG:PR2(LA-FrBs)-DOF18 (Robot Geometry: PR2-Left Arm-Degrees of Freedom is 18) (Free Base)
- 
-*************************
-
-EE: End-Effector(Kinematic Constraints): (Main Kinematic Constraints)
-
-Specifies the number of endeffectors and also specifies if the constraints are for position or orientation
-
-EE:PPOOO : two Endeffector includes two position references and three Orientation referencesreference points
-           Usually the reference point is on the reference frame. (for example position and orientation of the end of the right arm)
-           but this can not be identified via this key
-EE:PO    : One position reference and one orientation reference  
-*************************
-PRF:    Pose Residual Function
-Example:
-PRF:CC-AxInPr      For position: Cartesian Coordinates and For Orientation: Axis Inner Product
-
-PRF:CC-ED(xz)-AxInPr(ij)-ReRoAn 
-For the first position reference : Cartesian Coordinates (x-xd=0, y-yd=0,z-zd=0)
-For the second position reference: Euclidean Distance including coordinates x and z:  (x-xd)^2+(z-zd)^2 = 0
-For the first orientation reference: Axis Inner Product (Aligning axis i and j)
-For the second Ori. Ref. : Relative Rotation Angle
-*************************
-AL: Algorithm (Approach-Mathod) : Specifies the main approach to solving the IK problem or the first cathegory of methods
-The first value usually specifies the Solution Class or the main approach
-and the second value determines the algorithm method
-
-Examples:
-
-A:A     : Analytic
-A:N-JI  : Numeric- Jacobian Inverse (Equation-Based)
-A:N-JPI(MNI100) : Numeric - Jacobian Pseudo Inverse (Equation-Based)
-A:N-DLS(MNI1K-DF12m) : Numeric- Damped Least Square Method (Maximum Number of Iterations = 1000 & Damping Factor = 0.012)
-A:N-HI  : Numeric- Optimization-Based - Hessian Inverse
-A:AI-NN : Artificial Intelligence/Neural Network
-A:GA    : Genetic Algorithm
-A:HS-CCD: Huristic Search-Cyclic Coordinate Descent
-A:AN    : A combination of Analytic and Numeric
-A:AHS   : A combination of Analytic and Search methods
-*************************
-RR: Redundancy Resolution (Applicable for some algorithms like: Jacobian pseudo-inverse)
-Example:
-
-RR:GP-JMD  Gradient Projection-the cost function: Joint Midrange Deviation
-The default is: Least Squares Inverse 
-*************************
-IC: Initial Configuration
-
-Specifies how the initial configurations are generated for testing and how many initial configurations are available to be selected from
-Examples:
-
-IC:CS1   Initial Configuration-selected from a Constant Set. All runs start from a single configuration
-IC:CS10  The initial configurations are selected randomly from a Constant Set of 10 predefined configurations
-IC:JSG3  The initial configurations are selected from a jointspace grid with resolution 3 (Each joint is divided to three intervals with three values representing the middle of each interval)
-      The number of possible configurations is 3^n when n is the DOF. So the initial config is selected among 3^n configurations in the lattice.
-IC:RND1   The initial configuration is randomly generated by specifying a random value to each joint in its feasible range.
-IC:CS-ZP  Zero Point: The initial configuration is selected as zero poseture when all the joints are zero
-IC:CS-MR  Mid-Range of joints. All the joints are valued at the middle of their feasible ranges
-*************************
-TP: Target poses
-
-Specifies how the target endeffector poses are generated for testing and how many targets are tested
-Examples are similar to IC
-
-TP:RND100   :  Target Pose- Random 100 poses: The IK solver is implemented 100 times for 100 target poses randomly selected
-TP:TSG4     :  Target Pose- TaskSpace Grid of resolution 100: The targets are taken from a taskspace grid with resolution 4. (The number of targets are 4^m when m represents the number of constraints)
-*************************
-
-JSM: Jointspace Mapping
-JSM:CM   (Cosine Mapping)
-
-'''
+## @file        	kinematic_manager.py
+#  @brief           This module contains the main class for handling the kinematics of a manipulator
+#  @author      	Nima Ramezani Taghiabadi
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	3.0
+#
+#  Last Revision:  	03 January 2015
 
 # BODY
+
 import numpy, math, time, copy, pickle
 
 from packages.nima.mathematics import rotation
@@ -175,25 +66,27 @@ key_dic = {
     'EXO'           : 'DFKI Capio Exoskeleton (9 DOF)',
     'PR2ARM'        : 'Willowgarage PR2 Arm (7 DOF)',
     # For Position Metrics:
-    'ICC(xyz)'      : 'Identical Cartesian Coordinates x,y,z', # default
+    'ICC(xyz)'      : 'Identical Cartesian Coordinates x-y-z', # default
     # For Orientation Metrics:
-    'AxInPr(ijk)'   : 'Aligned Axis i,j,k',
-    'AxInPr(ij)'    : 'Aligned Axis i,j',
-    'AxInPr(ik)'    : 'Aligned Axis i,k',
-    'AxInPr(jk)'    : 'Aligned Axis j,k',
+    'AxInPr(ijk)'   : 'Axis Inner Product (Aligned Axis i-j-k)',
+    'AxInPr(ij)'    : 'Axis Inner Product (Aligned Axis i-j)',
+    'AxInPr(ik)'    : 'Axis Inner Product (Aligned Axis i-k)',
+    'AxInPr(jk)'    : 'Axis Inner Product (Aligned Axis j-k)',
 
-    'ReRoMxTr'      : 'Trace of Relative Rotation Matrix equals three',
+    'ReRoMaTr'      : 'Trace of Relative Rotation Matrix equals three',
     'DiNoQu'        : 'Difference of Normalized Quaternions equals zero',
     'ReRoAn'        : 'Relative Rotation Angle equals zero',
     'ReOrVe(IDTY)'  : 'Relative Orientation Vector equals zero (Generator Function: Identity)',
-    'DiRoMx'        : 'Difference of Rotation Matrices equals zero',
+    'DiRoMa'        : 'Difference of Rotation Matrices equals zero',
     # For Joinspace Mapping:
     'NM'            : 'No Mapping', # default
     'LM'            : 'Linear Mapping',
     'CM'            : 'Cosine Mapping',
     'TM'            : 'Tangent Mapping',
     'MM'            : 'Mechanism Mapping',
-
+    # For Workspace Coverage: 
+    'WC-TP'         : 'Workspace Coverage for Target Pose',
+    'WC-IC'         : 'Workspace Coverage for Initial Configuration',
     # Forward:
     'KC'    : 'Kinematic Constraints',
     'PP'    : 'Precision for Position (mm)',
@@ -316,9 +209,9 @@ class Kinematic_Manager_Settings():
         err_head       = "Error from kinematic_manager.Kinematic_Manager_Settings." 
 
 
-        self.str_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'DF']
-        self.csv_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'DF']
-        self.key_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PM', 'OM']
+        self.str_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'WC-TP', 'WC-IC', 'DF']
+        self.csv_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'WC-TP', 'WC-IC', 'DF']
+        self.key_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PM', 'OM', 'WC-TP', 'WC-IC']
 
         # Name of the manipulator
         self.manip_name = manip_name
@@ -389,7 +282,7 @@ class Kinematic_Manager_Settings():
         for p in parameter_set:
             value = self.parameter_value(p)
             param = key_dic[p]
-            if p in ['KC','PP','PO', 'DF', 'MNI']:
+            if p in ['KC','PP','PO', 'DF', 'MNI', 'WC-TP', 'WC-IC']:
                 s += param + " "*(30-len(param)) +': ' + value + '\n'
             else:
                 s += param + " "*(30-len(param)) + ': ' + key_dic[value] + '\n'
@@ -432,7 +325,10 @@ class Kinematic_Manager_Settings():
             return self.orientation_constraint
         elif parameter == 'DF':
             return str(self.ik_settings.damping_factor)
-
+        elif parameter == 'WC-TP':
+            return self.workspace_settings_tp.gen_key()
+        elif parameter == 'WC-IC':
+            return self.workspace_settings_ic.gen_key()
 
         else:
             assert False, parameter + " is an Unknown Setting Parameter"
@@ -445,24 +341,27 @@ class Kinematic_Manager_Settings():
             parameter_set = self.csv_parameter_set
 
         if header:
-            s  = 'Setting Parameter' + 'Parameter Key' + ',' + 'Value' + ',' + 'Interpretation' + '\n'
+            s  = 'Setting Parameter' + ',' + 'Parameter Key' + ',' + 'Value' + ',' + 'Interpretation' + '\n'
         else:
             s  = ''
         
         for p in parameter_set:
             value = self.parameter_value(p)
             s    += key_dic[p] + ',' + p + ',' + value + ','
-            if not p in ['KC','PP','PO', 'DF']:
+            if not p in ['KC','PP','PO', 'DF', 'MNI', 'WC-TP', 'WC-IC']:
                 s += key_dic[value]
             s += '\n'
         return s
         
-    def csv_horizontal_header(self, parameter_set = None):
+    def csv_horizontal_header(self, parameter_set = None, use_key = False):
         if parameter_set == None:
             parameter_set = self.csv_parameter_set
         s = ''
         for p in parameter_set:
-            s += key_dic[p] + ","
+            if use_key:
+                s += p + ","
+            else:
+                s += key_dic[p] + ","
         s  = s[0:len(s) - 1]
         return s
 
@@ -484,7 +383,7 @@ class Kinematic_Manager_Settings():
         if parameter_set == None:
             parameter_set = self.key_parameter_set
         for p in parameter_set:
-            if p in ['KC','PP','PO', 'DF', 'MNI']:
+            if p in ['KC','PP','PO', 'DF', 'MNI', 'WC-TP', 'WC-IC']:
                 s     += p + self.parameter_value(p) + '_'
             else:
                 s     += self.parameter_value(p) + '_'

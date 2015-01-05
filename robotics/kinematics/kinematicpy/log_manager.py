@@ -1,25 +1,25 @@
 # HEADER
-'''   
-@file:          log_manager.py
-@brief:    	    This module provides classes containing data structure for IK test log data
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney
-                Broadway, Ultimo, NSW 2007
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  16 December 2014
-'''
-# BODY
 
+## @file        	log_manager.py
+#  @brief           This module provides classes containing data structure for IK test log data
+#  @author      	Nima Ramezani Taghiabadi
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	3.0
+#
+#  Last Revision:  	03 January 2015
+
+# BODY
 import math, pickle
+
+from packages.nima.mathematics import vectors_and_matrices as vecmat
+
 
 key_dic = {
     # Forward:
@@ -288,7 +288,7 @@ class Eval_Log_Data_Statistics():
         elif parameter == 'NSRun':
             return str(self.num_success)
         elif parameter == 'PS':
-            return str(100*self.num_success/float(self.num_run))
+            return vecmat.value_to_str(100*self.num_success/float(self.num_run))
         elif parameter == 'NI-tot':
             return str(self.sum_num_iter)
         elif parameter == 'NI-max':
@@ -298,33 +298,31 @@ class Eval_Log_Data_Statistics():
             # return str(self.min_num_iter) + " for target pose number: " + str(self.min_num_iter_pose_number)
             return str(self.min_num_iter)
         elif parameter == 'NI-avr':
-            return str(self.mean_num_iter)
+            return vecmat.value_to_str(self.mean_num_iter)
         elif parameter == 'NI-sdv':
-            return str(self.sd_num_iter)
+            return vecmat.value_to_str(self.sd_num_iter)
         elif parameter == 'NI-mse':
-            return str(self.mse_num_iter)
+            return vecmat.value_to_str(self.mse_num_iter)
         elif parameter == 'NT-max':
             # return str(self.max_num_trial) + ' for target pose number: ' + str(self.max_num_trial_pose_number)
-            return str(self.max_num_trial)
+            return vecmat.value_to_str(self.max_num_trial)
         elif parameter == 'NT-min':
             # return str(self.min_num_trial) + ' for target pose number: ' + str(self.min_num_trial_pose_number)
-            return str(self.min_num_trial)
+            return vecmat.value_to_str(self.min_num_trial)
         elif parameter == 'NT-avr':
-            return str(self.mean_num_trial)
+            return vecmat.value_to_str(self.mean_num_trial)
         elif parameter == 'RT-tot':
-            return str(1000*self.sum_run_time)
+            return vecmat.value_to_str(1000*self.sum_run_time)
         elif parameter == 'RT-max':
-            # return str(1000*self.max_run_time)+ ' for target pose number: ' + str(self.max_run_time_pose_number) 
-            return str(1000*self.max_run_time)
+            return vecmat.value_to_str(1000*self.max_run_time)
         elif parameter == 'RT-min':
-            # return str(1000*self.min_run_time)+ ' for target pose number: ' + str(self.min_run_time_pose_number)
-            return str(1000*self.min_run_time)
+            return vecmat.value_to_str(1000*self.min_run_time)
         elif parameter == 'RT-avr':
-            return str(1000*self.mean_run_time)
+            return vecmat.value_to_str(1000*self.mean_run_time)
         elif parameter == 'RT-sdv':
-            return str(1000*self.sd_run_time)
+            return vecmat.value_to_str(1000*self.sd_run_time)
         elif parameter == 'RT-mse':
-            return str(1000*self.mse_run_time)
+            return vecmat.value_to_str(1000*self.mse_run_time)
         else:
             assert False, "Error from Eval_Log_Data_Statistics().parameter_value(): " + parameter + " is unknown"
 
@@ -354,12 +352,15 @@ class Eval_Log_Data_Statistics():
             s += key_dic[p] + "," + value + '\n'
         return s
 
-    def csv_horizontal_header(self, parameter_set = None):
+    def csv_horizontal_header(self, parameter_set = None, use_key = False):
         if parameter_set == None:
             parameter_set = self.csv_parameter_set
         s = ''
         for p in parameter_set:
-            s += key_dic[p] + ","
+            if use_key:
+                s += p + ","
+            else:
+                s += key_dic[p] + ","
         s  = s[0:len(s) - 1]
         return s
 

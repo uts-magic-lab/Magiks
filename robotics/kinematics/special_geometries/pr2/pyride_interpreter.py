@@ -1,26 +1,22 @@
-'''   Header
-@file:          pyride_interpreter.py
-@brief:    	    Contains simplified functions to control PR2 using pyride engine
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@uts.edu.au 
-                Email(2): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(3): N.RamezaniTaghiabadi@uws.edu.au 
-                Email(4): nima.ramezani@gmail.com
-                Email(5): nima_ramezani@yahoo.com
-                Email(6): ramezanitn@alum.sharif.edu
+## @file        	pyride_interpreter.py
+#  @brief     		Contains simplified functions to control PR2 using pyride engine
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	4.0 
+#
+#  Last Revision:  	03 January 2015
 
-@version:	    1.0
-Start date:     9 April 2014
-Last Revision:  9 April 2014
-
-Changes from ver 1.0:
+'''
+Changes from ver 3.0:
+	1- functions for activating and deactivating laser and tilt scan transferred to this library from pyride_synchronizer.py
+	
 '''
 
 import PyPR2, numpy, math, time
@@ -28,19 +24,41 @@ import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.vectors_and_matrices as vecmat
 import packages.nima.mathematics.rotation as rot
 
-
 from cgkit.cgtypes import quat, mat3
 
 # Global Variables
 
+## A boolean global variable indicating if the left arm joints have reached their target.
+#  Set as True by default, this variable switches to False immidiately after any move arm task function is called for the left arm
+#  and is set back to True when the left arm reaches its target
 larm_reached = True
+
+## A boolean global variable indicating if the right arm joints have reached their target.
+#  Set as True by default, this variable switches to False immidiately after any move arm task function is called for the right arm
+#  and is set back to True when the right arm reaches its target
 rarm_reached = True
+
+## A boolean global variable indicating if the body joints (non-arm joints) have reached their target.
+#  Set as True by default, this variable switches to False immidiately after any move function is called 
+#  for the body navigation joints or the prismatic lifter joint   
+#  and is set back to True when the body joints reach their target, so it always shows the status of the lastest task.
 body_reached = False
+
+## A boolean global variable indicating if the left arm joints failed to reach their target.
+#  Set as False by default, this variable switches to True only if any move arm task function is called 
+#  and the left arm can not reach its target within a certain time. 
+#  It is set back to False immidiately after a move arm task function is called for left arm, so it always shows the status of the lastest task.
 larm_failed  = False
+
+
 rarm_failed  = False
 body_failed  = False
 counter      = 0
+
+## Counter for the base laser scan. This counter starts increasing as soon as 
+#  the base laser scan is activated by function activate_base_laser()
 bl_cnt       = 0
+
 bl_dist      = None
 bl_active    = False
 tl_cnt       = 0
@@ -48,6 +66,12 @@ tl_dist      = None
 tl_active    = False
 
 # Service event functions
+
+## Callback function for arm reach: This function is called when the arm joints reach their target values
+#  Global variable larm_reached or rarm_reached will be switched to True depending on which arm is specified by argument is_left_arm
+#  @param is_left_arm A boolean parameter specifying which arm is considered:
+#  True for the left arm and False for the right arm.
+#  @return None
 def on_move_arm_finished( is_left_arm ):
     global larm_reached, rarm_reached
     if is_left_arm:
@@ -57,6 +81,11 @@ def on_move_arm_finished( is_left_arm ):
         print "rarm reached"
         rarm_reached = True
 
+## Callback function for arm reach failure: This function is called when the arm joints fail to reach their target values
+#  Global variable larm_failed or rarm_failed will be switched to True depending on which arm is specified by argument is_left_arm
+#  @param is_left_arm A boolean parameter specifying which arm is considered:
+#  True for the left arm and False for the right arm.
+#  @return None 
 def on_move_arm_failed( is_left_arm ):
     global larm_failed, rarm_failed
     if is_left_arm:
@@ -98,6 +127,10 @@ set_callback_functions()
 
 # Conversion Functions
 
+## Use this function to convert a task for left arm joint move, into a joint dictionary known by pyride
+#  @param q A numpy vector of 7 elements containing the desired left arm joint values
+#  @time_to_reach A float specifying the amount of time (in seconds) needed to reach the target
+#  @return A dictionary known by pyride which can be passed to function <provide the link>  
 def gen_larm_joint_dict(q, time_to_reach = 5.0):
     g={'l_wrist_roll_joint': q[6], 'l_forearm_roll_joint': q[4], 'l_elbow_flex_joint': q[3], 'l_shoulder_lift_joint': q[1] - math.pi/2, 'l_upper_arm_roll_joint': q[2], 'l_wrist_flex_joint': q[5], 'l_shoulder_pan_joint': q[0], 'time_to_reach': time_to_reach }
     return(g)
@@ -404,6 +437,27 @@ def bl_midpoint():
 
 # Actuating Functions
 
+def activate_base_laser():
+	global bl_cnt
+	bl_cnt = 0
+	PyPR2.registerBaseScanCallback( on_base_laser )
+
+def activate_tilt_laser():
+	global tl_cnt
+	tl_cnt = 0
+	PyPR2.registerTiltScanCallback( on_tilt_laser )
+
+def deactivate_base_laser():
+    global bl_active
+    PyPR2.registerBaseScanCallback( None )
+    bl_active = False
+    
+def deactivate_tilt_laser():
+    global tl_active
+    PyPR2.registerBaseScanCallback( None )
+    pint.tl_active = False
+
+
 def set_lg(x = 1):
     '''
     sets the position of left gripper from 0 to 8
@@ -603,6 +657,8 @@ def run_config_trajectory(j_traj, n = 10, is_left_arm = False):
     PyPR2.moveArmWithJointTrajectory(dic_list)
 ''' 
        
+## Runs a given arm joint trajectory on the robot.
+#  @param j_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Trajectory()  
 def run_config_trajectory(j_traj, duration = 10.0, dt = None, phi_dot = None, is_left_arm = False):
     global rarm_reached, rarm_failed
     global larm_reached, larm_failed

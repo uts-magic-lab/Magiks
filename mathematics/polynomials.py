@@ -1,18 +1,20 @@
-'''   Header
-@file:          polynomials.py
-@brief:    	    This module provides everything you need to work with polynomials 
-                including tools by which you can fit a curve through a set of points.
-@author:        Nima Ramezani; UTS
-@start date:    February 2011
-@version:	    3.0
-Last Revision:  25 June 2014
-'''
+## @file        	polynomials.py
+#  @brief     		This module provides everything you need to work with polynomials 
+#                   including tools by which you can fit a curve through a set of points.
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	4.0
+#
+#  start date:    February 2011 
+#  Last Revision:  	03 January 2015 
 
-"""
-Changes from version 2.0:
-    1- features x_free, v_free and a_free are removed. The freedom is specified by setting the value as None
-
-"""
 import math, numpy
 
 class Point(object):

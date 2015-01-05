@@ -16,7 +16,7 @@
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
 @version:	    2.0
-Last Revision:  02 December 2014
+Last Revision:  24 December 2014
 '''
 '''
 Major change from previous version:
@@ -98,7 +98,7 @@ class Configuration:
 
     def __str__(self):
         s = "q = "
-        s += str(vecmat.format_vector((180.0/math.pi)*self.q, format="%.2f"))
+        s += vecmat.vector_to_str((180.0/math.pi)*self.q, format="%.2f")
         s += "    (Joints are"
         if not self.joints_in_range():
             s += " NOT"

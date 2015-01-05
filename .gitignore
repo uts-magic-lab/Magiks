@@ -52,3 +52,12 @@ docs/_build/
 
 # PyBuilder
 target/
+
+*~
+.svn
+
+# zip files
+*.tar.gz
+
+
+

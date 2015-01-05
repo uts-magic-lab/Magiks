@@ -1,17 +1,19 @@
-'''   Header
-@file:          quaternions.py
-@brief:    	    This module provides some useful functions dealing with quaternions.
-@author:        Nima Ramezani; UTS Sydney
-@start date:    February 2010
-@version:	    0.2
-Last Revision:  24 April 2014
+## @file        	quaternions.py
+#  @brief     		This module provides some useful functions dealing with quaternions
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	1.0
+# 
+#
+#  Last Revision:  	03 January 2015 
 
-Changes from version 0.1:
-
-In the old version, the first three elements of the vector, represent the vectorial part and the forth (last) element, contains the real part of the unit quaternion
-In the new version, the first element of the vector contains the scalar part of the unit quaternion and the last three elements represent the vectorial part
-
-'''
 import math,numpy
 
 def permutation_uvw(R):

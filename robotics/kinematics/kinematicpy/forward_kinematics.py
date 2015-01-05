@@ -1,27 +1,23 @@
 # HEADER
-'''   
-@file:          forward_kinematics.py
-@brief:    	    This module provides a functor class regaring the forward kinematic calculations of a general manipulator.
-                It contains the positions and orientations of chained links of a manipulator and their partial derivatives in respect with joints. 
-                Includes list of relative and absolute transformation matrices and their partial derivatives in respect with joint parameters 
-                (which is known as the standrad analytic Jacobian) and a method for calculating and updating them according to the given geometry 
-                and joint configuration.
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
 
-@version:	    1.4
-Last Revision:  23 October 2012
-'''
+## @file        	forward_kinematics.py
+#  @brief           This module provides a functor class regaring the forward kinematic calculations of a general manipulator.
+#                   It contains the positions and orientations of chained links of a manipulator and their partial derivatives in respect with joints. 
+#                   Includes list of relative and absolute transformation matrices and their partial derivatives in respect with joint parameters 
+#                   (which is known as the standrad analytic Jacobian) and a method for calculating and updating them according to the given geometry and joint configuration
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	2.0
+#
+#  Last Revision:  	03 January 2015 
+
 # BODY
 
 import numpy, math, copy

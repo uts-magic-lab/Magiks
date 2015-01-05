@@ -51,9 +51,9 @@ class Reference_Orientation :
 
 
     def __str__(self):
-        s  =  "        Actual Orientation :"  + "\n" + "\n"  + str(vecmat.format_matrix(self.ra)) + "\n" + "\n"  
-        s +=  "        Desired Orientation:"  + "\n" + "\n"  +  str(vecmat.format_matrix(self.rd)) + "\n" + "\n" 
-        s +=  "        Orientation Error :                     "  +  str(vecmat.format_vector(self.error.value)) + "\n"
+        s  =  "        Actual Orientation :"  + "\n" + "\n"  + vecmat.matrix_to_str(self.ra) + "\n" + "\n"  
+        s +=  "        Desired Orientation:"  + "\n" + "\n"  +  vecmat.matrix_to_str(self.rd) + "\n" + "\n" 
+        s +=  "        Orientation Error :                     "  +  vecmat.vector_to_str(self.error.value) + "\n"
         return(s)
 
     def set_target_from_trajectory(self, phi = 0.0):

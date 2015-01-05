@@ -13,7 +13,7 @@
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
 @version:	    2.0
-Last Revision:  11 December 2014
+Last Revision:  24 December 2014
 '''
 
 # BODY
@@ -69,9 +69,9 @@ class Reference_Position() :
         self.desired_trajectory = trajlib.Polynomial_Trajectory(dimension = 3)
 
     def __str__(self):
-        s  =  "        Actual Position (mm):                   " +  str(vecmat.format_vector(1000*(self.ra))) + "\n"
-        s +=  "        Desired Position (mm):                  " +  str(vecmat.format_vector(1000*(self.rd))) + "\n"
-        s +=  "        Position Error   (mm):                  " +  str(vecmat.format_vector(1000*(self.error.value))) + "\n"
+        s  =  "        Actual Position (mm):                   " +  vecmat.vector_to_str(1000*(self.ra)) + "\n"
+        s +=  "        Desired Position (mm):                  " +  vecmat.vector_to_str(1000*(self.rd)) + "\n"
+        s +=  "        Position Error   (mm):                  " +  vecmat.vector_to_str(1000*(self.error.value)) + "\n"
         return(s)
 
     def set_target_from_trajectory(self, phi = 0.0):

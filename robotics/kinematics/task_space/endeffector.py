@@ -150,7 +150,7 @@ class Endeffector:
             
         s +=  "\n"
         s +=  "    Pose Error:                                 "
-        s +=  str(vecmat.format_vector(self.pose_error)) + "\n"
+        s +=  vecmat.vector_to_str(self.pose_error) + "\n"
         s +=  "    Norm of Pose Error:                         "
         s +=  str(self.error_norm) + "\n"
         return s

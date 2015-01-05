@@ -1,32 +1,25 @@
-'''   Header
-@file:          PR2_arm_kinematics.py
-@brief:    	    Contains specific functions that define all geometric and kinematic parameters for PR2 robot arm
+## @file        	PR2_arm_kinematics.py
+#  @brief     		Contains specific functions that define all geometric and kinematic parameters for PR2 robot arm
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	4.0 
+#
+#  Last Revision:  	30 December 2014
 
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    3.0
-Last Revision:  12 September 2014
-
-Changes from ver 2.0:
-    the class is now supported by an instance of class Inverse_Kinematics() from package inverse_kinematics.py
-    This class is for numeric(velocity based IK) and contains the Geometric, Analytic and Error Jacobians.
-    The instance is called pr2_arm_ik and becomes a property of the main class PR2_ARM() and is always synced with the configuration.       
-    This property is usded to compute joint velocities for trajectory projection.
-    function project_to_js() now uses velocity-based ik to find an approximation to the joint values, then 
-    these approximations are corrected using IK_config() function that implements an analytic(position-based) IK.
-    The phi(redundant parameter) is extracted from joint approximations.
-    previous function project_to_js() is now changed name to project_to_js_analytic()  
 '''
+Changes from ver 3.0:
+    1- Comments added for doxygen
+    2- function joint_jacobian() renamed to joint_redundancy_jacobian() 
+    3- property JJ renamed to JRJ
+'''
+
 
 import copy, time, math
 import numpy as np
@@ -34,16 +27,6 @@ import packages.nima.mathematics.general as gen
 from interval import interval, inf, imath
 from sets import Set
 
-
-'''
-The most convenient way to install "pyinterval" library is by means of easy_install:
-sudo easy_install pyinterval
-Alternatively, it is possible to download the sources from PyPI and invoking
-python setup.py install
-from sets import Set
-Please refer to:
-http://pyinterval.googlecode.com/svn-history/r25/trunk/html/index.html
-'''
 import packages.nima.robotics.kinematics.kinematicpy.general as genkin
 import packages.nima.robotics.kinematics.kinematicpy.inverse_kinematics as iklib
 import packages.nima.robotics.kinematics.kinematicpy.manipulator_library as maniplib
@@ -59,12 +42,76 @@ default_ql = drc*np.array([-130.0, 70.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
 default_qh = drc*np.array([  40.0, 170.0,   44.0, 130.0,  180.0, 130.0,  180.0])
 default_W  = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
+## @brief Contains properties and methods regarding the PR2 arm joint-space.
+#  This class has methods and properties for managing the joint-space of a PR2 robot arm.
+#  It contains the joint position, velocity and acceleration values and joint limits.
 class PR2_ARM_Configuration():
+	## The Class Constructor:
+	#  @param ql A numpy array of size 7 containing the lower bounds of the arm joints	
+	#  @param qh A numpy array of size 7 containing the upper bounds of the arm joints
+	#  @param W  A numpy array of size 7 containing the weights of each joint in the objective function. 
+	#
+	#			 The joint weights will be used in the optimization of redundancy. 
+	#            If the weight of a joint is 0, the joint is considered as unlimited. 
+	#            This means the value of that joint does not need to be in a specific range. 
+	def __init__(self, ql = default_ql, qh = default_qh, W = default_W):
 
+        assert (len(ql) == 7) and (len(qh) == 7), "Error from " + __name__ + ": Given arrays ql and qh must have 7 elements" 
+
+		## A numpy array of size 7 containing the current values of the joints. 
+		#  This property should not be manipulated by the user. Use method Set_Config() to change this property.
+		#  The joints are in the following order:
+		#  q[0] : Shoulder Pan Joint, 
+		#  q[1] : Shoulder Lift Joint,
+		#  q[2] : Upper Arm Roll Joint, 
+		#  q[3] : Elbow Flex Joint,
+		#  q[4] : Forearm Roll Joint, 
+		#  q[5] : Wrist Flex Joint, 
+		#  q[6] : Wrist Roll Joint
+        self.q 		= (qh + ql)/2
+
+		##  A numpy array of size 7 containing the current velocities of the joints.
+		self.q_dot  = np.zeros(7)
+
+		##  A numpy array of size 7 containing the current accelerations of the joints.
+		self.q_ddot = np.zeros(7)
+
+		##  A numpy array of size 7 containing the lower bounds of the arm joints 
+        self.ql = ql
+
+		##  A numpy array of size 7 containing the upper bounds of the arm joints 
+        self.qh = qh
+
+		##  A numpy array of size 7 containing a set of reference values for the joint angles. 
+		#
+		#  This parameter can be used as reference joint values for redundancy optimization. 
+		#  The redundancy will be used to set the joints as close as possible to these reference values.  
+		#  This property is by default set as the middle of joint ranges.		
+        self.qm = (qh + ql)/2
+
+		##  A numpy array of size 7 containing the weights of each joint in the objective function. 
+		#
+		#   The joint weights will be used in the optimization of redundancy. 
+		#   If the weight of a joint is 0, the joint is considered as unlimited. 
+		#   This means the value of that joint does not need to be in a specific range. 
+        self.w 		= np.zeros(7)
+
+		##
+		#  \b Note:
+		#  --------
+		#  Only ql, qh, qm and W can be manipulated by the user.
+			
+        for i in range(0,7):
+            self.w[i] = math.sqrt(W[i])
+
+        # sets all angles to the midrange by default
+        self.set_config(self.qm)
+
+	## This function is used to check if a given value for specific joint is in its feasibility range
+	#  @param i An integer between 0 to 6 specifying the joint number to be checked
+	#  @param qi A float parameter specifying the value for the i-th joint
+	#  @return A boolean: True if the given joint angle qi is in feasible range for the i-th joint (within the specified joint limits for that joint)
     def joint_in_range(self,i, qi):
-        '''
-        returns True if the given joint angle qi is in feasible range for the i-th joint (within the specified joint limits for that joint)
-        '''
         qi = trig.angle_standard_range(qi) 
         if abs(qi - self.ql[i]) < gen.epsilon:
             qi = self.ql[i]
@@ -73,20 +120,35 @@ class PR2_ARM_Configuration():
 
         return ((qi <= self.qh[i]) and (qi >= self.ql[i]))
     
+	## This function is used to check if all values of the given joint array are in their feasibility range
+	#  @param qd A numpy array of size 7 containing the values to be checked
+	#  @return A boolean: If The given joints "qd" are out of the range specified by properties: ql and qh, returns False, otherwise returns True
     def all_joints_in_range(self, qd):
-        '''
-        Then, if The given joints "qd" are out of the range specified by properties: ql and qh, returns False, otherwise returns True  
-        '''
         flag = True
         for i in range(0, 7):
             if not gen.equal(self.w[i], 0.0):
                 flag = flag and self.joint_in_range(i, qd[i])
         return flag
 
+	## Use this function to get the midrange error vector
+	#  @param None
+	#  @return A numpy array of size 7 containing the weighted deviations of the joints from their midrange values
     def midrange_error(self):
         return trig.angles_standard_range(self.q - self.qm)*self.w 
 
+	## This function gives an interval for the magnitude of the arm joint angles correction vector.
+	#  @param direction A numpy array of size 7 specifying the direction of change	
+	#  @param max_speed A float parameter specifying the maximum feasible speed for a joint change. (Set by infinity by default)	
+	#  @param delta_t The step time in which the change(correction) is to be applied.
+	#  @return An instance of type <a href="http://pyinterval.googlecode.com/svn/trunk/html/index.html">Interval()</a>
     def joint_stepsize_interval(self, direction, max_speed = gen.infinity, delta_t = 0.001):
+		'''
+		The correction of joints is always restricted by joint limits and maximum feasible joint speed
+		If you want to move the joints in a desired direction, how much are you allowed to move?	
+		This function returns a feasible interval for the stepsize in the given direction. 
+		The joint direction of change must be multiplied by a scalar value in this range so that the applied changes
+		 are feasible.
+		'''
         etta_l = []
         etta_h = []
 
@@ -107,12 +169,15 @@ class PR2_ARM_Configuration():
         else:
             return (max(etta_l), min(etta_h))
 
+	## Use this function to set the joint configuration to the given desired values.
+	#  @param qd A numpy array of size 7 containing the desired joint values to be set
+	#  @return A boolean: True if the given joints are in range and the configuration is set, False if not	
     def set_config(self, qd):
         '''
-        sets the configuration to "qd"
-        This function should not be called by the end user. Use function "set_config" in class PR2_ARM  
+        This function sets the robot joint configuration to the given "qd"
+        This function should not be called by the end user. 
+        Always use function "set_config" in class PR2_ARM()  
         '''    
-
         if not len(qd) == 7:
             print "set_config error: Number of input elements must be 7"
             return False
@@ -129,10 +194,11 @@ class PR2_ARM_Configuration():
 
             [s0, s1, s2, s3, s4, s5, s6] = self.s
             [c0, c1, c2, c3, c4, c5, c6] = self.c
-
+			## protected
             self.s1_mult1 = [s1*s0]
             [s10]         = self.s1_mult1
 
+			## protected
             self.s2_mult1 = s2*np.array([s0, s1, s2, s10])
             [s20,s21, s22, s210]  = self.s2_mult1
 
@@ -186,7 +252,8 @@ class PR2_ARM_Configuration():
             print "Upper Limit  :", self.qh
             print "Desired Value:", qd
             return False
-       
+    
+    ## protected   
     def closest_config_metric(self, q):
         dist = 0
         cc   = np.zeros(7)
@@ -196,42 +263,135 @@ class PR2_ARM_Configuration():
             cc[i] = qq
         return (cc, dd)
 
+	## Use this function to find the current value of the objective function
+	#  @param None
+	#  @return An instance of type float containing the value of the objective function
     def objective_function(self):
+		'''
+		Returns the value of the objective function (deviation from midrange) according to the current values of the joints 
+		'''
         if self.mid_dist_sq == None:
             e = self.midrange_error()
             self.mid_dist_sq = np.dot(e.T,e)
         return self.mid_dist_sq
 
-    def __init__(self, ql = default_ql, qh = default_qh, W = default_W):
-        '''
-        ql and qh define the lower and higher bounds of the joints
-        '''    
-
-        assert (len(ql) == 7) and (len(qh) == 7)
-
-        self.ql = ql
-        self.qh = qh
-        self.qm = (qh + ql)/2
-
-        self.Delta  = None
-        self.Phi    = None
-
-        self.w = np.zeros(7)
-        self.q = np.copy(self.qm)
-        for i in range(0,7):
-            self.w[i] = math.sqrt(W[i])
-
-        # sets all angles to the midrange by default
-        self.set_config(self.qm)
-
-
+## @brief Contains properties and methods managing the kinematics of the PR2 robot arm.
+#  This class contains all properties and methods required for forward and inverse kinematic computations and kinematic control of the arm
 class PR2_ARM():
 
-    def set_config(self, qd):
+	## The Class Constructor:
+	#  @param a0 A float specifying the value of /f$ a_0 /f$ in the DH parameters of the arm 	
+	#  @param d2 A float specifying the value of /f$ d_2 /f$ in the DH parameters of the arm 	
+	#  @param d4 A float specifying the value of /f$ d_4 /f$ in the DH parameters of the arm 	
+	#  @param ql A numpy array of size 7 containing the lower bounds of the arm joints	
+	#  @param qh A numpy array of size 7 containing the upper bounds of the arm joints
+	#  @param W  A numpy array of size 7 containing the weights of each joint in the objective function. 
+	#
+	#			 The joint weights will be used in the optimization of redundancy. 
+	#            If the weight of a joint is 0, the joint is considered as unlimited. 
+	#            This means the value of that joint does not need to be in a specific range. 
+    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = default_ql, qh = default_qh, W = default_W):
+
+		## A boolean specifying if orientation of the endeffector should be respected or not in finding the Inverse Kinematic solution
+        self.orientation_respected = True
+        
+		## An instance of class PR2_ARM_CONFIGURATION() containing the jointspace properties and methods of the arm
+        self.config = PR2_ARM_Configuration(ql = ql, qh = qh, W = W)
+
+		## A \f$ 3 \times 3 \f$ rotation matrix specifying the desired endeffector orientation for the IK problem. 
+		# Recommended not to be set directly. Always use function set_target() to change this property. 
+        self.Rd = None    
+
+		## A numpy vector of size 3 specifying the desired endeffector position for the IK problem. 
+		# Recommended not to be set directly. Always use function set_target() to change this property. 
+        self.xd = None    
+
+		## A float specifying the value of /f$ a_0 /f$ in the DH parameters of the arm
+        self.a0 = a0
+        
+		## A float specifying the value of /f$ d_2 /f$ in the DH parameters of the arm
+        self.d2 = d2
+        
+		## A float specifying the value of /f$ d_4 /f$ in the DH parameters of the arm
+        self.d4 = d4
+
+        l2 = d2**2 + d4**2 - a0**2
+        
+        assert l2 > 0, "Error from " + __name__ + "Constructor: Invalid dimensions or DH parameters"
+
+        self.l = math.sqrt(l2)
+
+        d42 = d4*d2
+        Q   = -2*d42
+        Q2  = Q**2
+        d44 = d4**2
+        a00 = a0**2
+
+        d22_plus_d44 = d2*d2 + d44
+        foura00d44   = 4*a00*d44 
+        alpha        = - Q2/foura00d44
+
+		## protected
+        self.additional_dims = [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha]
+
+		## protected
+        self.l_se = [0.0, - d2, 0.0]
+        self.l_ew = [0.0, 0.0, d4]
+
+		## An integer between 0 and 1 specifying the objective function code
+        self.ofuncode = 0
+
+		## An numpy array of size 3 containing the position of the wrist joint center w.r.t. the shoulder pan joint center in torso coordinate system 
+		#  Recommended to be read only. Calling function wrist_position() changes the value of this property. 
+        self.wrist_position_vector    = None
+        
+		## A \f$ 3 \times 3 \f$ numpy matrix representing the orientation of the endeffector (gripper) w.r.t. the torso 
+		#  Recommended to be read only. Calling function wrist_orientation() changes the value of this property. 
+        self.wrist_orientation_matrix = None
+        
+        ## A numpy array containing the \b Joint Redundancy Jacobian of the arm.
+        #  The Joint Redundancy Jacobian represents the derivatives of the joints w.r.t. the redundant parameter
+        #  \f[ 
+        #  J_{ij} = \frac {\partial \theta_i }{\partial \phi_j}
+        #  \f]  
+        self.JRJ                      = None
+        
+        ## protected
+        self.E                        = None
+        
+		## protected	
+        self.F                        = None
+        
+		##  Phi A variable of type <a href="http://pyinterval.googlecode.com/svn/trunk/html/index.html">Interval()</a>
+		##	containing the feasible interval for the redundant parameter \f$ \phi \f$ or the first joint angle (Shoulder Pan Joint) 	
+        self.Phi    = None
+
+		##  Delta A variable of type <a href="http://pyinterval.googlecode.com/svn/trunk/html/index.html">Interval()</a> 
+		#   containing the feasible interval for the growth of redundant parameter (\f$ \Delta \phi \f$) 		
+        self.Delta  = None
+
+		# Sets the target initially as the endeffector pose corresponding to the midrange joint configuration:
+        self.set_target(self.wrist_position(), self.wrist_orientation())
+
+	## Sets the robot configuration to the desired given joint values
+	#  @param qd A numpy array of 7 elements containing the values of the given joints
+	#  @return A boolean: True  if the given configuration is successfully set, False if the given configuration is not successfully set. 
+    #         (If False is returned, the configuration will not chenge)
+    def set_config(self, qd): 
+		'''
+		Example:
+			
+		arm = PR2_ARM()
+		qd  = numpy.zeros(7)	
+		arm.set_config(qd)	
+		print arm.config.q
+		print arm.wrist_position()
+		print arm.wrist_orientation()	
+		'''
         if self.config.set_config(qd):
             self.wrist_position_vector    = None
             self.wrist_orientation_matrix = None
-            self.JJ          = None
+            self.JRJ          = None
             self.E           = None
             self.F           = None
             self.Delta       = None
@@ -245,10 +405,14 @@ class PR2_ARM():
             print "Could not set the given joints."
             return False
 
+	## Sets the endeffector target to a desired position and orientation.
+	# @param target_position    A numpy array of 3 elements specifying the desired endeffector position
+	# @param target_orientation A \f$ 3 \times 3 \f$ numpy rotation matrix representing the desired endeffector orientation
+	# @return A boolean: True  if the given pose is successfully set, False if the given pose is not successfully set because of an error
+    #        (If False is returned, properties self.xd and self.RD will not chenge)
     def set_target(self, target_position, target_orientation):
         '''
-        sets the endeffector target to the given position and orientation
-        variables self.xd and self.Rd should not be manipulated by the user. Always use this function
+		Example:
         '''    
         assert gen.equal(np.linalg.det(target_orientation), 1.0)
         self.xd = target_position
@@ -273,13 +437,18 @@ class PR2_ARM():
 
         self.target_parameters = [r2, ro2, R2, T2, alpha, betta, gamma, sai]
 
-    def elbow_position(self):        
+	## Use this function to get the current position of the elbow joint center.
+	#  @param None
+	#  @return A numpy vector of size 3 containing the cartesian coordinates of the elbow joint center  w.r.t. the shoulder pan joint in the torso CS.
+    def elbow_position(self):   
         X =  self.a0*self.config.c[0] + self.config.c[0]*self.d2*self.config.s[1]
         Y =  self.a0*self.config.s[0] + self.d2*self.config.s[0]*self.config.s[1]
         Z =  self.config.c[1]*self.d2
         return np.array([X,Y,Z])
     
-            
+	## Use this function to get the current position of the wrist joint center.
+	#  @param None
+	#  @return A numpy vector of size 3 containing the cartesian coordinates of the wrist joint center  w.r.t. the shoulder pan joint in the torso CS.
     def wrist_position(self):        
         '''
         Returns the cartesian coordiantes of the origin of the wrist. The origin of the wrist is the wrist joint center 
@@ -305,6 +474,9 @@ class PR2_ARM():
 
         return copy.copy(self.wrist_position_vector)
 
+	## Use this function to get the current orientation of the gripper(Endeffector).
+	#  @param None
+	#  @return A \f$ 3 \times 3 \f$ numpy rotation matrix containing the current orientation of the gripper w.r.t. the torso.
     def wrist_orientation(self):        
 
         if self.wrist_orientation_matrix == None:
@@ -337,9 +509,13 @@ class PR2_ARM():
 
         return copy.copy(self.wrist_orientation_matrix)
 
+	## Use this function to check if the endeffector is in the target pose or not.
+	#  @param norm_precision A float specifying the required precision for the norm of both position and orientation error
+	#  @return A boolean: True if the norm of differences between the actual and desired poses of the endeffector are smaller than \a norm_precision, False if not.
     def in_target(self, norm_precision = 0.01):
         return vecmat.equal(self.xd, self.wrist_position(), epsilon = norm_precision) and vecmat.equal(self.Rd, self.wrist_orientation(), epsilon = norm_precision)
 
+	## protected
     def div_phi_err(self):
         '''
         '''
@@ -348,6 +524,7 @@ class PR2_ARM():
 
         return copy.copy(self.F)
 
+	## protected
     def div_theta_err(self):
         '''
         '''
@@ -417,37 +594,40 @@ class PR2_ARM():
             self.F[6] = - r11*(c0s32 + c21s30 + c3s10) + r21*(- s320 + c210s3 + c30s1)
 
         return copy.copy(self.E)
-        
-    def joint_jacobian(self):  
-        '''
-        Returns the Joint Jacobian (in this case a vector of 7 elements: rond q_i/rond phi)
-        make sure that the IK is already run or:
-        Current joints must lead to x_d and R_d  
-        
-        '''
-
-        if self.JJ == None:
+    
+    ##  Use this function to get the Joint Redundancy Jacobian vector of the arm.
+    #   Since the robot arm has 7 DOF, there is only one redundant parameter.
+    #   In this case, the \em Joint Redundancy Jacobian (JRJ) is a vector of 7 elements: 
+    #   \f[
+    #   J_i = \frac {\partial \theta_i }{\partial \phi}
+    #   \f]   
+    #   This function should be called when the endeffector is in target. Otherwise, the output will not be correct.
+    #   @param None
+    #   @return A numpy vector of size 7 containing the derivative of each joint w.r.t. the redundant parameter $f \phi $f
+    def joint_redundancy_jacobian(self):   
+        if self.JRJ == None:
 
             E = self.div_theta_err()
             F = self.div_phi_err()
             if gen.equal(E[1,3],0.0) or gen.equal(E[2,2],0.0) or gen.equal(E[3,1],0.0) or gen.equal(E[4,5],0.0) or gen.equal(E[5,4],0.0) or gen.equal(E[6,6],0.0):
                 return None
             else:
-                self.JJ = np.zeros(7)
+                self.JRJ = np.zeros(7)
 
-                self.JJ[0] =   1.0
-                self.JJ[3] = - F[1]/E[1,3]
-                self.JJ[2] = - E[2,3]*self.JJ[3]/E[2,2]
-                self.JJ[1] = - (E[3,2]*self.JJ[2] + E[3,3]*self.JJ[3])/E[3,1]
+                self.JRJ[0] =   1.0
+                self.JRJ[3] = - F[1]/E[1,3]
+                self.JRJ[2] = - E[2,3]*self.JRJ[3]/E[2,2]
+                self.JRJ[1] = - (E[3,2]*self.JRJ[2] + E[3,3]*self.JRJ[3])/E[3,1]
 
-                self.JJ[5] = - (F[4] + np.dot(E[4,1:4],self.JJ[1:4]))/E[4,5]
+                self.JRJ[5] = - (F[4] + np.dot(E[4,1:4],self.JRJ[1:4]))/E[4,5]
                 #J[5] = - (F[4,0] + F[4,1]*J[1] + F[4,2]*J[2] + F[4,3]*J[3])/F[4,5]
-                self.JJ[4] = - (F[5] + E[5,1]*self.JJ[1] + E[5,2]*self.JJ[2] + E[5,5]*self.JJ[5])/E[5,4] 
-                self.JJ[6] = - (F[6] + np.dot(E[6,1:6],self.JJ[1:6]))/E[6,6]
+                self.JRJ[4] = - (F[5] + E[5,1]*self.JRJ[1] + E[5,2]*self.JRJ[2] + E[5,5]*self.JRJ[5])/E[5,4] 
+                self.JRJ[6] = - (F[6] + np.dot(E[6,1:6],self.JRJ[1:6]))/E[6,6]
                 #F60*J0 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5 + F66*J6 = 0  ==> J6 = - (F60 + F61*J1 + F62*J2 + F63*J3 + F64*J4 + F65*J5)/ J66
 
-        return copy.copy(self.JJ)
+        return copy.copy(self.JRJ)
 
+	## protected 
     def grown_phi(self, eta, k = 0.99):
         '''
         grows the redundant parameter by eta (adds eta to the current phi=q[0] and returns the new value for phi
@@ -476,11 +656,15 @@ class PR2_ARM():
             assert eta <= dl  # eta must now be smaller than Delta_l
             return self.config.q[0] + k*dl
 
+	## Use this method to get the permission range of x, y and z of the endeffector.
+	#  If the desired position for the endeffector(wrist joint center) is outside the permission range, then there is definitely no solution for the IK problem. 
+	#  The inverse of this conditional statement is not necessarily true.
+	#  @param fixed An array of booleans of size 4, specifying if the corresponding joint is fixed or free
+	#  The array size is 4 because only the first four joints (\f$ q_0, q_1, q_2, q_3 \f$) influence the position of the EE
+	#  @return an array of 3 intervals, corresponding to x, y and z
     def position_permission_workspace(self,fixed):
         '''
-        returns the permission range of x, y and z of the endeffector.
-        fixed is an array of size 4, specifying if the corresponding joint is fixed or free
-        The size is 4 because only the first four joints influence the position of the EE
+        Example:
         '''
         int_c = []
         int_s = []
@@ -517,71 +701,6 @@ class PR2_ARM():
 
         return [int_X, int_Y, int_Z]
         
-    def inverse_update_old(self):    
-        '''
-        Finds the inverse kinematic which is closest to the midrange of joints 
-        The new joint angles will be set if all the kinematic equations are satisfied. 
-        All kinematic parameters will be updated.
-        '''
-        # Finding a feasible phi (theta0)
-
-        # first try the current theta0:
-
-        phi     = self.config.q[0]
-        phi_l   = self.config.ql[0]
-        phi_h   = self.config.qh[0]
-        q_d     = self.IK_config(phi)
-
-        # If solution not found search within the range:
-        
-        n = 3
-        while (q_d == None) and (n < 10):
-            i = 0
-            while (q_d == None) and (i < n):
-                phi = phi_l + (2*i + 1)*(phi_h - phi_l)/(2*n)
-                q_d = self.IK_config(phi)
-                i = i + 1
-            n = n + 1
-
-        if q_d == None:
-            print "Given pose out of workspace. No solution found"
-            return False
-        
-        assert self.set_config(q_d)                        
-        e = trig.angles_standard_range(q_d - self.config.qm)*self.config.w
-        new_error = np.linalg.norm(e)
-        old_error = 10000
-
-        while (new_error < old_error - gen.epsilon) and (q_d != None) and (new_error > gen.epsilon):
-            #old_error = new_error
-            assert self.set_config(q_d)
-            phi     = self.config.q[0]
-            J = self.joint_jacobian()
-            if J == None:
-                q_d = None
-            else:
-                P = self.config.w*J
-                e = trig.angles_standard_range(q_d - self.config.qm)*self.config.w
-                den        = np.dot(P.T, P)
-                if gen.equal(den, 0.0):
-                    q_d = None
-                else:
-                    Delta_phi  = - np.dot(P.T, e) / den
-                    old_error  = np.linalg.norm(e)
-                    new_phi    = self.grown_phi(Delta_phi)
-                    q_d        = self.IK_config(new_phi)
-
-            if q_d == None:
-                new_error = 0
-            else:
-                e = trig.angles_standard_range(q_d - self.config.qm)*self.config.w
-                new_error  = np.linalg.norm(e)
-          
-        assert vecmat.equal(self.wrist_position(), self.xd)
-        if self.orientation_respected:
-            assert vecmat.equal(self.wrist_orientation(), self.Rd)
-        return True
-
     def restore_config(self, q_old):
         q = np.copy(self.config.q)
         assert self.set_config(q_old)
@@ -758,7 +877,6 @@ class PR2_ARM():
 
         assert self.set_config(q0)
         return False
-        
 
     def inverse_update(self, phi = None, optimize = False, show = False):    
         '''
@@ -1006,62 +1124,6 @@ class PR2_ARM():
                 i_min = i
 
         return solution_set[i_min]
-
-    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = default_ql, qh = default_qh, W = default_W, vts = False):
-
-        if vts:
-            self.velocity_based_ik_required = True
-            # create an instance of PR2 geometry and configuration 
-            pr2_geo    = maniplib.Manipulator_Geometry_PR2ARM()
-            cs         = configlib.Joint_Configuration_Settings(default_joint_handling = 'No Mapping')
-            pr2_config = maniplib.Manipulator_Configuration_PR2(cs)
-            # create an instance of inverse kinematic solver for PR2
-            iks = iklib.Inverse_Kinematics_Settings()
-            self.ik = iklib.Inverse_Kinematics(pr2_geo, pr2_config, iks)
-        else:
-            self.velocity_based_ik_required = False
-
-        self.orientation_respected = True
-        self.config = PR2_ARM_Configuration(ql = ql, qh = qh, W = W)
-
-        self.Rd = np.eye(3)    
-
-        self.a0 = a0
-        self.d2 = d2
-        self.d4 = d4
-
-        l2 = d2**2 + d4**2 - a0**2
-        if l2 < 0:
-            print "__init__ Error: Can not make the arm because the given dimensions are ill"
-            return 0
-
-        self.l = math.sqrt(l2)
-
-        d42 = d4*d2
-        Q   = -2*d42
-        Q2  = Q**2
-        d44 = d4**2
-        a00 = a0**2
-
-        d22_plus_d44 = d2*d2 + d44
-        foura00d44   = 4*a00*d44 
-        alpha        = - Q2/foura00d44
-
-        self.additional_dims = [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha]
-
-
-        self.l_se = [0.0, - d2, 0.0]
-        self.l_ew = [0.0, 0.0, d4]
-
-        self.ofuncode = 0
-
-        self.wrist_position_vector    = None
-        self.wrist_orientation_matrix = None
-        self.JJ                       = None
-        self.E                        = None
-        self.F                        = None
-        
-        self.set_target(self.wrist_position(), self.wrist_orientation())
 
     '''
     def confidence_set_analytic(self):

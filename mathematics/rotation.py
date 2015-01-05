@@ -1,20 +1,19 @@
-'''   Header
-@file:          rotation.py
-@brief:    	    This module provides some useful functions for rotation.
-                It supports various representations of orientation in three-dimentional space
-@author:        Nima Ramezani; UTS Sydney
-@start date:    February 2011
-@version:	    1.4
-Last Revision:  24 April 2014
+## @file        	rotation.py
+#  @brief     		This module provides some useful functions for rotation in 3D space 
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	2.0
+#
+#  start date:      February 2011 
+#  Last Revision:  	03 January 2015 
 
-Reference 1: Robotics: Control, Sensing, Vision and Intelligence
-By: K.S.Fu and R.C.Gonzales and C.S.G.Lee
-McGraw-Hill Publishing Company
-
-Changes from version 1.3:
-in Quaternions, elements q[0] and [3] are swaped. Now, q[0] refers to the scalar value of the quaternion and the last three elements represent the vectorial part.
-
-'''
 import math, numpy 
 import general, quaternions, vectors_and_matrices, trigonometry
 import packages.nima.general as gen 
@@ -31,6 +30,18 @@ point_right_orientation     = numpy.append(numpy.append([-k_uv],[i_uv],axis = 0)
 point_upward_orientation    = numpy.eye(3)
 point_downward_orientation  = numpy.append(numpy.append([-i_uv],[j_uv],axis = 0), [-k_uv], axis = 0).T
 
+param_set = [
+        'pm_angle_axis'                                ,
+        'pm_unit_quaternion'                           ,
+        'pm_angular_spherical'                         ,
+        'pm_vectorial_identity'                        ,
+        'pm_vectorial_Cayley_Gibbs_Rodrigues'          ,
+        'pm_vectorial_Wiener_Milenkovic'               ,
+        'pm_vectorial_linear'                          ,
+        'pm_vectorial_reduced_Euler_Rodrigues'         ,
+        'pm_vectorial_normailized_quaternion'          ,
+        'pm_angular_Euler_Kardan'                      
+        ]
 
 def DH_transfer_matrix(theta,alpha,a,d):
     '''

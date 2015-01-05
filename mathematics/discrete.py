@@ -1,11 +1,18 @@
-'''   Header
-@file:          discrete.py
-@brief:    	    This module provides some functions regarding descrete mathematics.
-@author:        Nima Ramezani; DFKI Bremen
-@start date:    February 2010
-@version:	    0.1
-Last Revision:  31 March 2011
-'''
+## @file        	discrete.py
+#  @brief     		This module provides some functions regarding discrete mathematics
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	1.0
+# 
+#  Start date:      Februaty 2010
+#  Last Revision:  	03 January 2015 
 
 import math, numpy
 

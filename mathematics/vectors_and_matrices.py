@@ -1,25 +1,17 @@
-'''   Header
-@file:          vectors_and_matrices.py
-@brief:    	    This module provides some useful functions dealing with vectors and matrices.
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    4
-Last Revision:  11 June 2014
-
-Changes from version 3:
-
-1- added function: rep     
-'''
+## @file        	vectors_and_matrices.py
+#  @brief     		This module provides some useful functions dealing with numpy vectors and matrices
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	5.0
+#
+#  Last Revision:  	03 January 2015 
 
 import math,numpy, general, trigonometry
 
@@ -55,30 +47,35 @@ def as_matrix(v):
             R[i,j] = v[n*i + j]
     return R            
 
-def format_array( list_of_vals, format="%.3f" ) : 
+
+def value_to_str( value, format="%.3f" ):
+    if int(value) == value : 
+        return  str(value)
+    else : 
+        return str(format%value)
+
+def values_to_str( list_of_vals, format="%.3f" ) : 
     '''
     parametrized usage of sprintf
     '''
     formatted = []
     for v in list_of_vals : 
-        if int(v) == v : 
-            formatted.append( v ) 
-        else : 
-            formatted.append( format%v  )          
+        formatted.append(value_to_str(v, format))
     return formatted
 
-def format_vector( vector, format="%.3f" ) : 
+def vector_to_str( vector, format="%.3f" ) : 
     '''
+    previous name: format_vector
     parametrized usage of sprintf
     '''
     n = len(vector)
     formatted = numpy.zeros((n))
     
     for i in range(n):
-        formatted[i] = format%vector[i]          
-    return formatted
+        formatted[i] = format%vector[i]
+    return str(formatted)
 
-def format_matrix( matrix, format="%.3f" ) : 
+def matrix_to_str( matrix, format="%.3f" ) : 
     '''
     parametrized usage of sprintf
     '''
@@ -89,7 +86,7 @@ def format_matrix( matrix, format="%.3f" ) :
     for i in range(m):
         for j in range(n):
             formatted[i,j] = format%matrix[i,j]          
-    return formatted
+    return str(formatted)
 
 def which(v, condition, value):
     '''

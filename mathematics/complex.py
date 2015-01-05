@@ -1,11 +1,19 @@
-'''
-@file    complexpy.py
-@brief   this module provides tools by ehich you can work with complex numbers.
-@author  Nima Ramezani; DFKI Bremen
-@date    2010
-@version 0.1
-'''
- 
+
+## @file        	complex.py
+#  @brief     		this module provides tools by which you can work with complex numbers
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	1.0
+# 
+#  Start date:      Februaty 2010
+#  Last Revision:  	03 January 2015 
 
 import math
 

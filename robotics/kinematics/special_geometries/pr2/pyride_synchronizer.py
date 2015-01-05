@@ -1,35 +1,24 @@
-'''   Header
-@file:          pyride_synchronizer.py
-@brief:    	    Contains a class inherited from PR2 in pr2_kinematics.py which is connected to a real-time robot (A real PR2 or PR2 in simulation)
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@uts.edu.au 
-                Email(2): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(3): N.RamezaniTaghiabadi@uws.edu.au 
-                Email(4): nima.ramezani@gmail.com
-                Email(5): nima_ramezani@yahoo.com
-                Email(6): ramezanitn@alum.sharif.edu
+## @file        	pyride_synchronizer.py
+#  @brief     		Contains simplified functions to control PR2 using pyride engine
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	5.0
+# 
+#  Start date:      09 April 2014
+#  Last Revision:  	03 January 2015
 
-@version:	    4.0
-Start date:     9 April 2014
-Last Revision:  19 November 2014
-
-Changes from ver 3.0:
-    function arm_trajectory() modified
-        In ver 3, the joint trajectory was a list dictionaries containing joint positions and velocities
-        in the new version, the joint trajectory is generated via function project_to_js() of each arm
-        then function run_config_trajectory() in module pyride_interpreter is used to run the action
-        also argument delta_phi is replaced by resolution where delta_phi = pos_traj.phi_end/resolution
-
-        all speed arguments are replaced by property self.arm_speed that determines the speed of arm motion
-        all max_speed arguments are replaced by property self.arm_max_speed that determines the maximum speed of arm joints
 '''
+Changes from ver 4.0:
+    1- documentation added and modified for doxygen
+    2- base and tilt laser activate and deactivate functions trnasferred to pyride_interpreter.py
+'''    
 
 import pr2_kinematics as pr2lib
 import pyride_interpreter as pint
@@ -158,12 +147,19 @@ def calibrate_pr2_torso():
 
     return(q)    
 
-
+## This class introduces a data structure for complete kinematics of a PR2 robot which can sychronize itself with the real robot
+#  or the robot in simulation.  
+#  An instance of this class is an object supported by all kinematic functions inherited from class 
+#  packages.nima.robotics.kinematics.special_geometries.pr2.pr2_kinematics.PR2()
+#  containing additional methods in order to actuate, move and control the real robot and/or get the sensory data from it
+#  The object can synchronize itself with the robot in both forward and inverse directions via pyride interface engine. 
+#  In other words, any changes in the status and configuration of the object can be directly applied to the real robot or robot in simulation and vice versa.
+#  Forward synchronization is to actuate the robot to the configuration of the object and 
+#  inverse synchronization is to set the object with the configuration of the real robot.
 class PyRide_PR2(pr2lib.PR2):
     '''
-    Any changes in the status and configuration of the robot is directly applied to the real robot or robot in simulation
     '''
-    
+    ## Class Constructor    
     def __init__(self, vts = False):
 
         q_d = numpy.zeros(18)
@@ -212,13 +208,24 @@ class PyRide_PR2(pr2lib.PR2):
         ft = gen.equal(ba   , self.q[10], epsilon = 0.02)
 
         return(fx and fy and ft)
-
+    
+    ## Use this function to check if the right arm of the object is synced with the right arm of the real robot
+    #  @param None
+    #  @return A boolean: True, if the joint angles of the right arm of the object instance 
+    #                     are all equal to their equivalents in the real robot, False if not             
     def rarm_synced(self):
         return vecmat.equal(trig.angles_standard_range(pint.rarm_joints(in_degrees = False)), trig.angles_standard_range(self.rarm.config.q), epsilon = 0.01)
 
+    ## Use this function to check if the left arm of the object is synced with the left arm of the real robot
+    #  @param None
+    #  @return A boolean: True, if the joint angles of the left arm of the object instance 
+    #                     are all equal to their equivalents in the real robot, False if not             
     def larm_synced(self):
         return vecmat.equal(trig.angles_standard_range(pint.larm_joints(in_degrees = False)), trig.angles_standard_range(self.larm.config.q), epsilon = 0.01)
 
+    ## Use this function if you want the robot to say something.
+    #  @param s A string what you want the robot to say
+    #  @return None 
     def say(self, s):
         PyPR2.say(s)
 
@@ -402,10 +409,14 @@ class PyRide_PR2(pr2lib.PR2):
             self.sync_object()    
             return False
 
+    ## Moves the reference arm wrist in backward direction maintaining the gripper orientation
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move in backward direction
+    #  @param relative A boolean for selecting the orientation with respect to which the backward direction is defined \n 
+    #                  If True, the backward direction is defined relative to the gripper orientation \n
+    #                  if False the absolute backward direction (with respect to the robot trunk) is considered
+    #  @return A boolean: True, if the arm wrist reach the target successfully and
+    #                     False, if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_back(self, dx = 0.1, relative = False):
-        '''
-        pulls the arm back as much as dx (m) maintaining the orientation
-        '''    
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -420,10 +431,14 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist in forward direction maintaining the gripper orientation
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move in forward direction
+    #  @param relative A boolean for selecting the orientation with respect to which the forward direction is defined \n
+    #                  If True, the forward direction is defined relative to the gripper orientation \n
+    #                  If False the absolute forward direction (with respect to the robot trunk) is considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_forward(self, dx = 0.1, relative = False):
-        '''
-        pulls the arm back as much as dx (m) maintaining the orientation
-        '''    
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -436,10 +451,14 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist in downward direction maintaining the gripper orientation
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move in downward direction
+    #  @param relative A boolean for selecting the orientation with respect to which the downward direction is defined \n
+    #                  If True, the downward direction is defined relative to the gripper orientation \n
+    #                  If False the absolute downward direction (with respect to the robot trunk) is considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_down(self, dx = 0.1, relative = False):
-        '''
-        moves the arm downward as much as dx (m) maintaining the orientation
-        '''    
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -452,10 +471,14 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist in upward direction maintaining the gripper orientation
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move in upward direction
+    #  @param relative A boolean for selecting the orientation with respect to which the upward direction is defined \n
+    #                  If True, the upward direction is defined relative to the gripper orientation \n
+    #                  If False the absolute upward direction (with respect to the robot trunk) is considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_up(self, dx = 0.1, relative = False):
-        '''
-        moves the arm upward as much as dx (m) maintaining the orientation
-        '''    
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -468,6 +491,13 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist to the right maintaining the gripper orientation
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move to the right
+    #  @param relative A boolean for selecting the orientation with respect to which the direction to the right is defined
+    #                  If True, the right direction is defined relative to the gripper orientation,
+    #                  if False the absolute direction to the right (with respect to the robot trunk) is considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_right(self, dx = 0.1, relative = False):
         '''
         moves the arm to the right as much as dx (m) maintaining the orientation
@@ -484,10 +514,15 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist to the left maintaining the gripper orientation. 
+    #  The speed of motion is set by property self.arm_speed
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move to the left
+    #  @param relative A boolean for selecting the orientation with respect to which the left direction is defined
+    #                  If True, the left direction is defined relative to the gripper orientation,
+    #                  if False the absolute left direction (with respect to the robot trunk) is considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_left(self, dx = 0.1, relative = False):
-        '''
-        moves the arm to the left as much as dx (m) maintaining the orientation
-        '''    
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -500,10 +535,16 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist to the left and downward direction maintaining the gripper orientation. 
+    #  The speed of motion is set by property self.arm_speed
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move to the left
+    #  @param dy A float specifying the distance (in meters) by which the wrist should move downwards
+    #  @param relative A boolean for selecting the orientation with respect to which the left and downward directions are defined
+    #                  If True, the left and downward directions are defined relative to the gripper orientation,
+    #                  if False the absolute left and downward directions (with respect to the robot trunk) are considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_left_down(self, dx = 0.1, dy = 0.1, relative = False):
-        '''
-        moves the arm to the left as much as dx (m) maintaining the orientation
-        '''    
         ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -518,10 +559,16 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr)
 
+    ## Moves the reference arm wrist to both left and upward directions maintaining the gripper orientation. 
+    #  The speed of motion is set by property self.arm_speed
+    #  @param dx A float specifying the distance (in meters) by which the wrist should move to the left
+    #  @param dy A float specifying the distance (in meters) by which the wrist should move upwards
+    #  @param relative A boolean for selecting the orientation with respect to which the left and upward directions are defined
+    #                  If True, the left and upward directions are defined relative to the gripper orientation,
+    #                  if False the absolute left and upward directions (with respect to the robot trunk) are considered
+    #  @return A boolean: True if the arm wrist reach the target successfully
+    #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
     def arm_left_up(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
-        '''
-        moves the arm to the left as much as dx (m) maintaining the orientation
-        '''    
         ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -572,12 +619,25 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
+    ##  Starting from the current wrist position , the arm wrist draws an arc around the given \b center 
+    #   with the given \b angle in the plane specified by the given \b normal vector.
+    #   @param center A numpy vector of 3 elements specifying the position of the arc center w.r.t. the starting point and
+    #                 should be in the coordinate system of the gripper
+    #   @param angle A float specifying the arc angle in radians (The default value is \f$ \pi \f$)  
+    #   @param N An integer specifying the number of key points in the arc trajectory (The default value is 100)
+    #   @param normal A numpy vector of 3 elements specifying a vector perpendicular to the arc plane. 
+    #                 The given vector should be in the coordinate system of the gripper and 
+    #                 must be perpendicular to the vector given by parameter \b center 
+    #                 (The default value is unit vector \f$ i = [1.0, 0.0, 0.0] \f$ specifying the forward direction w.r.t. the gripper)
+    #   @param wait A boolean: If True, the system waits until the arc reaches the end of arc trajectory. 
+    #                          (You don't exit the function before the trajectory is finished)
+    #                          If False, you will exit the function immidiately while the defined motion is running
+    #   @return A boolean: True if the arc trajectory is successfully projected to the jointspace and 
+    #                      in case argument \b wait is True, the wrist finishes the trajectory successfully
+    #                      False if for any reason the IK trajectory projection fails or in case parameter \b wait is True,
+    #                      the robot wrist fails to finish the trajectory           
     def arm_arc(self, center = numpy.array([0.0, -0.05, 0.0]), angle = math.pi, normal = numpy.array([1.0, 0.0, 0.0]), N = 100, wait = True):
         '''
-        draws an arc around the given center starting from the current point with the given angle
-        the arc is drawn in a plane specified by the given normal vector
-        important: Center is given relative to the starting point and vectors center and normal must be perpendicular
-        N specifies the number of points in the arc trajectory
         '''
         # assert genmath.equal(vecmat.angle(center, normal), 0.0), "Error from PyRide_PR2(): center and normal must be perpendicular"
 
@@ -674,14 +734,6 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
-    def activate_base_laser(self):
-        pint.bl_cnt = 0
-        PyPR2.registerBaseScanCallback( pint.on_base_laser )
-
-    def activate_tilt_laser(self):
-        pint.tl_cnt = 0
-        PyPR2.registerTiltScanCallback( pint.on_tilt_laser )
-
     def front_line_tilt(self):
         '''
         Returns the front line of tilt scan
@@ -718,14 +770,8 @@ class PyRide_PR2(pr2lib.PR2):
             (beta, intercept, residuals) = front_line(dist)
     '''
 
-    def deactivate_base_laser(self):
-        PyPR2.registerBaseScanCallback( None )
-        pint.bl_active = False
-        
-    def deactivate_tilt_laser(self):
-        PyPR2.registerBaseScanCallback( None )
-        pint.tl_active = False
-
+    ## Runs a given arm task-space trajectory on the robot.
+    #  @param pos_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Polynomial_Trajectory() 
     def arm_trajectory(self, pos_traj, ori_traj = None, resolution = 20, relative = True, wait = True):
         '''
         First, projects the given taskspace pose trajectory into the jointspace 

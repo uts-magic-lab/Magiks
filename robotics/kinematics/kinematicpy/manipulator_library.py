@@ -1,25 +1,23 @@
-'''   Header
-@file:          manipulator_library.py
-@brief:    	    Contains a function that defines geometric parameters and joint limits for four known manipulators (PUMA, PA10, EXO,  AILA Arm and PR2 Arm)
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  10 December 2014
-'''
-'''
-Main Changes from previous version:
-    The library contains instances of config and geometry settings for various manipulators
-'''
+# HEADER
+
+## @file        	manipulator_library.py
+#  @brief           Contains a function that defines geometric parameters and joint limits for a number of known manipulators 
+#                   Some examples: (PUMA, PA10, EXO,  AILA Arm and PR2 Arm)
+#  @author      	Nima Ramezani Taghiabadi
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	3.0
+#
+#  Last Revision:  	03 January 2015
+
+# BODY
+
 import numpy, math
 
 import packages.nima.robotics.kinematics.kinematicpy.geometry as geolib 
