@@ -20,7 +20,6 @@ Changes from ver 3.0:
     3- property JJ renamed to JRJ
 '''
 
-
 import copy, time, math
 import numpy as np
 import packages.nima.mathematics.general as gen
@@ -54,46 +53,44 @@ class PR2_ARM_Configuration():
 	#			 The joint weights will be used in the optimization of redundancy. 
 	#            If the weight of a joint is 0, the joint is considered as unlimited. 
 	#            This means the value of that joint does not need to be in a specific range. 
-	def __init__(self, ql = default_ql, qh = default_qh, W = default_W):
-
+    def __init__(self, ql = default_ql, qh = default_qh, W = default_W):
         assert (len(ql) == 7) and (len(qh) == 7), "Error from " + __name__ + ": Given arrays ql and qh must have 7 elements" 
-
-		## A numpy array of size 7 containing the current values of the joints. 
-		#  This property should not be manipulated by the user. Use method Set_Config() to change this property.
-		#  The joints are in the following order:
-		#  q[0] : Shoulder Pan Joint, 
-		#  q[1] : Shoulder Lift Joint,
-		#  q[2] : Upper Arm Roll Joint, 
-		#  q[3] : Elbow Flex Joint,
-		#  q[4] : Forearm Roll Joint, 
-		#  q[5] : Wrist Flex Joint, 
-		#  q[6] : Wrist Roll Joint
+        ## A numpy array of size 7 containing the current values of the joints. 
+        #  This property should not be manipulated by the user. Use method Set_Config() to change this property.
+        #  The joints are in the following order:
+        #  q[0] : Shoulder Pan Joint, 
+        #  q[1] : Shoulder Lift Joint,
+        #  q[2] : Upper Arm Roll Joint, 
+        #  q[3] : Elbow Flex Joint,
+        #  q[4] : Forearm Roll Joint, 
+        #  q[5] : Wrist Flex Joint, 
+        #  q[6] : Wrist Roll Joint
         self.q 		= (qh + ql)/2
 
 		##  A numpy array of size 7 containing the current velocities of the joints.
-		self.q_dot  = np.zeros(7)
+        self.q_dot  = np.zeros(7)
 
-		##  A numpy array of size 7 containing the current accelerations of the joints.
-		self.q_ddot = np.zeros(7)
+        ##  A numpy array of size 7 containing the current accelerations of the joints.
+        self.q_ddot = np.zeros(7)
 
-		##  A numpy array of size 7 containing the lower bounds of the arm joints 
+        ##  A numpy array of size 7 containing the lower bounds of the arm joints 
         self.ql = ql
 
-		##  A numpy array of size 7 containing the upper bounds of the arm joints 
+        ##  A numpy array of size 7 containing the upper bounds of the arm joints 
         self.qh = qh
 
-		##  A numpy array of size 7 containing a set of reference values for the joint angles. 
-		#
-		#  This parameter can be used as reference joint values for redundancy optimization. 
-		#  The redundancy will be used to set the joints as close as possible to these reference values.  
-		#  This property is by default set as the middle of joint ranges.		
+        ##  A numpy array of size 7 containing a set of reference values for the joint angles. 
+        #
+        #  This parameter can be used as reference joint values for redundancy optimization. 
+        #  The redundancy will be used to set the joints as close as possible to these reference values.  
+        #  This property is by default set as the middle of joint ranges.		
         self.qm = (qh + ql)/2
 
-		##  A numpy array of size 7 containing the weights of each joint in the objective function. 
-		#
-		#   The joint weights will be used in the optimization of redundancy. 
-		#   If the weight of a joint is 0, the joint is considered as unlimited. 
-		#   This means the value of that joint does not need to be in a specific range. 
+        ##  A numpy array of size 7 containing the weights of each joint in the objective function. 
+        #
+        #   The joint weights will be used in the optimization of redundancy. 
+        #   If the weight of a joint is 0, the joint is considered as unlimited. 
+        #   This means the value of that joint does not need to be in a specific range. 
         self.w 		= np.zeros(7)
 
 		##
@@ -142,13 +139,13 @@ class PR2_ARM_Configuration():
 	#  @param delta_t The step time in which the change(correction) is to be applied.
 	#  @return An instance of type <a href="http://pyinterval.googlecode.com/svn/trunk/html/index.html">Interval()</a>
     def joint_stepsize_interval(self, direction, max_speed = gen.infinity, delta_t = 0.001):
-		'''
-		The correction of joints is always restricted by joint limits and maximum feasible joint speed
-		If you want to move the joints in a desired direction, how much are you allowed to move?	
-		This function returns a feasible interval for the stepsize in the given direction. 
-		The joint direction of change must be multiplied by a scalar value in this range so that the applied changes
-		 are feasible.
-		'''
+        '''
+        The correction of joints is always restricted by joint limits and maximum feasible joint speed
+        If you want to move the joints in a desired direction, how much are you allowed to move?	
+        This function returns a feasible interval for the stepsize in the given direction. 
+        The joint direction of change must be multiplied by a scalar value in this range so that the applied changes
+        are feasible.
+        '''
         etta_l = []
         etta_h = []
 
@@ -263,13 +260,11 @@ class PR2_ARM_Configuration():
             cc[i] = qq
         return (cc, dd)
 
-	## Use this function to find the current value of the objective function
-	#  @param None
-	#  @return An instance of type float containing the value of the objective function
+    ## Use this function to find the current value of the objective function
+    #  @param None
+    #  @return A float containing the current value of the objective function
+    #          (deviation from midrange). This objective function depends on the values of the joints
     def objective_function(self):
-		'''
-		Returns the value of the objective function (deviation from midrange) according to the current values of the joints 
-		'''
         if self.mid_dist_sq == None:
             e = self.midrange_error()
             self.mid_dist_sq = np.dot(e.T,e)
@@ -279,17 +274,17 @@ class PR2_ARM_Configuration():
 #  This class contains all properties and methods required for forward and inverse kinematic computations and kinematic control of the arm
 class PR2_ARM():
 
-	## The Class Constructor:
-	#  @param a0 A float specifying the value of /f$ a_0 /f$ in the DH parameters of the arm 	
-	#  @param d2 A float specifying the value of /f$ d_2 /f$ in the DH parameters of the arm 	
-	#  @param d4 A float specifying the value of /f$ d_4 /f$ in the DH parameters of the arm 	
-	#  @param ql A numpy array of size 7 containing the lower bounds of the arm joints	
-	#  @param qh A numpy array of size 7 containing the upper bounds of the arm joints
-	#  @param W  A numpy array of size 7 containing the weights of each joint in the objective function. 
-	#
-	#			 The joint weights will be used in the optimization of redundancy. 
-	#            If the weight of a joint is 0, the joint is considered as unlimited. 
-	#            This means the value of that joint does not need to be in a specific range. 
+    ## The Class Constructor:
+    #  @param a0 A float specifying the value of /f$ a_0 /f$ in the DH parameters of the arm 	
+    #  @param d2 A float specifying the value of /f$ d_2 /f$ in the DH parameters of the arm 	
+    #  @param d4 A float specifying the value of /f$ d_4 /f$ in the DH parameters of the arm 	
+    #  @param ql A numpy array of size 7 containing the lower bounds of the arm joints	
+    #  @param qh A numpy array of size 7 containing the upper bounds of the arm joints
+    #  @param W  A numpy array of size 7 containing the weights of each joint in the objective function. 
+    #
+    #			 The joint weights will be used in the optimization of redundancy. 
+    #            If the weight of a joint is 0, the joint is considered as unlimited. 
+    #            This means the value of that joint does not need to be in a specific range. 
     def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = default_ql, qh = default_qh, W = default_W):
 
 		## A boolean specifying if orientation of the endeffector should be respected or not in finding the Inverse Kinematic solution
@@ -306,13 +301,13 @@ class PR2_ARM():
 		# Recommended not to be set directly. Always use function set_target() to change this property. 
         self.xd = None    
 
-		## A float specifying the value of /f$ a_0 /f$ in the DH parameters of the arm
+		## A float specifying the value of \f$ a_0 \f$ in the DH parameters of the arm
         self.a0 = a0
         
-		## A float specifying the value of /f$ d_2 /f$ in the DH parameters of the arm
+		## A float specifying the value of \f$ d_2 \f$ in the DH parameters of the arm
         self.d2 = d2
         
-		## A float specifying the value of /f$ d_4 /f$ in the DH parameters of the arm
+		## A float specifying the value of \f$ d_4 \f$ in the DH parameters of the arm
         self.d4 = d4
 
         l2 = d2**2 + d4**2 - a0**2
@@ -378,16 +373,16 @@ class PR2_ARM():
 	#  @return A boolean: True  if the given configuration is successfully set, False if the given configuration is not successfully set. 
     #         (If False is returned, the configuration will not chenge)
     def set_config(self, qd): 
-		'''
-		Example:
-			
-		arm = PR2_ARM()
-		qd  = numpy.zeros(7)	
-		arm.set_config(qd)	
-		print arm.config.q
-		print arm.wrist_position()
-		print arm.wrist_orientation()	
-		'''
+        '''
+        Example:
+            
+        arm = PR2_ARM()
+        qd  = numpy.zeros(7)	
+        arm.set_config(qd)	
+        print arm.config.q
+        print arm.wrist_position()
+        print arm.wrist_orientation()	
+        '''
         if self.config.set_config(qd):
             self.wrist_position_vector    = None
             self.wrist_orientation_matrix = None
@@ -395,25 +390,24 @@ class PR2_ARM():
             self.E           = None
             self.F           = None
             self.Delta       = None
+            '''
             if self.velocity_based_ik_required:
                 self.ik.configuration.q = np.copy(qd)
                 self.ik.configuration.initialize()
                 self.ik.forward_update()
-    
+            '''
             return True
         else:
             print "Could not set the given joints."
             return False
 
 	## Sets the endeffector target to a desired position and orientation.
-	# @param target_position    A numpy array of 3 elements specifying the desired endeffector position
-	# @param target_orientation A \f$ 3 \times 3 \f$ numpy rotation matrix representing the desired endeffector orientation
-	# @return A boolean: True  if the given pose is successfully set, False if the given pose is not successfully set because of an error
-    #        (If False is returned, properties self.xd and self.RD will not chenge)
+	#  @param target_position    A numpy array of 3 elements specifying the desired endeffector position
+	#  @param target_orientation A \f$ 3 \times 3 \f$ numpy rotation matrix representing the desired endeffector orientation
+	#  @return A boolean: True  if the given pose is successfully set, False if the given pose is not successfully set because of an error
+    #          (If False is returned, properties self.xd and self.RD will not chenge)
     def set_target(self, target_position, target_orientation):
-        '''
-		Example:
-        '''    
+
         assert gen.equal(np.linalg.det(target_orientation), 1.0)
         self.xd = target_position
         self.Rd = target_orientation
@@ -720,7 +714,7 @@ class PR2_ARM():
         keep_q     = np.copy(self.config.q)
         counter = 0
         while True:
-            J   = self.joint_jacobian()
+            J   = self.joint_redundancy_jacobian()
             e   = self.config.midrange_error()
             if show:
                 print "Iteration          : ", counter
@@ -1125,46 +1119,6 @@ class PR2_ARM():
 
         return solution_set[i_min]
 
-    '''
-    def confidence_set_analytic(self):
-        """
-        This function finds and returns the confidence set for q0 so that joint angles q0 , q2 and q3 in the analytic solution to the inverse kinematic problem
-        will be in their feasible range.
-        For q0 being in the confidence set is a necessary and sufficient condition for three joints q0, q2 and q3 to be in their feasible range.
-        "Confidence set" is a subset of "Permission set"
-        The confidence set depends on the defined joint limits, the desired endeffector pose and current position of the joints (the quarter in which q2 and q3 are located).
-        """
-        s2_l  = math.sin(self.config.ql[2])
-        s2_l2 = s2_l**2
-        s2_h  = math.sin(self.config.qh[2])
-        s2_h2 = s2_h**2
-
-        # Finding wl, wh:
-
-        qnl = trig.quarter_number(self.config.ql[2])
-        qnh = trig.quarter_number(self.config.qh[2])
-        qn  = trig.quarter_number(self.config.q[2])
-
-        if qn == qnl:   # lower bound is in the same quarter as q2
-            if (qn == qnh): # upper bound is in the same quarter as q2
-                wl = min(s2_l2,s2_h2)
-                wh = max(s2_l2,s2_h2)
-            elif qn in [1,3]:
-                (wl,wh) = (s2_l2, 1.0)
-            else:
-                (wl,wh) = (0.0, s2_l2)
-        else:
-            if (qn != qnh): # upper bound is not in the same quarter as q2
-                (wl,wh) = (0.0, 1.0)
-            elif qn in [1,3]:
-                (wl,wh) = (0.0, s2_h2)
-            else:
-                (wl,wh) = (s2_h2, 1.0)
-
-        # From here, copied from permission set
-        #Finding Sl
-        '''
-
     def project_to_ts(self,  js_traj, phi_start = 0.0, phi_end = None, delta_phi = 0.1):
         '''
         projects the given jointspace trajectory into the taskspace
@@ -1196,61 +1150,6 @@ class PR2_ARM():
         pos_traj.add_point(phi - phi_start, self.wrist_position())
         ori_traj.add_point(phi - phi_start, self.wrist_orientation())
         return (pos_traj, ori_traj)
-    """
-    def project_to_js_vts(self, pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, relative = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using a combination of numeric and analytic inverse kinematics.
-        The phase starts from phi_start increased by time with rate phi_dot.
-        at any time, if a solution is not found, the process stops
-        '''
-        assert self.velocity_based_ik_required, "Error from PR2_ARM.project_to_js(): Velocity-Based mode is not active"
-        tp = self.ik.endeffector.reference_positions[0]
-        tf = self.ik.endeffector.reference_orientations[0]
-        keep_config  = np.copy(self.config.q)
-        if phi_dot   == None:
-            phi_dot  = (pos_traj.phi_end - phi_start)/duration
-        if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
-            ori_traj.current_orientation = self.wrist_orientation()
-        
-        jt           = jtrajlib.Joint_Trajectory(dof = 7)
-        jt.add_point(phi = 0.0, pos = self.config.q, vel = np.zeros(7))
-
-        tp.desired_trajectory    = pos_traj
-        tf.desired_trajectory    = ori_traj
-
-        pos_traj.set_phi(phi_start)
-        ori_traj.set_phi(phi_start)
-        if relative:
-            tp.target_offset = self.wrist_position() - pos_traj.current_position
-            tf.target_offset = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-
-        t0           = time.time()
-        t            = 0.0
-    
-        while (t < duration + 0.00001):
-            t        = time.time() - t0
-            phi      = phi_start + phi_dot*t
-            self.ik.endeffector.update_target(phi)
-            '''
-            self.ik.endeffector.update_pose_error()
-            self.ik.endeffector.update_task_jacobian()
-            self.ik.endeffector.update_error_jacobian(self.ik)
-            '''
-            self.ik.run()
-            if self.ik.endeffector.in_target:
-                print "In target: one point added :-)"
-                if self.set_config(self.ik.configuration.q):
-                    self.ofuncode = 1
-                    self.qm = np.copy(self.config.q)
-                    self.set_target(tp.rd, tf.rd)    
-                    if self.inverse_update():
-                        jt.add_point(phi = phi - phi_start, pos = self.config.q)
-
-        jt.interpolate()
-        self.set_config(keep_config)
-        return jt
-    """
 
     def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 1.0, relative = True):
         '''
@@ -1310,306 +1209,6 @@ class PR2_ARM():
         self.config.qm = 0.5*(self.config.qh + self.config.ql)
         self.set_config(keep_q)
 
-        return jt
-
-    def project_to_js_vts(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True, silent = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
-        The phase starts from phi_start and added by delta_phi in each step.
-        at any time, if a solution is not found, the process stops
-        '''
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
-
-        if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
-            ori_traj.current_orientation = self.wrist_orientation()
-
-        if phi_end > pos_traj.phi_end:
-            phi_end = pos_traj.phi_end
-
-        jt          = jtrajlib.Joint_Trajectory(dof = 7)
-        # jt          = trajlib.Polynomial_Trajectory(dimension = 7)
-
-        # jt.capacity = 5
-        qd          = trig.angles_standard_range(self.config.q)
-        # jt.add_point(phi = 0.0, pos = qd, vel = np.zeros(7))
-        jt.add_point(phi = 0.0, pos = self.config.q, vel = np.zeros(7))
-
-        phi   = phi_start
-        pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
-        if relative:
-            p0    = self.wrist_position() - pos_traj.current_position
-            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-        else:
-            p0    = np.zeros(3)
-            R0    = np.eye(3)  
-        
-        phi       = phi + delta_phi
-        stay      = True
-
-        while (phi <= phi_end) and stay:
-            if gen.equal(phi, phi_end):
-                stay = False
-
-            pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
-            p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation)
-            self.set_target(p, R)
-            self.config.qm = np.copy(self.config.q)
-            self.ik.endeffector.reference_positions[0].rd = np.copy(self.xd)
-            self.ik.endeffector.reference_orientations[0].rd = np.copy(self.Rd)
-            err_old = self.ik.endeffector.error_norm
-            q_dot   = self.ik.joint_speed()
-            self.ik.configuration.q += q_dot
-            if self.config.all_joints_in_range(self.ik.configuration.q):
-                self.ik.forward_update()
-                err_new = self.ik.endeffector.error_norm
-                if err_new < err_old:
-                    self.set_config(self.ik.configuration.q)
-                    if self.inverse_update():
-                        if not silent:
-                            print
-                            print "phi = ", phi, phi_end
-                            print self.xd - self.wrist_position()
-                            print self.Rd - self.wrist_orientation()
-                            print self.ik.configuration
-                            print self.config.q
-
-                        jt.add_point(phi = phi - phi_start, pos = self.config.q)
-                        #jt.plot()
-
-            phi = phi + delta_phi
-            if phi > phi_end:
-                phi = phi_end
-                stay = False
-
-        jt.interpolate()
-
-        return jt
-
-    def project_to_js_vts_realtime(self,  pos_traj, ori_traj = None, phi_start = 0.0, duration = 10.0, phi_dot = None, max_speed = 1.0, relative = True, silent = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
-        The phase starts from phi_start and added by delta_phi in each step.
-        at any time, if a solution is not found, the process stops
-        '''
-        keep_q = np.copy(self.config.q)
-
-        phi_min = 5.0
-        phi_max = 6.1
-        if phi_dot == None:
-            phi_dot = pos_traj.phi_end/duration
-
-        if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
-            ori_traj.current_orientation = self.wrist_orientation()
-
-        jt          = jtrajlib.Joint_Trajectory(dof = 7)
-        # jt          = trajlib.Polynomial_Trajectory(dimension = 7)
-
-        jt.capacity = 2
-        qd          = trig.angles_standard_range(self.config.q)
-        # jt.add_point(phi = 0.0, pos = qd, vel = np.zeros(7))
-        jt.add_point(phi = 0.0, pos = np.copy(self.config.q), vel = np.zeros(7))
-        if (not silent):
-            print "Initial config:", (180.0/math.pi)*self.config.q
-
-
-        phi   = phi_start
-        pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
-        if relative:
-            p0    = self.wrist_position() - pos_traj.current_position
-            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-        else:
-            p0    = np.zeros(3)
-            R0    = np.eye(3)  
-        
-        t0        = time.time()
-        t         = 0.0
-        tp        = 0.0   
-        k         = 0.1      
-        while (t < duration + 0.00001):
-            t        = time.time() - t0
-            dt       = t - tp
-            tp       = t
-            phi      = phi_start + phi_dot*t
-
-            pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
-            p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation)
-            self.set_target(p, R)
-            self.ik.endeffector.reference_positions[0].rd    = np.copy(self.xd)
-            self.ik.endeffector.reference_orientations[0].rd = np.copy(self.Rd)
-            self.ik.endeffector.update_pose_error()            
-            self.ik.endeffector.update_error_jacobian(self.ik)
-
-            err_old = self.ik.endeffector.error_norm
-            # q_dot   = self.ik.joint_speed()
-            err = - k*self.ik.endeffector.pose_error + np.append(pos_traj.current_velocity, np.zeros(3))
-            # err = - k*self.ik.endeffector.pose_error
-            Je  =   self.ik.endeffector.EJ
-            Je_dagger = np.linalg.pinv(Je)
-            q_dot = np.dot(Je_dagger, err)
-
-            etta    = self.feasible_joint_stepsize(direction = q_dot, max_speed = max_speed, ttr = dt)
-            if (not silent) and (phi > phi_min) and (phi < phi_max):
-                print
-                print "phi = ", phi - phi_start
-                print "q_dot: ", (180.0/math.pi)*q_dot
-                print "etta:  ", etta
-                
-            self.ik.configuration.q += q_dot*etta
-            assert self.config.all_joints_in_range(self.ik.configuration.q)
-            self.ik.forward_update()
-            err_new = self.ik.endeffector.error_norm
-            if (not silent) and (phi > phi_min) and (phi < phi_max):
-                print "I am here: joint are in range"
-                print "Old Error = ", err_old
-                print "New Error = ", err_new
-            if err_new < err_old:
-                self.set_config(self.ik.configuration.q)
-                if (not silent) and (phi > phi_min) and (phi < phi_max):
-                    print "I am here: IK could reduce error, Point Added."
-                    print "ik config: ", self.ik.configuration
-                    print self.xd - self.wrist_position()
-                    print self.Rd - self.wrist_orientation()
-                assert self.set_config(self.ik.configuration.q)
-                jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
-            else:
-                if (not silent) and (phi > phi_min) and (phi < phi_max):
-                    print "I am here: IK could not reduce error"
-                self.config.qm = np.copy(self.ik.configuration.q)
-                if self.move_towards_target(phi = self.config.q[0], optimize = True, max_speed = max_speed, ttr = dt):
-                    self.ik.configuration.q = np.copy(self.config.q)
-                    self.ik.forward_update()
-                    if (not silent) and (phi > phi_min) and (phi < phi_max):
-                        print
-                        print "I am here: Analytic IK could get closer"
-                        print "Final Config:", self.ik.configuration
-                        print "Final Err=   ", self.ik.endeffector.error_norm
-                        print self.xd - self.wrist_position()
-                        print self.Rd - self.wrist_orientation()
-                    jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
-                else:
-                    if (not silent) and (phi > phi_min) and (phi < phi_max):
-                        print "I am here: Analytic IK could not get closer. Point not added :-("
-               
-        jt.interpolate()
-        self.config.qm = 0.5*(self.config.qh + self.config.ql)
-        self.set_config(keep_q)
-
-        return jt
-
-    def project_to_js_binary(self,  pos_traj, ori_traj, phi_start = 0.0, phi_end = 1.0, delta_phi = 0.1, k = 2.0, relative = True):
-        '''
-        projects the given taskspace pose trajectory into the jointspace using binary stepwise approach
-        The phase starts from phi_start and added by delta_phi in each step.
-        if a solution is not found, the phase is returned to the previous state (phi - d_phi) and 
-        d_phi becomes half and is added to phi again
-        if a solution is found, d_phi is multiplied by 2.0 provided it does not exceed given delta_phi
-        The process continues until phi reaches phi_end and the corresponding jointspace trajectory is returned.
-        '''
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
-
-        q_list     = [self.config.q]
-        phi_list   = [0.0]
-
-        d_phi = delta_phi
-        phi   = phi_start
-        pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
-        if relative:
-            p0    = self.wrist_position() - pos_traj.current_position
-            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
-        else:
-            p0    = np.zeros(3)
-            R0    = np.eye(3)  
-        
-        phi = phi + d_phi
-        while (phi < phi_end) and (d_phi > 0.0001):
-            pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
-            p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation)
-            self.set_target(p, R)
-            if self.inverse_update():
-                q_list.append(self.config.q) 
-                phi_list.append(phi - phi_start)
-                d_phi = d_phi*k
-                if d_phi > delta_phi:
-                    d_phi = delta_phi
-                phi = phi + d_phi
-            else:
-                phi   = phi - d_phi
-                d_phi = d_phi/k            
-                phi   = phi + d_phi
-        if d_phi <= 0.0001:
-            print "Warning from PR2_ARM.project_to_js(): The trajectory could not be completed!"
-        
-        # Create a joint trajectory by connecting the key points in the jointspace:
-        n = len(q_list)
-        q_dot_list      = [None for i in range(n)]
-        q_dot_list[0]   = np.zeros(7)
-        q_dot_list[n-1] = np.zeros(7)
-
-        jt          = trajlib.Polynomial_Trajectory(dimension = 7)
-        jt.capacity = 5
-    
-        for i in range(n):
-            jt.add_point(phi = phi_list[i], pos = q_list[i], vel = q_dot_list[i])
-
-        jt.interpolate()
-
-        return jt
-
-    
-    def project_to_js_keypoints(self, ts_traj, num_key_points = 10, smooth = True, relative = True):
-        '''
-        ts_traj is a cartesian trajectory of the endeffector in the operational taskspace.
-        this function projects the given trajectory into the jointspace of PR2 arm and returns a 7 dim trajectory 
-        in the jointspace
-        while the objective function is expected to be minimized in each key point.
-        If there is no solution for any of the keypoints in the path(trajectory), then that point will be skipped.
-        '''
-        n          = num_key_points
-        assert n > 1   # n must be at least 2 or greater
-
-        jt = trajlib.Polynomial_Trajectory(dimension = 7)
-        if relative:
-            p0 = self.wrist_position()
-        else:
-            p0 = np.zeros(3)
-
-        d_phi      = ts_traj.phi_end/(n - 1)
-        for i in range(n):
-            phi = i*d_phi
-            ts_traj.set_phi(phi)
-            pos = ts_traj.current_position
-            self.set_target(p0 + pos, self.Rd)
-            if self.inverse_update():
-                jt.add_point(phi, self.config.q)
-            else:
-                print "Solution not found for key point number ", i, ". Point skipped!"
-
-        if n == 0:
-            print "All points skipped! No solution found for any of the key points"
-            return False
-    
-        lsi = len(jt.segment) - 1
-        lpi = len(jt.segment[lsi].point) - 1
-        jt.segment[0].point[0].vel     = np.zeros(7)
-        jt.segment[lsi].point[lpi].vel = np.zeros(7)
-
-        jt.interpolate()
-        if smooth:
-            jt.consistent_velocities()
-        
         return jt
 
     def permission_set_position(self):
@@ -1709,14 +1308,13 @@ class PR2_ARM():
 
         return self.Phi
 
-
     def delta_phi_interval(self):
         '''
         Updates the feasible interval for the growth of the redundant parameter according to
         the specified joint limits and the current value of the joints
         '''
         if self.Delta == None:
-            J    = self.joint_jacobian()
+            J    = self.joint_redundancy_jacobian()
             self.Delta  = self.permission_set_position() - interval(self.config.q[0])  # set initial Delta based on the position permission set for phi
 
             for i in range(0, 7):

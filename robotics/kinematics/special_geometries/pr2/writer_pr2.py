@@ -1,31 +1,22 @@
-'''   Header
-@file:          writer_pr2.py
-@brief:    	    Contains a class inherited from Skilled_PR2 in skilled_pr2.py which is connected to a real-time robot 
-                A real PR2 or PR2 in simulation that have special writing skills
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@uts.edu.au 
-                Email(2): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(3): N.RamezaniTaghiabadi@uws.edu.au 
-                Email(4): nima.ramezani@gmail.com
-                Email(5): nima_ramezani@yahoo.com
-                Email(6): ramezanitn@alum.sharif.edu
+## @file        	writer_pr2.py
+#  @brief     		Contains a class inherited from Skilled_PR2 in skilled_pr2.py which is connected to a real-time robot,
+#                   a real PR2 or PR2 in simulation that have special writing skills
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	2.0
+# 
+#  Start date:      21 November 2014
+#  Last Revision:  	06 January 2015
+#  \b Attention:
+#  All actions of this module do not have any collision avoidance feature. So be prepared to stop the robot if any collision happens !
 
-@version:	    1.0
-Start date:     21 November 2014
-Last Revision:  21 November 2014
-
-Attention:
-
-All actions of this module do not have any collision avoidance feature. So be prepared to stop the robot if any collision happens !
-
-'''
 import numpy as np
 import time, math
 

@@ -1,7 +1,7 @@
 # HEADER
 '''   
 @file:          workspace.py
-@brief:    	    This module provides a class containing all the information regarding the workspace of a manipulator.
+@brief:    	    This module provides a class containing methods and properties regarding the workspace of a manipulator.
 @author:        Nima Ramezani Taghiabadi
                 PhD Researcher
                 Faculty of Engineering and Information Technology
@@ -24,17 +24,17 @@ import  numpy,copy, pickle
 import  packages.nima.robotics.kinematics.kinematicpy.forward_kinematics as fklib
 
 from    packages.nima.mathematics import rotation
-from    packages.nima.artificial_intelligence.data_mining.kdtree import kdtree
+from    packages.matej.artificial_intelligence.data_mining.kdtree import kdtree
 
-
+## Use this function to load the workspace from a file. 
+#  @param path_and_file_name A string specifying the full path and filename containing the workspace data
+#  @return An instance of class packages.nima.robotics.kinematics.task_space.workspace.Workspace()
 def read_from_file(path_and_file_name):
-    '''
-    read and return the workspace from file specified by filename. The output is an instance of class "Workspace"
-    '''
     FILE_DATA = open(path_and_file_name, "r")
     work_space = pickle.load(FILE_DATA)
     return work_space
 
+## This class contains all the required settings of a workspace. 
 class Workspace_Settings():
     '''
     '''

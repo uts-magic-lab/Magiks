@@ -335,7 +335,7 @@ class Orientation_Metric(Metric):
             
             f[0] = z**self.power[0]
             
-        elif self.basis_error_function == 'differential_quaternions':
+        elif self.basis_error_function == 'normalized_differential_quaternions':
             p = 3
             assert len(self.power) == p
             f = numpy.zeros((p))
@@ -348,7 +348,29 @@ class Orientation_Metric(Metric):
             qnd = quaternions.unit_quaternion(target)
             
             for k in range (0,p):
-                z[k] = - qnd[p]*qn[k] + qn[p]*qnd[k]    
+                z[k] = - qnd[0]*qn[k+1] + qn[0]*qnd[k+1]    
+                f[k] = z[k]**self.power[k]
+
+        elif self.basis_error_function == 'differential_quaternions':
+            p = 4
+            assert len(self.power) == p
+            f = numpy.zeros((p))
+            z = numpy.zeros((p))
+            qn  = quaternions.unit_quaternion(current)
+            qnd = quaternions.unit_quaternion(target)
+            z   = qn - qnd
+            for k in range (0,p):
+                f[k] = z[k]**self.power[k]
+
+        elif self.basis_error_function == 'differential_vectorial_identity':
+            p = 3
+            assert len(self.power) == p
+            f  = numpy.zeros((p))
+            z  = numpy.zeros((p))
+            oa = rotation.orientation_vector(current, parametrization = 'vectorial_identity')
+            od = rotation.orientation_vector(target , parametrization = 'vectorial_identity')
+            z  = oa - od
+            for k in range (0,p):
                 f[k] = z[k]**self.power[k]
 
         elif self.basis_error_function == 'relative_rotation_angle':
@@ -372,10 +394,7 @@ class Orientation_Metric(Metric):
             p = 3
             assert len(self.power) == p
             f = numpy.zeros((p))
-
-            RRM = numpy.dot(target,current.T)
-            z = mathlib.rotation_vector(RRM,mathlib.param_dict['pm_Cayley_Gibbs_Rodrigues'])
-
+            z = rotation.relative_rotation_vector(current, target, 'Cayley_Gibbs_Rodrigues')
             for k in range (0,p):
                 f[k] = z[k]**self.power[k]
 
@@ -383,7 +402,8 @@ class Orientation_Metric(Metric):
             p = 3
             assert len(self.power) == p
             f = numpy.zeros((p))
-            z = mathlib.relative_rotation_vector(current,target,mathlib.param_dict['pm_vectorial_linear'])
+            # Rz = numpy.dot(current, target.T)
+            z = rotation.relative_rotation_vector(current,target,'vectorial_linear')
             
             for k in range (0,p):
                 f[k] = z[k]**self.power[k]

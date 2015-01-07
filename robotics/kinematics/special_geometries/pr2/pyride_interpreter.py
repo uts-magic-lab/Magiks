@@ -574,31 +574,35 @@ def move_robot_to(x, y , tau, time_to_reach = 5.0, in_degrees = True):
     tau0 = body_angle(in_degrees = in_degrees)
     PyPR2.moveBodyTo( dp[0], dp[1], gain*(tau - tau0), time_to_reach)
 
-def finished(target_list = ['body', 'rarm', 'larm']):
+def finished(limb_list = ['body', 'rarm', 'larm']):
     '''
-    returns True if the motion of all the items in the target_list is reached or failed.
+    returns True if the motion of all the items in the limb_list is reached or failed.
     '''
     global body_reached, body_failed
     fin = True
-    if 'body' in target_list:
+    if 'body' in limb_list:
         fin = fin and (body_reached or body_failed)
-    if 'rarm' in target_list:
+    if 'rarm' in limb_list:
         fin = fin and (rarm_reached or rarm_failed)
-    if 'larm' in target_list:
+    if 'larm' in limb_list:
         fin = fin and (larm_reached or larm_failed)
     return fin
     
-def wait_until_finished(target_list = ['body', 'rarm', 'larm'], max_time = 20.0 ):
+def wait_until_finished(limb_list = ['body', 'rarm', 'larm'], max_time = 20.0 ):
     '''
-    waits until the motion of the items in the target_list is reached or failed.
+    waits until the motion of the items in the limb_list is reached or failed.
     the function will return False if the motion of items is not finished by the max_time
     '''    
     t0 = time.time()
     t  = 0.0
-    while (t < max_time) and (not finished(target_list)):
+    while (t < max_time) and (not finished(limb_list)):
         t = time.time() - t0
         time.sleep(0.01)    
-    return finished(target_list)
+    if finished(limb_list):
+        return True
+    else:
+        print "Time Out !"
+        return False
 
 def run_navigation_trajectory(duration, pos_traj, ori_traj, phi_dot = 1.0, k = 1.0):
     t_s   = time.time()

@@ -1,31 +1,20 @@
-'''   Header
-@file:          skilled_pr2.py
-@brief:    	    Contains a class inherited from PyRide_PR2 in pyride_synchronizer.py which is connected to a real-time robot 
-                A real PR2 or PR2 in simulation that have special skills like writing
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@uts.edu.au 
-                Email(2): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(3): N.RamezaniTaghiabadi@uws.edu.au 
-                Email(4): nima.ramezani@gmail.com
-                Email(5): nima_ramezani@yahoo.com
-                Email(6): ramezanitn@alum.sharif.edu
+## @file        	skilled_pr2.py
+#  @brief     		Contains a class inherited from PyRide_PR2 in pyride_synchronizer.py which is connected to a real-time robot,
+#                   a real PR2 or PR2 in simulation that have special skills like drawing
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	3.0
+# 
+#  Start date:      17 September 2014
+#  Last Revision:  	06 January 2015
 
-@version:	    2.0
-Start date:     17 September 2014
-Last Revision:  29 October 2014
-
-Attention:
-
-All actions of this module do not have any collision avoidance feature. So be prepared to stop the robot if any collision is predicted !
-
-'''
 import numpy as np
 import time
 
@@ -128,7 +117,7 @@ class Skilled_PR2(ps.PyRide_PR2):
     def prepare_to_write(self):
         self.say("Let's draw something. Show me a board")
         self.sync_object()
-        self.activate_tilt_laser()
+        pint.activate_tilt_laser()
         while pint.tl_dist == None:
             time.sleep(0.01)
 
@@ -142,7 +131,7 @@ class Skilled_PR2(ps.PyRide_PR2):
         self.catch_the_pen()
         time.sleep(5)
         self.get_ready(False)
-        self.deactivate_tilt_laser()
+        pint.deactivate_tilt_laser()
 
     def show_the_people(self, return_back = True):
         ql = np.array([ 1.1742804 ,  2.04188103,  1.35847037, -1.99603627, -1.22890376, -1.16233047,  0.80086808])
@@ -281,8 +270,8 @@ class Skilled_PR2(ps.PyRide_PR2):
             n = ori[:,2]
             self.rarm.set_target(pos-self.depth*n, ori)
 
-        self.reach_target_larm(wait = False)
-        self.reach_target_rarm(wait = False)
+        self.larm_target(wait = False)
+        self.rarm_target(wait = False)
         pint.wait_until_finished(target_list = ['rarm', 'larm'])
         self.sync_object()
         '''
@@ -489,10 +478,10 @@ class Skilled_PR2(ps.PyRide_PR2):
         # Return back to start point:
         if nrt > 0:
             self.rarm.set_target(self.rarm_startpoint, ori_r)
-            self.reach_target_rarm(wait = True)    
+            self.rarm_target(wait = True)    
 
         if nlt > 0:
             self.larm.set_target(self.larm_startpoint, ori_l)
-            self.reach_target_larm(wait = True)    
+            self.larm_target(wait = True)    
     
 

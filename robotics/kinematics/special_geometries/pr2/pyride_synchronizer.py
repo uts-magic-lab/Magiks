@@ -153,7 +153,8 @@ def calibrate_pr2_torso():
 #  packages.nima.robotics.kinematics.special_geometries.pr2.pr2_kinematics.PR2()
 #  containing additional methods in order to actuate, move and control the real robot and/or get the sensory data from it
 #  The object can synchronize itself with the robot in both forward and inverse directions via pyride interface engine. 
-#  In other words, any changes in the status and configuration of the object can be directly applied to the real robot or robot in simulation and vice versa.
+#  In other words, any changes in the status and configuration of the object can be directly applied
+#  to the real robot or robot in simulation and vice versa.
 #  Forward synchronization is to actuate the robot to the configuration of the object and 
 #  inverse synchronization is to set the object with the configuration of the real robot.
 class PyRide_PR2(pr2lib.PR2):
@@ -170,12 +171,20 @@ class PyRide_PR2(pr2lib.PR2):
         q_l = calibrate_pr2_l_arm()
         q_t = calibrate_pr2_torso()
 
+        ## A dictionary specifying the maximum waiting time when you choose to wait for any motion to finish. \n
+        #  This time can be different for the motion of different parts of the robot. \n
+        #  max_wait_time['rarm']: Refers to the motion of the right arm (Change in joints q[0] - q[6]) \n
+        #  max_wait_time['larm']: Refers to the motion of the left arm (Change in joints q[11] - q[17]) \n
+        #  max_wait_time['body']: Refers to the navigation of the body (Change in joints q[8], q[9] , q[10]) \n
+        #  max_wait_time['trunk']: Refers to the trunk lifting motion (Change in joint q[7])
+        self.max_wait_time = {'rarm':15.0, 'larm':15.0, 'body':60, 'robot':20, 'trunk':20 }
+
         assert gen.equal(q_r[7], q_l[7])
         assert gen.equal(q_r[8], q_l[8])
         assert gen.equal(q_r[9], q_l[9])
 
         #pr2lib.PR2.__init__(self)
-        super(PyRide_PR2, self).__init__(a0 = q_r[7], d2 = q_r[8], d4 = q_r[9], d7 = q_t[5], l0 = q_t[4], b0 = q_t[6], vts = vts)
+        super(PyRide_PR2, self).__init__(a0 = q_r[7], d2 = q_r[8], d4 = q_r[9], d7 = q_t[5], l0 = q_t[4], b0 = q_t[6])
 
         q_d = numpy.concatenate((q_r[0:7], q_t[0:4], q_l[0:7]))    
         super(PyRide_PR2, self).set_config(q_d)
@@ -184,12 +193,15 @@ class PyRide_PR2(pr2lib.PR2):
         self.rarm.set_target(self.rarm.wrist_position(), self.rarm.wrist_orientation())
         self.larm.set_target(self.larm.wrist_position(), self.larm.wrist_orientation())
         
+        ## A float specifying the speed of arm gripper in the operational space in m/sec
         self.arm_speed     = 0.02
+
+    
         self.arm_max_speed = 1.0
         self.base_laser_scan_range = range(400, 640)
         self.tilt_laser_scan_range = range(80, 300)
 
-    def height_synced(self):
+    def trunk_synced(self):
         '''
         Returns True if robot and object body heights are identical
         '''    
@@ -229,21 +241,24 @@ class PyRide_PR2(pr2lib.PR2):
     def say(self, s):
         PyPR2.say(s)
 
-    def synced(self, target_list = ['body', 'rarm', 'larm']):
+    ## Use this function to check if the robot is synchronized with the object.
+    #  @param limb_list An array of strings specifying which parts should be checked.
+    #  @return None 
+    def synced(self, limb_list = ['body', 'rarm', 'larm', 'trunk']):
         sn = True
-        if 'body' in target_list:
+        if 'body' in limb_list:
             sn = sn and self.body_synced()
-        if 'rarm' in target_list:
+        if 'rarm' in limb_list:
             sn = sn and self.rarm_synced()
-        if 'larm' in target_list:
+        if 'larm' in limb_list:
             sn = sn and self.larm_synced()
         return sn
 
+    ## Synchronizes the object with the robot and verifies the equity of forward kinematics for both the right and left arm endeffectors.
+    #  @param None
+    #  @return None
     def sync_object(self):
 
-        '''
-        Synchronizes the object with the robot and verifies the forwark kinematics of both the endeffectors
-        '''        
         q_r = calibrate_pr2_r_arm()
         q_l = calibrate_pr2_l_arm()
         q_t = calibrate_pr2_torso()
@@ -262,7 +277,29 @@ class PyRide_PR2(pr2lib.PR2):
 
         assert vecmat.equal(raggp1, raggp2, epsilon = 0.1) # verify equality with 10 cm accuracy
 
-    def set_config_smooth(self, qd, ttr = 5.0, max_time = 120.0, target_list = ['body', 'rarm', 'larm']):
+    ## Synchronizes the position and orientation of the real robot body or robot in simulation with the object.
+    #  If the body pose is not already synced, it takes the configuration specified by <b> self.q[8:11] </b>
+    #  @param ttr A float specifying <em> time to reach </em> in seconds
+    #  @param wait A boolean: \li If True, the system waits until the the body pose is synchronized or <b> self.max_wait_time['body'] </b> is elapsed. 
+    #                          (You don't exit the function before the motion is finished or the maximum waiting time is elapsed)
+    #                         \li If False, you will exit the function immidiately while the defined motion is running
+    #  @return A boolean: \li True If the body is successfully synchronized with the object at the time of function exit \n
+    #                     \li False If the body fails to synchronize for any reason \n
+    #                     \b  Note: If parameter \b wait is False, the function returns True only if the body is already synced
+    def sync_body(self, ttr = 5.0, wait = True, max_wait_time = 60.0): 
+        if not self.body_synced():
+            pint.move_robot_to(x = self.q[8], y = self.q[9], tau = self.q[10], time_to_reach = ttr, in_degrees = False)  # Move the robot body 
+            if wait:
+                max_wait_time = gen.ensured_in_range(max_wait_time, 30.0, 300.0)
+                t0 = time.time()
+                t  = 0.0
+                while (t < self.max_wait_time_body) and (not self.body_synced()):
+                    pint.move_robot_to(x = self.q[8], y = self.q[9], tau = self.q[10], time_to_reach = ttr, in_degrees = False)  # Move the robot body first
+                    pint.wait_until_finished(limb_list = ['body'], max_time = 0.2*self.max_wait_time_body)
+                    t = time.time() - t0
+        return self.body_synced()
+    
+    def set_config_synced(self, qd, ttr = 5.0, max_time = 120.0, limb_list = ['body', 'rarm', 'larm']):
         '''
         sets the given configuration to the object and
         synchronizes the robot with the object. 
@@ -272,122 +309,187 @@ class PyRide_PR2(pr2lib.PR2):
         if self.set_config(qd): # Make sure the given joints are feasible
             t0 = time.time()
             t  = 0.0
-            while (t < max_time) and (not self.synced(target_list)):
-                if ('body' in target_list) and (not self.body_synced()):
+            while (t < max_time) and (not self.synced(limb_list)):
+                if ('body' in limb_list) and (not self.body_synced()):
                     pint.move_robot_to(x = self.q[8], y = self.q[9], tau = self.q[10], time_to_reach = ttr, in_degrees = False)  # Move the robot body first
                 else:
                     pint.body_reached = True
-                if ('rarm' in target_list) and (not self.rarm_synced()):
+                if ('rarm' in limb_list) and (not self.rarm_synced()):
                     pint.take_rarm_to(self.rarm.config.q, time_to_reach = ttr) # Move the right arm
                 else:
                     pint.rarm_reached = True
-                if ('larm' in target_list) and (not self.larm_synced()):
+                if ('larm' in limb_list) and (not self.larm_synced()):
                     pint.take_larm_to(self.larm.config.q, time_to_reach = ttr) # Move the left arm
                 else:
                     pint.larm_reached = True
 
-                assert pint.wait_until_finished(target_list = target_list)
+                assert pint.wait_until_finished(limb_list = limb_list)
                 t = time.time() - t0
         else: 
-            print "Error from PyRide_PR2.set_config_smooth(): Given joints are not feasible"
-        return self.synced(target_list)
-
-    def sync_robot(self, ttr = 5.0, wait = True):
-        '''
-        '''
-        if not self.body_synced():
-            self.set_config_smooth(self.q, ttr = ttr)
-
+            print "Error from PyRide_PR2.set_config_synced(): Given joints are not feasible"
+        return self.synced(limb_list)
+    
+    ## Synchronizes the right arm of the real robot or robot in simulation with the right arm of the object.
+    #  If the right arm is not already synced, it takes the configuration specified by <b> self.q[0:7] </b> or <b> self.rarm.config.q[0:7] </b>
+    #  @param ttr A float specifying <em> time to reach </em> in seconds
+    #  @param wait A boolean: \li If True, the system waits until the the right arm is synchronized or <b> self.max_wait_time['rarm'] </b> is elapsed. 
+    #                          (You don't exit the function before the motion is finished or the maximum waiting time is elapsed)
+    #                         \li If False, you will exit the function immidiately while the defined motion is running
+    #  @return A boolean: \li True If the right arm is successfully synchronized with the object at the time of function exit \n
+    #                     \li False If the right arm fails to synchronize for any reason \n
+    #                     \b  Note: If parameter \b wait is False, the function returns True only if the right arm is already synced
+    def sync_rarm(self, ttr = 5.0, wait = True):
         if not self.rarm_synced():
             pint.take_rarm_to(self.rarm.config.q, time_to_reach = ttr)
             if wait:
-                pint.wait_until_finished(target_list = ['rarm'])
+                pint.wait_until_finished(limb_list = ['rarm'], max_time = self.max_wait_time['rarm'])
+        return self.rarm_synced()
 
+    ## Synchronizes the left arm of the real robot or robot in simulation with the left arm of the object.
+    #  If the left arm is not already synced, it takes the configuration specified by <b> self.q[11:18] </b> or <b> self.larm.config.q[0:7] </b> 
+    #  @param ttr A float specifying <em> time to reach </em> in seconds
+    #  @param wait A boolean: \li If True, the system waits until the arm reaches the target or <b> self.max_wait_time['larm'] </b> is elapsed. 
+    #                          (You don't exit the function before the motion is finished or the maximum waiting time is elapsed) 
+    #                         \li If False, you will exit the function immidiately while the defined motion is running.
+    #  @return A boolean: \li True If the left arm is successfully synchronized with the object at the time of function exit 
+    #                     \li False If the left arm fails to synchronize for any reason \n
+    #                     \b Note: If parameter \b wait is False, the function returns True only if the left arm is already synced
+    def sync_larm(self, ttr = 5.0, wait = True):
         if not self.larm_synced():
             pint.take_larm_to(self.larm.config.q, time_to_reach = ttr)
             if wait:
-                pint.wait_until_finished(target_list = ['larm'])
+                pint.wait_until_finished(limb_list = ['larm'], max_time = self.max_wait_time['larm'])
+        return self.larm_synced()
+
+    ## Synchronizes the real robot or robot in simulation with the object.
+    #  The body, trunk, right and left arms synchronize simultaneously. If each part is already synced, it will not move. 
+    #  If the system is in \em free-base mode, the robot navigates to the position specified by \f$ x = q[8] \f$ and \f$ y = q[9] \f$
+    #  and twists to rotation angle specified by \f$ \tau = q[10] \f$. 
+    #  (If the system is in \em fixed-base mode, the body will not move) \n
+    #  The right arm takes the configuration specified by <b> self.q[0:7]   </b> or <b> self.rarm.config.q[0:7] </b> \n
+    #  The left arm  takes the configuration specified by <b> self.q[11:18] </b>  or <b> self.larm.config.q[0:7] </b>
+    #  @param ttr A float specifying <em> time to reach </em> in seconds
+    #  @param wait A boolean: \li If True, the system waits until the robot is synchronized or <b> self.max_wait_time['robot'] </b>  is elapsed. 
+    #                          (You don't exit the function before the motion is finished or the maximum waiting time is elapsed)
+    #                         \li If False, you will exit the function immidiately while the motion is running
+    #  @return A boolean: \li True If robot is successfully synchronized with the object at the time of function exit 
+    #                     \li False The robot fails to synchronize for any reason \n
+    #                     \b Note: If parameter \b wait is False, the function returns True only if the robot is already synced
+    def sync_robot(self, ttr = 5.0, wait = True):
+        '''
+        '''
+        ll = []
+        if (self.control_mode == 'free-base') and (not self.body_synced()):
+            self.set_config_synced(self.q, ttr = ttr, wait = False)
+            ll.append('body')
+
+        self.sync_rarm(ttr = ttr, wait = False)
+        ll.append('rarm')
+        self.sync_larm(ttr = ttr, wait = False)
+        ll.append('larm')
+
+        if wait:
+            pint.wait_until_finished(limb_list = ll, max_time = self.max_wait_time['robot'])
         
+        return self.synced(limb_list = ll)
 
-        self.sync_object()
-
-    def reach_target_rarm(self, phi = None, ttr = 5.0, wait = True):
-        '''
-        Solves the Inverse Kinematics for the right arm with given redundant parameter "phi"
-        and takes the right arm endeffector to the target specified by self.rarm.xd and self.rarm.Rd
-        if phi = None, then the optimum phi will be selected.
-        '''
+    ##  Solves the Inverse Kinematics for the right arm with given redundant parameter \f$ \phi \f$
+    #   and takes the right arm endeffector to the target specified by properties \b self.rarm.xd and \b self.rarm.Rd .
+    #   @param phi A float by which you specify the value of the desired redundant parameter (The desired value of shoulder-pan joint).
+    #              If phi = None, then the optimum phi corresponding to the minimum value of the objective function 
+    #              will be selected. (The default value is None)
+    #   @param ttr A float specifying <em> time to reach </em> in seconds. 
+    #              Use this parameter to specify the amount of time needed to reach the target. 
+    #              Obviously this value influences the speed of motion.
+    #   @param wait A boolean: \li If True, the system waits until the right arm gipper takes the desired target pose or <b> self.max_wait_time['rarm'] </b>  is elapsed. 
+    #                          (You don't exit the function before the target is achieved or the maximum waiting time is elapsed)
+    #                         \li If False, you will exit the function immidiately while the motion is running
+    #   @return A boolean: \li True If the right arm can reach the target successfully
+    #                     \li False If the arm fails to reach the target for any reason \n
+    #                     \b Note: If parameter \b wait is False, the function returns True if an IK solution is found for the right arm.
+    def rarm_target(self, phi = None, ttr = 5.0, wait = True):
+        func_name = ".rarm_target()"
         self.rarm.set_target(self.rarm.xd, self.rarm.Rd)  # make sure the target parameters are set
         if phi == None:
             if self.rarm.inverse_update(optimize = True):
                 qr = self.rarm.config.q
             else:
-                print "Error from PyRidePR2.reach_target_rarm(): Could not find an IK solution for given target"
+                print "Error from " + __name__ + func_name + ": Could not find an IK solution for given target. Make sure the target pose is in the workspace."
                 return False
         else:
             C = self.rarm.permission_set_position()
             if phi in C:
                 qr = self.rarm.IK_config(phi)
             else:
-                print "Error from PyRidePR2.reach_target_rarm(): Given phi is not in the permission set"
+                print "Error from " + __name__ + func_name + ": Given phi is not in the permission set."
                 return False
         if qr == None:
-            print "Error from PyRidePR2.reach_target_rarm(): No IK solution for the given redundant parameter phi."
+            print "Error from " + __name__ + func_name + ": No IK solution found for the given redundant parameter phi! Change the value of the redundant parameter and try again."
             return False
         else:
             if self.rarm.config.set_config(qr):
                 self.q[0:7] = qr
             else:
-                print "Error from PyRidePR2.reach_target_rarm(): This should not happen! Check your code."
+                print "Error from PyRidePR2.rarm_target(): This should not happen! Check your code."
                 return False
         
-        # return self.set_config_smooth(self.q, ttr = ttr, max_time = 12.0, target_list = ['rarm'])
-        self.sync_robot(ttr = ttr, wait = wait)
+        return self.sync_robot(ttr = ttr, wait = wait) or (not wait)
     
-    def reference_arm(self):
-        if self.larm_reference:
-            return(self.larm)
-        else:
-            return(self.rarm)
-
-    def reach_target_larm(self, phi = None, ttr = 5.0, wait = True):
+    ##  Solves the Inverse Kinematics for the left arm with given redundant parameter \f$ \phi \f$
+    #   and takes the right arm endeffector to the target specified by properties \b self.larm.xd and \b self.larm.Rd .
+    #   @param phi A float by which you specify the value of the desired redundant parameter (The desired value of shoulder-pan joint).
+    #              If phi = None, then the optimum phi corresponding to the minimum value of the objective function 
+    #              will be selected. (The default value is None)
+    #   @param ttr A float specifying <em> time to reach </em> in seconds. 
+    #              Use this parameter to specify the amount of time needed to reach the target. 
+    #              Obviously this value influences the speed of motion.
+    #   @param wait A boolean: \li If True, the system waits until the left arm gipper takes the desired target pose or <b> self.max_wait_time['larm'] </b> is elapsed. 
+    #                          (You don't exit the function before the target is achieved or the maximum waiting time is elapsed)
+    #                         \li If False, you will exit the function immidiately while the motion is running
+    #   @return A boolean: \li True If the left arm can reach the target successfully
+    #                     \li False If the arm fails to reach the target for any reason \n
+    #                     \b Note: If parameter \b wait is False, the function returns True if an IK solution is found for the left arm.
+    def larm_target(self, phi = None, ttr = 5.0, wait = True):
         '''
         Solves the Inverse Kinematics for the left  arm with given redundant parameter "phi"
         and takes the right arm endeffector to the target specified by self.larm.xd and self.larm.Rd
         if phi = None, then the optimum phi will be selected.
         '''
+        func_name = ".larm_target()"
         
         self.larm.set_target(self.larm.xd, self.larm.Rd)  # make sure the target parameters are set
         if phi == None:
             if self.larm.inverse_update(optimize = True):
                 ql = self.larm.config.q
             else:
-                print "Error from PyRidePR2.reach_target_larm(): Could not find an IK solution for given target"
+                print "Error from PyRidePR2.larm_target(): Could not find an IK solution for given target"
                 return False
         else:
             C = self.larm.permission_set_position()
             if phi in C:
                 ql = self.larm.IK_config(phi)
             else:
-                print "Error from PyRidePR2.reach_target_larm(): Given phi is not in the permission set"
+                print "Error from PyRidePR2.larm_target(): Given phi is not in the permission set"
                 return False
         if ql == None:
-            print "Error from PyRidePR2.reach_target_larm(): No IK solution for the given redundant parameter phi."
+            print "Error from PyRidePR2.larm_target(): No IK solution for the given redundant parameter phi."
             return False
         else:
             if self.larm.config.set_config(ql):
                 self.q[11:18] = ql
             else:
-                print "Error from PyRidePR2.reach_target_larm(): This should not happen! Check your code."
+                print "Error from PyRidePR2.larm_target(): This should not happen! Check your code."
                 return False
         
-        self.sync_robot(ttr = ttr, wait = wait)
+        return self.sync_robot(ttr = ttr, wait = wait) or (not wait)
 
+    ## Solves the Inverse Kinematics for the reference arm with given redundant parameter \f$ \phi \f$
+    #  The instructions are exactly the same as functions <b> self.rarm_target() </b> and <b> self.larm_target() </b>
     def arm_target(self, phi = None, ttr = 5.0, wait = True):
         if self.larm_reference:
-            self.reach_target_larm(phi = phi, ttr = ttr, wait = wait)
+            return self.larm_target(phi = phi, ttr = ttr, wait = wait)
         else:
-            self.reach_target_rarm(phi = phi, ttr = ttr, wait = wait)
+            return self.rarm_target(phi = phi, ttr = ttr, wait = wait)
 
     def reach_target(self):
         '''
@@ -403,11 +505,17 @@ class PyRide_PR2(pr2lib.PR2):
             tl.append('body')
 
         if self.inverse_update():
-            self.set_config_smooth(qd = self.q, target_list = tl)
+            self.set_config_synced(qd = self.q, limb_list = tl)
             return True
         else:   
             self.sync_object()    
             return False
+
+    def reference_arm(self):
+        if self.larm_reference:
+            return(self.larm)
+        else:
+            return(self.rarm)
 
     ## Moves the reference arm wrist in backward direction maintaining the gripper orientation
     #  @param dx A float specifying the distance (in meters) by which the wrist should move in backward direction
@@ -416,7 +524,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  if False the absolute backward direction (with respect to the robot trunk) is considered
     #  @return A boolean: True, if the arm wrist reach the target successfully and
     #                     False, if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_back(self, dx = 0.1, relative = False):
+    def arm_back(self, dx = 0.1, relative = False, wait = True):
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -429,7 +537,7 @@ class PyRide_PR2(pr2lib.PR2):
         pos = pos - dx*n
 
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist in forward direction maintaining the gripper orientation
     #  @param dx A float specifying the distance (in meters) by which the wrist should move in forward direction
@@ -438,7 +546,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  If False the absolute forward direction (with respect to the robot trunk) is considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_forward(self, dx = 0.1, relative = False):
+    def arm_forward(self, dx = 0.1, relative = False, wait = True):
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -449,7 +557,7 @@ class PyRide_PR2(pr2lib.PR2):
             n = rot.i_uv
         pos = pos + dx*n
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist in downward direction maintaining the gripper orientation
     #  @param dx A float specifying the distance (in meters) by which the wrist should move in downward direction
@@ -458,7 +566,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  If False the absolute downward direction (with respect to the robot trunk) is considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_down(self, dx = 0.1, relative = False):
+    def arm_down(self, dx = 0.1, relative = False, wait = True):
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -469,7 +577,7 @@ class PyRide_PR2(pr2lib.PR2):
             h = rot.k_uv
         pos = pos - dx*h
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist in upward direction maintaining the gripper orientation
     #  @param dx A float specifying the distance (in meters) by which the wrist should move in upward direction
@@ -478,7 +586,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  If False the absolute upward direction (with respect to the robot trunk) is considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_up(self, dx = 0.1, relative = False):
+    def arm_up(self, dx = 0.1, relative = False, wait = True):
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -489,7 +597,7 @@ class PyRide_PR2(pr2lib.PR2):
             h = rot.k_uv
         pos = pos + dx*h
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist to the right maintaining the gripper orientation
     #  @param dx A float specifying the distance (in meters) by which the wrist should move to the right
@@ -498,7 +606,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  if False the absolute direction to the right (with respect to the robot trunk) is considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_right(self, dx = 0.1, relative = False):
+    def arm_right(self, dx = 0.1, relative = False, wait = True):
         '''
         moves the arm to the right as much as dx (m) maintaining the orientation
         '''    
@@ -512,7 +620,7 @@ class PyRide_PR2(pr2lib.PR2):
             w = rot.j_uv
         pos = pos - dx*w
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist to the left maintaining the gripper orientation. 
     #  The speed of motion is set by property self.arm_speed
@@ -522,7 +630,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  if False the absolute left direction (with respect to the robot trunk) is considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_left(self, dx = 0.1, relative = False):
+    def arm_left(self, dx = 0.1, relative = False, wait = True):
         ttr = dx/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -533,7 +641,7 @@ class PyRide_PR2(pr2lib.PR2):
             w = rot.j_uv
         pos = pos + dx*w
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist to the left and downward direction maintaining the gripper orientation. 
     #  The speed of motion is set by property self.arm_speed
@@ -544,7 +652,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  if False the absolute left and downward directions (with respect to the robot trunk) are considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_left_down(self, dx = 0.1, dy = 0.1, relative = False):
+    def arm_left_down(self, dx = 0.1, dy = 0.1, relative = False, wait = True):
         ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -557,7 +665,7 @@ class PyRide_PR2(pr2lib.PR2):
             h = rot.k_uv
         pos   = pos + dx*w - dy*h
         arm.set_target(pos, ori)
-        return self.arm_target(ttr = ttr)
+        return self.arm_target(ttr = ttr, wait = wait)
 
     ## Moves the reference arm wrist to both left and upward directions maintaining the gripper orientation. 
     #  The speed of motion is set by property self.arm_speed
@@ -568,7 +676,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  if False the absolute left and upward directions (with respect to the robot trunk) are considered
     #  @return A boolean: True if the arm wrist reach the target successfully
     #                     False if the IK fails to find a feasible solution or for any reason the wrist can not reach its target
-    def arm_left_up(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
+    def arm_left_up(self, dx = 0.1, dy = 0.1, relative = False, wait = True):
         ttr = math.sqrt(dx*dx + dy*dy)/self.arm_speed
         arm = self.reference_arm()
         pos = arm.wrist_position()    
@@ -583,7 +691,7 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
 
-    def arm_right_up(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
+    def arm_right_up(self, dx = 0.1, dy = 0.1, relative = False, wait = True):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -601,7 +709,7 @@ class PyRide_PR2(pr2lib.PR2):
         arm.set_target(pos, ori)
         return self.arm_target(ttr = ttr, wait = wait)
     
-    def arm_right_down(self, dx = 0.1, dy = 0.1, wait = True, relative = False):
+    def arm_right_down(self, dx = 0.1, dy = 0.1, relative = False, wait = True):
         '''
         moves the arm to the left as much as dx (m) maintaining the orientation
         '''    
@@ -629,12 +737,12 @@ class PyRide_PR2(pr2lib.PR2):
     #                 The given vector should be in the coordinate system of the gripper and 
     #                 must be perpendicular to the vector given by parameter \b center 
     #                 (The default value is unit vector \f$ i = [1.0, 0.0, 0.0] \f$ specifying the forward direction w.r.t. the gripper)
-    #   @param wait A boolean: If True, the system waits until the arc reaches the end of arc trajectory. 
+    #   @param wait A boolean: \li If True, the system waits until the arc reaches the end of arc trajectory. 
     #                          (You don't exit the function before the trajectory is finished)
-    #                          If False, you will exit the function immidiately while the defined motion is running
-    #   @return A boolean: True if the arc trajectory is successfully projected to the jointspace and 
+    #                          \li If False, you will exit the function immidiately while the defined motion is running
+    #   @return A boolean: \li True if the arc trajectory is successfully projected to the jointspace and 
     #                      in case argument \b wait is True, the wrist finishes the trajectory successfully
-    #                      False if for any reason the IK trajectory projection fails or in case parameter \b wait is True,
+    #                      \li False if for any reason the IK trajectory projection fails or in case parameter \b wait is True,
     #                      the robot wrist fails to finish the trajectory           
     def arm_arc(self, center = numpy.array([0.0, -0.05, 0.0]), angle = math.pi, normal = numpy.array([1.0, 0.0, 0.0]), N = 100, wait = True):
         '''
@@ -705,13 +813,20 @@ class PyRide_PR2(pr2lib.PR2):
         PyPR2.moveArmWithJointTrajectoryAndSpeed(config_list)
         arm.config.qm = 0.5*(arm.config.ql+arm.config.qh)
         if wait:
-            pint.wait_until_finished(target_list = moving_limbs, max_time = 10*N*ttr)
+            pint.wait_until_finished(limb_list = moving_limbs, max_time = 10*N*ttr)
         self.sync_object()
 
-    def arm_point(self, direction = 'forward', ttr = 2.0, wait = True):
-        '''
-        Changes the arm orientation so that it points towards the given direction maintaining the wrist position
-        '''   
+    ## Changes the orientation of the reference arm gripper to a desired direction with out changing the wrist position.  
+    #  @direction A string specifying the direction. Must be selected among: \n
+    #             'forward', 'backward', 'upward', 'downward', 'right', 'left'  
+    #  @param ttr A float specifying the time to reach the target orientation
+    #  @param wait A boolean: \li If True, the system waits until the arm gripper 
+    #                         is reached to the desired orientation or <b> self.max_wait_time </b> of the reference arm is elapsed. 
+    #                         (You don't exit the function before the motion is finished or the maximum waiting time is elapsed)
+    #                         \li If False, you will exit the function immidiately while the defined motion is running
+    #  @return A boolean: \li True if the arm gripper reach the target orientation successfully
+    #                     \li False if the IK fails to find a feasible solution or for any reason the gripper can not reach the target orientation.
+    def arm_orientation(self, direction = 'forward', ttr = 2.0, wait = True):
         if direction == 'upward':
             ori = rot.point_upward_orientation
         elif direction == 'downward':
@@ -770,8 +885,11 @@ class PyRide_PR2(pr2lib.PR2):
             (beta, intercept, residuals) = front_line(dist)
     '''
 
-    ## Runs a given arm task-space trajectory on the robot.
-    #  @param pos_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Polynomial_Trajectory() 
+    ## Runs a given arm task-space pose trajectory on the robot. The given trajectory will be tracked by the wrist.
+    #  @param pos_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Polynomial_Trajectory()
+    #                  specifying the trajectory in the 3D taskspace to be tracked by the arm.
+    #  @param ori_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Polynomial_Trajectory()
+    #                  specifying the trajectory in the 3D taskspace to be tracked by the arm.
     def arm_trajectory(self, pos_traj, ori_traj = None, resolution = 20, relative = True, wait = True):
         '''
         First, projects the given taskspace pose trajectory into the jointspace 
@@ -811,6 +929,6 @@ class PyRide_PR2(pr2lib.PR2):
             moving_limbs = ['rarm']
 
         if wait:
-            pint.wait_until_finished(target_list = moving_limbs, max_time = 10*L/self.arm_speed)
+            pint.wait_until_finished(limb_list = moving_limbs, max_time = 10*L/self.arm_speed)
         
         self.sync_object()

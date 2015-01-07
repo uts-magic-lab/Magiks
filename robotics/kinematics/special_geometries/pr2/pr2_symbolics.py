@@ -1,24 +1,17 @@
-'''   Header
-@file:          PR2_symbolics.py
-@brief:    	    Contains functions to represent symbolic formulations of pr2 arm kinematics 
-
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    1.0
-Last Revision:  13 September 2014
-
-This file has been Separated from pr2_arm_kinematics on 13 September 2014
-'''
+## @file        	PR2_symbolics.py
+#  @brief     		Contains functions to represent symbolic formulations of pr2 kinematics
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	2.0
+# 
+#  Last Revision:  	03 January 2015 
  
 from sympy import Symbol, simplify
 

@@ -16,7 +16,7 @@
 
 import numpy, math
 
-from packages.nima.mathematics import quaternions, vectors_and_matrices as vecmatlib 
+from packages.nima.mathematics import rotation, quaternions, vectors_and_matrices as vecmatlib 
 
 class Analytic_Jacobian:
     '''
@@ -265,6 +265,7 @@ class Error_Jacobian:
                         jz1_k_j = numpy.dot(vecmatlib.uvect(analytic.U[tskfrm.ln][j],k),vecmatlib.uvect(tskfrm.rd,k))
                         Jf[k,j] = jz1_k_j*err
                         j = j + 1
+
         elif tskfrm.error.basis_error_function == 'relative_rotation_matrix_trace_minus_three':
             p = 1
             Jf = numpy.zeros((p,config.settings.DOF))
@@ -276,12 +277,9 @@ class Error_Jacobian:
                             Jf[0,j] += tskfrm.rd[i,t]*analytic.U[tskfrm.ln][j][i,t]       
                             j += 1
                 
-        elif tskfrm.error.basis_error_function == 'differential_quaternions':
+        elif tskfrm.error.basis_error_function == 'differential_normalized_quaternions':
             p = 3
             Jf = numpy.zeros((p,config.settings.DOF))
-            ''''
-            Remember that the following code line is implemented many times resulting the same value, so it is better to be defined once
-            '''
             qnd = quaternions.unit_quaternion(tskfrm.rd)
 
             j = 0
@@ -290,12 +288,53 @@ class Error_Jacobian:
                     uqns = quaternions.unit_quaternion_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
                     for k in range (0,p):
                         if tskfrm.error.power[k] != 0:
-                            jz_k_j = qnd[k]*uqns[p] - qnd[p]*uqns[k] 
+                            jz_k_j = qnd[k+1]*uqns[0] - qnd[0]*uqns[k+1] 
                             if tskfrm.error.power[k] == 1:
                                Jf[k,j] = jz_k_j
                             else:
                                 qn  = quaternions.unit_quaternion(tskfrm.ra)
-                                err = tskfrm.error.power[k]*((qnd[p]*qn[k] - qn[p]*qnd[k])**(tskfrm.error.power[k] - 1))
+                                err = tskfrm.error.power[k]*((qnd[0]*qn[k+1] - qn[0]*qnd[k+1])**(tskfrm.error.power[k] - 1))
+                                Jf[k,j] = jz_k_j*err
+                    j = j + 1
+
+        elif tskfrm.error.basis_error_function == 'differential_quaternions':
+            p = 4
+            Jf = numpy.zeros((p,config.settings.DOF))
+
+            j = 0
+            for jj in range(0,tskfrm.ln + 1):
+                if config.settings.free[jj]:
+                    uqns = quaternions.unit_quaternion_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
+                    
+                    for k in range (0,p):
+                        if tskfrm.error.power[k] != 0:
+                            jz_k_j = uqns[k]
+                            if tskfrm.error.power[k] == 1:
+                                Jf[k,j] = jz_k_j
+                            else:
+                                qn   = quaternions.unit_quaternion(tskfrm.ra)
+                                qnd  = quaternions.unit_quaternion(tskfrm.rd)
+                                err = tskfrm.error.power[k]*((qn[k] - qnd[k])**(tskfrm.error.power[k] - 1))
+                                Jf[k,j] = jz_k_j*err
+                    j = j + 1
+
+        elif tskfrm.error.basis_error_function == 'differential_vectorial_identity':
+            p = 3
+            Jf = numpy.zeros((p,config.settings.DOF))
+
+            j = 0
+            for jj in range(0,tskfrm.ln + 1):
+                if config.settings.free[jj]:
+                    uqns = rotation.orientation_vector_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
+                    for k in range (0,p):
+                        if tskfrm.error.power[k] != 0:
+                            jz_k_j = uqns[k]
+                            if tskfrm.error.power[k] == 1:
+                               Jf[k,j] = jz_k_j
+                            else:
+                                qn   = rotation.orientation_vector(tskfrm.ra, parametrization = 'vectorial_identity')
+                                qnd  = rotation.orientation_vector(tskfrm.rd, parametrization = 'vectorial_identity')
+                                err = tskfrm.error.power[k]*((qn[k] - qnd[k])**(tskfrm.error.power[k] - 1))
                                 Jf[k,j] = jz_k_j*err
                     j = j + 1
 
@@ -314,17 +353,22 @@ class Error_Jacobian:
                             Jf[0,j] = Jf[0,j] - 0.5*(tskfrm.rd[i,t]/sin_err)*analytic.U[tskfrm.ln][j][i,t]       
                             j = j + 1
 
-
         elif tskfrm.error.basis_error_function == 'relative_rotation_vector_identity':
             p = 3
             Jf = tskfrm.geometric_jacobian.value
-            
+        elif tskfrm.error.basis_error_function == 'relative_rotation_vector_linear':
+            p = 3
+            sin_phi = numpy.linalg.norm(tskfrm.error.value)
+            # print sin_phi
+            # cos_phi = math.sqrt(1.0 - sin_phi*sin_phi)
+            Jf = tskfrm.geometric_jacobian.value
         elif tskfrm.error.basis_error_function == 'relative_rotation_vector_Cayley_Gibbs_Rodrigues':
             p = 3
-            RRM = numpy.dot(tskfrm.rd,tskfrm.r.T)
+            RRM = numpy.dot(tskfrm.rd, tskfrm.ra.T)
             trace_RRM = RRM[0,0] + RRM[1,1] + RRM[2,2]
             t2_plus_1 = 4/(1 + trace_RRM)
-            Jf = t2_plus_1*tskfrm.Jg
+            Jf = t2_plus_1*tskfrm.geometric_jacobian.value
+
         elif tskfrm.error.basis_error_function == 'differential_rotation_matrix':
             p = 9
             Jf = numpy.zeros((p,config.settings.DOF))

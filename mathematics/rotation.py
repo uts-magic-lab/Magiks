@@ -101,7 +101,6 @@ def trans_hemogeneous(v):
                       [ 0, 0, 0, 1    ]])
     return TH
 
-
 def rot_y(theta, hemogeneous = False, symbolic = False, S = None, C = None):
     '''
     Returns the rotation matrix corresponding to rotation of "theta" around "z" axis  
@@ -176,7 +175,6 @@ def rot_z(theta, hemogeneous = False, symbolic = False, S = None, C = None):
                                [  S   ,  C , 0 ],
                                [  0 , 0   , 1 ]]) 
     return R_z
-
 
 def rotation_matrix(rv, parametrization = 'unit_quaternion', symbolic = False, derivative = False, C = None, S = None, U = None, W = None):
     '''
@@ -289,7 +287,6 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion', symbolic = False, d
     else: 
         RM = numpy.eye(3) + sin_phi*skew_u + (1 - cos_phi)*numpy.dot(skew_u,skew_u)
     return(RM)    
-
 
 def angle_axis(TRM):
 
@@ -433,7 +430,6 @@ def relative_rotation_vector(RMa,RMd,parametrization):
 
     return rrv
 
-
 def relative_rotation_angle(RMa,RMd):
     '''
     return the "Angle" when relative rotation matrix defined as: R_actual * Transpose(R_desired) is represented in Angle-Axis form
@@ -448,3 +444,36 @@ def relative_rotation_angle(RMa,RMd):
 
     return phi
 
+### Use this function if you want to extract the orientation speed or
+#   the derivative of the non-redundant orientation vector when you have the 
+#   derivative of the corresponding rotation matrix w.r.t to time or any other parameter. 
+#   @param R A numpy \f$ 3 \times 3 \f$ rotation matrix corresponding to the current orientation
+#   @param R_dot A numpy \f$ 3 \times 3 \f$ matrix containing the derivative of the 
+#   rotation matrix
+#   @return A numpy vector of size 3 containing the derivative of the non-redundant orientation vector 
+def orientation_vector_speed(R, R_dot):
+    q_dot = quaternions.unit_quaternion_speed(R, R_dot)
+    ax    = angle_axis(R)
+    phi   = ax[0]
+    u     = ax[1:4]
+
+    dw    = q_dot[0]
+    dv    = q_dot[1:4]
+
+    # For identity parametrization:
+    p_phi     = phi
+    dp_dphi   = 1.0
+
+    sin_phi_2 = math.sin(0.5*phi)
+
+    # de = (dw*(p_phi/math.tan(0.5*phi) - 2*dp_dphi)*u + p_phi*dv)/sin_phi_2
+    de = (dw*(p_phi/math.tan(0.5*phi) - 2*dp_dphi)*u + p_phi*dv)/sin_phi_2
+    return de
+
+    '''
+    if general.equal(sin_phi_2, 0.0):
+        return numpy.array([general.infiniy, general.infiniy, general.infiniy])
+    else:
+        de = (1.0/sin_phi_2)*(dw*(math.cot(phi/2)*p_phi - 2*dp_dphi)*u + p_phi*dv)
+        return de
+    '''

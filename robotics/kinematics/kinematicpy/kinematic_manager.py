@@ -74,10 +74,14 @@ key_dic = {
     'AxInPr(jk)'    : 'Axis Inner Product (Aligned Axis j-k)',
 
     'ReRoMaTr'      : 'Trace of Relative Rotation Matrix equals three',
-    'DiNoQu'        : 'Difference of Normalized Quaternions equals zero',
+    'DiQu'          : 'Difference of Quaternions equals zero',
+    'DiNoQu'        : 'Normalized Difference of Quaternions equals zero',
     'ReRoAn'        : 'Relative Rotation Angle equals zero',
-    'ReOrVe(IDTY)'  : 'Relative Orientation Vector equals zero (Generator Function: Identity)',
+    'ReOrVe(LIN)'   : 'Relative Orientation Vector equals zero (Linear)',
+    'ReOrVe(IDTY)'  : 'Relative Orientation Vector equals zero (Identity)',
+    'ReOrVe(CaGiRo)': 'Relative Orientation Vector equals zero (Cayley-Gibbs-Rodrigues)' ,
     'DiRoMa'        : 'Difference of Rotation Matrices equals zero',
+    'DiOrVe(IDTY)'  : 'Difference of Orientation Vectors equals zero (Identity)',
     # For Joinspace Mapping:
     'NM'            : 'No Mapping', # default
     'LM'            : 'Linear Mapping',
@@ -162,12 +166,32 @@ def generate_orientation_error_function_package(orientation_constraint):
         power_array        = numpy.array([1])
         constant_offset    = numpy.array([0])
     elif orientation_constraint == 'DiNoQu':
-        basis_err_func = 'differential_quaternions'
+        basis_err_func = 'normalized_differential_quaternions'
         weighting_matrix   = numpy.eye(3)
         power_array        = numpy.array([1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0])
+    elif orientation_constraint == 'DiQu':
+        basis_err_func = 'differential_quaternions'
+        weighting_matrix   = numpy.eye(4)
+        power_array        = numpy.array([1, 1, 1, 1])
+        constant_offset    = numpy.array([0, 0, 0, 0])
     elif orientation_constraint == 'ReOrVe(IDTY)':
         basis_err_func = 'relative_rotation_vector_identity'
+        weighting_matrix   = numpy.eye(3)
+        power_array        = numpy.array([1, 1, 1])
+        constant_offset    = numpy.array([0, 0, 0])
+    elif orientation_constraint == 'DiOrVe(IDTY)':
+        basis_err_func = 'differential_vectorial_identity'
+        weighting_matrix   = numpy.eye(3)
+        power_array        = numpy.array([1, 1, 1])
+        constant_offset    = numpy.array([0, 0, 0])
+    elif orientation_constraint == 'ReOrVe(LIN)':
+        basis_err_func = 'relative_rotation_vector_linear'
+        weighting_matrix   = numpy.eye(3)
+        power_array        = numpy.array([1, 1, 1])
+        constant_offset    = numpy.array([0, 0, 0])
+    elif orientation_constraint == 'ReOrVe(CaGiRo)':
+        basis_err_func = 'relative_rotation_vector_Cayley_Gibbs_Rodrigues'
         weighting_matrix   = numpy.eye(3)
         power_array        = numpy.array([1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0])
@@ -176,7 +200,6 @@ def generate_orientation_error_function_package(orientation_constraint):
         weighting_matrix   = numpy.eye(9)
         power_array        = numpy.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
-
     else:
         assert False, func_name + ": " + orientation_constraint + " is an unknown value for orientation_constraint"
     

@@ -64,6 +64,13 @@ def equal(v1,v2, epsilon = epsilon):
     ''' 
     return (abs(v1-v2) < epsilon)
 
+def ensured_in_range(x, xl, xh):
+    if x < xl: 
+        x = xl
+    if x > xh: 
+        x = xh
+    return x
+
 def sign(x):
     '''
     Returns 1 if x is positive, -1 if negative and 0 if abs(x) is smaller than epsilon

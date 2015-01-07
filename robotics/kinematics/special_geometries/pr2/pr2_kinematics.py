@@ -45,12 +45,9 @@ default_qh = drc*numpy.array([  30.0, 170.0,   44.0, -   8.6,  180.0, 0.00,  180
 #  while in free-base mode, the robot trunk is free to navigate. 
 #  Each control mode can be set for one of the arms as the reference arm (Endeffector)
 #  Dual arm control (two endeffectors) is not supported in this version
- 
+#  PR2 has 18 degrees of freedom. The Robot will have two arms that each of them contains its associated joint values
+#  in its \b config property.
 class PR2(object):
-    '''
-    PR2 has 18 degrees of freedom. The Robot will have two arms that each of them contains its associated joint values in its "config" property
-    '''
-
 	## The Class Constructor:
 	#  @param a0 A float specifying the value of /f$ a_0 /f$ in the DH parameters of the arm 	
 	#  @param b0 A float specifying the distance of line connecting the two arms from the center of robot base 	
@@ -62,7 +59,7 @@ class PR2(object):
 	#  @param qh A numpy vector of size 18 containing the upper bounds of the arm joints
     def __init__(self, a0 = 0.1, b0 = 0.05, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh):
 
-        assert (len(ql) == 18) and (len(qh) == 18), "Error from " __name__ + " Constructor" + ": ql and qh must be numpy vectors of size 18"
+        assert (len(ql) == 18) and (len(qh) == 18), "Error from " + __name__ + " Constructor" + ": ql and qh must be numpy vectors of size 18"
 		##  A numpy vector of size 7 containing the lower bounds of the arm joints 
         self.ql = ql
 
@@ -106,11 +103,11 @@ class PR2(object):
 
         ## An instance of class \ref packages.nima.robotics.kinematics.special_geometries.pr2.pr2_arm_kinematics.PR2_ARM() 
         #  containing the kinematic properties and methods of the right arm
-        self.rarm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[0:7]  , qh = qh[0:7]  , W = self.W[0:7], vts = vts)
+        self.rarm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[0:7]  , qh = qh[0:7]  , W = self.W[0:7])
 
         ## An instance of class \ref packages.nima.robotics.kinematics.special_geometries.pr2.pr2_arm_kinematics.PR2_ARM() 
         #  containing the kinematic properties and methods of the left arm
-        self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7], vts = vts)
+        self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7])
 
         self.d7 = d7
         self.b0 = b0
@@ -436,53 +433,58 @@ class PR2(object):
             
         return solution_set[i_min]
 
+    ## Use this function to get the current position of the right gripper (Arm Endeffector)  w.r.t the arm base.
+    #  @param None
+    #  @return A numpy vector of 3 elements containing the position of the right arm gripper w.r.t. the torso shoulder pan joint center.
     def pos_rarm_grip_wrt_tor_shpan(self):
-        '''
-        Returns the right arm gripper position vector(endeffector position) with respect to the torso shoulder pan joint center
-        '''
         R_WR_B   = self.rarm.wrist_orientation()
         p_WR_BR  = self.rarm.wrist_position()
         p_EFR_BR = p_WR_BR + numpy.dot(R_WR_B, self.p_EFR_WR)
         return(p_EFR_BR)
 
+    ## Use this function to get the current position of the left gripper (Arm Endeffector) w.r.t the arm base.
+    #  @param None
+    #  @return A numpy vector of 3 elements containing the position of the left arm gripper (endeffector position) 
+    #          w.r.t. the torso shoulder pan joint center.
     def pos_larm_grip_wrt_tor_shpan(self):
-        '''
-        Returns the left arm gripper position vector(endeffector position) with respect to the torso shoulder pan joint center
-        '''
         R_WL_B   = self.larm.wrist_orientation()
         p_WL_BL  = self.larm.wrist_position()
         p_EFL_BL = p_WL_BL + numpy.dot(R_WL_B, self.p_EFL_WL)
         return(p_EFL_BL)
 
+    ## Use this function to get the current position of the left gripper (Arm Endeffector) w.r.t the torso.
+    #  @param None
+    #  @return A numpy vector of 3 elements containing the left arm gripper position vector 
+    #          (endeffector position) w.r.t. the torso at the origin 
+    #          \b Note: The torso origin is at the floor footprint (projection) of the middle point 
+    #          between the two shoulder pan joint centers.
     def pos_larm_grip_wrt_tor(self):
-        '''
-        Returns the left arm gripper position vector(endeffector position) with respect to the torso at the origin.
-        The torso origin is at the floor footprint (projection) of the middle point between the two shoulder pan joint centers.
-        '''
         p_EFL_BL = self.pos_larm_grip_wrt_tor_shpan()
         p_EFL_BO = self.p_BL_BO + p_EFL_BL
         return(p_EFL_BO)
 
+    ## Use this function to get the current position of the right gripper (Arm Endeffector) w.r.t the torso.
+    #  @param None
+    #  @return A numpy vector of 3 elements containing the right arm gripper position vector 
+    #          (endeffector position) w.r.t. the torso at the origin 
+    #          \b Note: The torso origin is at the floor footprint (projection) of the middle point 
+    #          between the two shoulder pan joint centers.
     def pos_rarm_grip_wrt_tor(self):
-        '''
-        Returns the right arm gripper position vector(endeffector position) with respect to the torso at the origin.
-        The torso origin is at the floor footprint (projection) of the middle point between the two shoulder pan joint centers.
-        '''
         p_EFR_BR = self.pos_rarm_grip_wrt_tor_shpan()
         p_EFR_BO = self.p_BR_BO + p_EFR_BR
         return(p_EFR_BO)
 
+    ## Use this function to get the current global position of the right gripper (Arm Endeffector).
+    #  @param None
+    #  @return A numpy vector of 3 elements containing the global cartesian coordiantes of the end of right arm gripper.
     def pos_rarm_grip(self):
-        '''
-        Returns the global cartesian coordiantes of the end of right arm gripper.
-        '''    
         p_EFR_BO = self.pos_rarm_grip_wrt_tor()
         return(self.p_BO + p_EFR_BO)
 
+    ## Use this function to get the current global position of the left gripper (Arm Endeffector).
+    #  @param None
+    #  @return A numpy vector of 3 elements containing the global cartesian coordiantes of the end of left arm gripper.
     def pos_larm_grip(self):
-        '''
-        Returns the global cartesian coordiantes of the end of left arm gripper.
-        '''    
         p_EFL_BO = self.pos_larm_grip_wrt_tor()
         return(self.p_BO + p_EFL_BO)
 
@@ -681,9 +683,10 @@ class PR2(object):
 
         return copy.copy(self.E)
 
+    ## Use this function to get the current values of the five redundant parameters of the PR2 robot in free-base mode.
     def redundant_parameters(self):
         '''
-        returns vector of redundant parameters phi according to the parametrization specified:
+        @return A numpy vector of 5 elements containing the redundant parameters phi according to the parametrization specified in <provide link>
 
         phi[0] = The first arm joint angle (Shoulder Pan joint)
         phi[1] = The "r" coordinate of the relative wrist position(in cylinderical coordinates) phi[1]^2 = px^2 + py^2
