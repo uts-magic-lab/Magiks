@@ -28,3 +28,6 @@ def replace_if_none(a, b):
         return b
     else:
         return a
+
+def err_str(s1, s2, s3):
+    return "Error from: " + s1 + '.' + s2 + "(): " + s3    

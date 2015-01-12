@@ -27,6 +27,7 @@ import packages.nima.robotics.kinematics.kinematicpy.inverse_kinematics as iklib
 import packages.nima.robotics.kinematics.task_space.workspace as wslib 
 import packages.nima.robotics.kinematics.joint_space.configuration as conflib 
 import packages.nima.robotics.kinematics.kinematicpy.log_manager as loglib 
+import packages.nima.robotics.kinematics.task_space.metric as metriclib 
 
 import packages.nima.robotics.kinematics.kinematicpy.manipulator_library as maniplib
 
@@ -72,16 +73,23 @@ key_dic = {
     'AxInPr(ij)'    : 'Axis Inner Product (Aligned Axis i-j)',
     'AxInPr(ik)'    : 'Axis Inner Product (Aligned Axis i-k)',
     'AxInPr(jk)'    : 'Axis Inner Product (Aligned Axis j-k)',
-
     'ReRoMaTr'      : 'Trace of Relative Rotation Matrix equals three',
+    'ReRoMa'        : 'Relative Rotation Matrix equals identity',
     'DiQu'          : 'Difference of Quaternions equals zero',
+    'ReQu'          : 'Relative Quaternions equals identity',
     'DiNoQu'        : 'Normalized Difference of Quaternions equals zero',
     'ReRoAn'        : 'Relative Rotation Angle equals zero',
-    'ReOrVe(LIN)'   : 'Relative Orientation Vector equals zero (Linear)',
-    'ReOrVe(IDTY)'  : 'Relative Orientation Vector equals zero (Identity)',
-    'ReOrVe(CaGiRo)': 'Relative Orientation Vector equals zero (Cayley-Gibbs-Rodrigues)' ,
+    'ReOrVe(LIN)'   : 'Relative Orientation Vector equals zero (Linear parametrization)',
+    'ReOrVe(IDTY)'  : 'Relative Orientation Vector equals zero (Identity parametrization)',
+    'ReOrVe(CaGiRo)': 'Relative Orientation Vector equals zero (Cayley-Gibbs-Rodrigues parametrization)' ,
+    'ReOrVe(EXP)'   : 'Relative Orientation Vector equals zero (Exponential parametrization)' ,
+    'ReOrVe(BaTr)'  : 'Relative Orientation Vector equals zero (Bauchau-Trainelli parametrization)' ,
     'DiRoMa'        : 'Difference of Rotation Matrices equals zero',
-    'DiOrVe(IDTY)'  : 'Difference of Orientation Vectors equals zero (Identity)',
+    'DiOrVe(IDTY)'  : 'Difference of Orientation Vectors equals zero (Identity parametrization)',
+    'DiOrVe(LIN)'   : 'Difference of Orientation Vectors equals zero (Linear parametrization)',
+    'DiOrVe(CaGiRo)': 'Difference Orientation Vector equals zero (Cayley-Gibbs-Rodrigues parametrization)' ,
+    'DiOrVe(EXP)'   : 'Difference Orientation Vector equals zero (Exponential parametrization)' ,
+    'DiOrVe(BaTr)'  : 'Difference Orientation Vector equals zero (Bauchau-Trainelli parametrization)' ,
     # For Joinspace Mapping:
     'NM'            : 'No Mapping', # default
     'LM'            : 'Linear Mapping',
@@ -112,76 +120,83 @@ key_dic = {
     'Damping Factor'                    : 'DF'
 }
 
-def generate_orientation_error_function_package(orientation_constraint):
+param_dic = {'ReOrVe(IDTY)':'phi/m', 'ReOrVe(LIN)':'m*sin(phi/m)', 'ReOrVe(CaGiRo)' : 'm*tan(phi/m)', 'ReOrVe(EXP)' : 'm*exp(phi/m)', 'ReOrVe(BaTr)' : '(6*(phi - sin(phi)))**(1.0/3.0)',
+             'DiOrVe(IDTY)':'phi/m', 'DiOrVe(LIN)':'m*sin(phi/m)', 'DiOrVe(CaGiRo)' : 'm*tan(phi/m)', 'DiOrVe(EXP)' : 'm*exp(phi/m)', 'DiOrVe(BaTr)' : '(6*(phi - sin(phi)))**(1.0/3.0)'}
+def generate_orientation_metric_settings(orientation_constraint):
     func_name = "kinematic.manager.generate_orientation_error_function_package()"
 
     if orientation_constraint == 'AxInPr(ijk)':
-        basis_err_func = 'Axis Inner Product'
-        # define the weighting matrix. It considers All three axis i, j and k to be aligned
-        weighting_matrix   = numpy.eye(3)
-        # define the corresponding power array. (Please refer to the documentation)
-        power_array        = numpy.array([1, 1, 1])
-        constant_offset    = numpy.array([-1.0, -1.0, -1.0])
+        ms        = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'diag')
+        # ms        = metriclib.Metric_Settings(metric_type = 'special', representation  = 'Axis Inner Product')    
+        ms.offset = numpy.array([-1.0, -1.0, -1.0])
 
     elif orientation_constraint == 'AxInPr(ij)':
-        basis_err_func = 'Axis Inner Product'
         # define the weighting matrix. It considers only axis "i" and "j" to be identical. If Axis "i" and "j" are identical, then Axis "k" will be identical as well.
-        weighting_matrix   = numpy.array([[1, 0, 0], 
-                                          [0, 1, 0]] )
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'diag')    
+        # ms        = metriclib.Metric_Settings(metric_type = 'special', representation  = 'Axis Inner Product')    
+        ms.weight   = numpy.array([[1, 0, 0], [0, 1, 0]] )
         # define the corresponding power array. (Please refer to the documentation)
-        power_array        = numpy.array([1, 1, 0])
-        constant_offset    = numpy.array([-1.0, -1.0])
+        ms.power    = numpy.array([1, 1, 0])
+        ms.offset   = numpy.array([-1.0, -1.0])
 
     elif orientation_constraint == 'AxInPr(jk)':
-
-        basis_err_func = 'Axis Inner Product'
         # define the weighting matrix. It considers only axis "j" and "k" to be identical. If Axis "j" and "k" are identical, then Axis "i" will be identical as well.
-        weighting_matrix   = numpy.array([[0, 1, 0], 
-                                          [0, 0, 1]] )
-        power_array        = numpy.array([0, 1, 1])
-        constant_offset    = numpy.array([-1.0, -1.0])
-        
-    elif orientation_constraint == 'AxInPr(ik)':
+        self.metric_settings = metriclib.Metric_Settings(category = 'Relative', representation  = 'diag')    
+        self.metric_settings.weighting_matrix   = numpy.array([[0, 1, 0], [0, 0, 1]])
+        self.metric_settings.power_array        = numpy.array([0, 1, 1])
+        self.metric_settings.constant_offset    = numpy.array([-1.0, -1.0])
 
-        basis_err_func = 'Axis Inner Product'
+    elif orientation_constraint == 'AxInPr(ik)':
         # define the weighting matrix. It considers only axis "i" and "k" to be identical. If Axis "i" and "k" are identical, then Axis "j" will be identical as well.
-        weighting_matrix   = numpy.array([[1, 0, 0], 
-                                          [0, 0, 1]] )
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'diag')    
+        ms.weight   = numpy.array([[1, 0, 0], [0, 0, 1]] )
         # define the corresponding power array. (Please refer to the documentation)
-        power_array        = numpy.array([1, 0, 1])
-        constant_offset    = numpy.array([-1.0, -1.0])
+        ms.power    = numpy.array([1, 0, 1])
+        ms.offset   = numpy.array([-1.0, -1.0])
         
     elif orientation_constraint == 'ReRoMaTr':
+        '''
+        represents the orientation error by calculating the trace of relative rotation matrix minus three: Trace(R_a * R_d^T) - 3
+        '''
         #Defibe basis error function. It ensures that trace of relative rotation matrix is three or : trace(R_a * R_d^T) = 3.0
-        basis_err_func = 'relative_rotation_matrix_trace_minus_three'
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'trace')
         # define the appropriate weighting matrix. 
-        weighting_matrix   = numpy.array([[1]])
+        ms.weight             = numpy.array([[1]])
         # define the corresponding power array. (Please refer to the documentation)
-        power_array        = numpy.array([1])
-        constant_offset    = numpy.array([0])
+        ms.power              = numpy.array([1])
+        ms.offset             = numpy.array([- 3.0])
         
     elif orientation_constraint == 'ReRoAn':
-        basis_err_func = 'relative_rotation_angle'
-        weighting_matrix   = numpy.array([[1]])
-        power_array        = numpy.array([1])
-        constant_offset    = numpy.array([0])
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'angle')
+        ms.weight   = numpy.array([[1]])
+        ms.power    = numpy.array([1])
+        ms.offset   = numpy.array([0])
+
+    elif orientation_constraint in ['ReOrVe(IDTY)', 'ReOrVe(LIN)', 'ReOrVe(CaGiRo)', 'ReOrVe(EXP)', 'ReOrVe(BaTr)']:
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'vector')
+        ms.generating_function = param_dic[orientation_constraint]
+
+    elif orientation_constraint in ['DiOrVe(IDTY)', 'DiOrVe(LIN)', 'DiOrVe(CaGiRo)', 'DiOrVe(EXP)', 'DiOrVe(BaTr)']:
+        ms = metriclib.Metric_Settings(metric_type = 'differential', representation  = 'vector')
+        ms.generating_function = param_dic[orientation_constraint]
+
     elif orientation_constraint == 'DiNoQu':
         basis_err_func = 'normalized_differential_quaternions'
         weighting_matrix   = numpy.eye(3)
         power_array        = numpy.array([1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0])
     elif orientation_constraint == 'DiQu':
-        basis_err_func = 'differential_quaternions'
-        weighting_matrix   = numpy.eye(4)
-        power_array        = numpy.array([1, 1, 1, 1])
-        constant_offset    = numpy.array([0, 0, 0, 0])
-    elif orientation_constraint == 'ReOrVe(IDTY)':
-        basis_err_func = 'relative_rotation_vector_identity'
+        ms = metriclib.Metric_Settings(metric_type = 'differential', representation  = 'quaternion')
+        ms.weight   = numpy.eye(4)
+        ms.power    = numpy.array([1, 1, 1, 1])
+        ms.offset   = numpy.array([0, 0, 0, 0])
+    elif orientation_constraint == 'DiOrVe(IDTY)':
+        basis_err_func = 'differential_vectorial_identity'
         weighting_matrix   = numpy.eye(3)
         power_array        = numpy.array([1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0])
-    elif orientation_constraint == 'DiOrVe(IDTY)':
-        basis_err_func = 'differential_vectorial_identity'
+    elif orientation_constraint == 'DiOrVe(LIN)':
+        basis_err_func = 'differential_vectorial_linear'
         weighting_matrix   = numpy.eye(3)
         power_array        = numpy.array([1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0])
@@ -196,28 +211,39 @@ def generate_orientation_error_function_package(orientation_constraint):
         power_array        = numpy.array([1, 1, 1])
         constant_offset    = numpy.array([0, 0, 0])
     elif orientation_constraint == 'DiRoMa':
-        basis_err_func = 'differential_rotation_matrix'
-        weighting_matrix   = numpy.eye(9)
-        power_array        = numpy.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
-        constant_offset    = numpy.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
+        ms = metriclib.Metric_Settings(metric_type = 'differential', representation  = 'matrix')
+        ms.weight   = numpy.eye(9)
+        ms.power    = numpy.ones(9)
+        ms.offset   = numpy.zeros(9)
+    elif orientation_constraint == 'ReRoMa':
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'matrix')
+        ms.weight   = numpy.eye(9)
+        ms.power    = numpy.ones(9)
+        ms.offset   = - numpy.eye(3).flatten()
+    elif orientation_constraint == 'ReQu':
+        ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'quaternion')
+        ms.weight   = numpy.eye(4)
+        ms.power    = numpy.ones(4)
+        ms.offset   = numpy.array([- 1.0, 0.0, 0.0, 0.0])
+    # Special Metrics
+    elif orientation_constraint == 'AxInPr(ijk)+DiNoQu':
+        ms        = metriclib.Metric_Settings(metric_type = 'special', representation  = 'AxInPr + DiNoQu')
+        ms.weight = numpy.eye(6)
+        ms.power  = numpy.ones(6)
+        ms.offset = numpy.array([-1.0, -1.0, -1.0, 0.0, 0.0, 0.0])
+
     else:
         assert False, func_name + ": " + orientation_constraint + " is an unknown value for orientation_constraint"
     
-    return (basis_err_func, weighting_matrix, constant_offset, power_array)
+    return ms
         
-def generate_position_error_function_package(position_constraint):
-    func_name = "generate_position_error_function_package()"
+def generate_position_metric_settings(position_constraint):
+    func_name = ".generate_position_metric_settings()"
     if position_constraint == 'ICC(xyz)':
-        basis_err_func = 'differential_cartesian_coordinates'
-        # define the weighting matrix as Identity. It ensures all three position coordinates are identical when the error function is zero.
-        weighting_matrix   = numpy.eye(3)
-        # define the corresponding power array. (Please refer to the documentation)
-        power_array        = numpy.array([1, 1, 1])
-        constant_offset    = numpy.array([0, 0, 0])
+        ms = metriclib.Metric_Settings()    
     else:
         assert False, __name__ + func_name + ": " + position_constraint + " is an unknown value for position_constraint"
-    
-    return (basis_err_func, weighting_matrix, constant_offset, power_array)
+    return ms
     
 class Kinematic_Manager_Settings():
     '''
@@ -465,10 +491,10 @@ class Kinematic_Manager :
         #set desired position and orientation constraints:
 
         for tp in self.inverse_kinematics.endeffector.reference_positions:
-            (tp.error.basis_error_function, tp.error.W, tp.error.C, tp.error.power) = generate_position_error_function_package(self.settings.position_constraint)
+            tp.error.settings = generate_position_metric_settings(self.settings.position_constraint)
         
         for tf in self.inverse_kinematics.endeffector.reference_orientations:
-            (tf.error.basis_error_function, tf.error.W, tf.error.C, tf.error.power) = generate_orientation_error_function_package(self.settings.orientation_constraint)
+            tf.error.settings = generate_orientation_metric_settings(self.settings.orientation_constraint)
         
         #self.inverse_kinematics.configuration.set_joint_limits_for(settings.manip_name)
         self.inverse_kinematics.configuration.initialize()

@@ -9,10 +9,10 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	2.0
+#  @version     	3.0
 #
 #  start date:      February 2011 
-#  Last Revision:  	03 January 2015 
+#  Last Revision:  	11 January 2015 
 
 import math, numpy 
 import general, quaternions, vectors_and_matrices, trigonometry
@@ -188,7 +188,7 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion', symbolic = False, d
     Arguments "symbolic" and "derivative" are now supported only for angle-axis parametrization. C = cos(phi) , S = sin(phi) 
     when phi is the rotation angle and [Ux, Uy, Uz] is the axis
     '''
-
+    assert False
     if symbolic:
         from sympy import Symbol
         C = gen.replace_if_none(C, Symbol('c'))
@@ -222,7 +222,7 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion', symbolic = False, d
         
     elif parametrization == 'unit_quaternion':
         assert len(rv) == 4
-
+        assert False
         assert general.equal(numpy.linalg.norm(rv), 1.0)
 
         RM = numpy.eye(3)
@@ -289,8 +289,8 @@ def rotation_matrix(rv, parametrization = 'unit_quaternion', symbolic = False, d
     return(RM)    
 
 def angle_axis(TRM):
-
     '''
+    
     Returns a vector (4 X 1) containing elements of the angle and axis corresponding to transformation or rotation matrix TRM. 
     (TRM can be the 4*4 transformation matrix or 3*3 rotation matrix)
 
@@ -304,24 +304,23 @@ def angle_axis(TRM):
 
     trace_R = TRM[0,0] + TRM[1,1] + TRM[2,2]
 
-    cos_phi_2 = q[3]
+    cos_phi_2 = q[0]
     cos_phi = 0.5*(trace_R - 1)
 
     phi = trigonometry.arccos(cos_phi)
 
+    """
     if cos_phi_2 < 0:
         '''
         phi is in zone 3 or 4
         '''
         phi = 2*math.pi - phi
-
+    """
     if (phi != 0) and (phi != 2*math.pi):
         q = q / math.sin(phi/2)
         an_ax = q 
 
     an_ax[0] = phi
-
-
     return an_ax
         
 def spherical_angles(TRM):
@@ -329,6 +328,7 @@ def spherical_angles(TRM):
     This function returns three spherical angles phi,thete and sai cprresponding to orientation corresponding to the given rotation or transfer matrix: TRM
     The output is a vector of three elements containing phi,theta and sai in order.
     '''
+
     sa = numpy.zeros((3))
     ax = angle_axis(TRM)
 
@@ -364,7 +364,6 @@ def orientation_vector(TRM, parametrization):
         u = numpy.zeros((3))
         for j in range(0,3):
             u[j] = ax[j+1]
-
     if parametrization == 'vectorial_identity':
         p = phi
     elif parametrization == 'vectorial_linear':
@@ -386,6 +385,7 @@ def relative_rotation_vector(RMa,RMd,parametrization):
     '''
     this function calculates the relative rotation vector
     '''
+
     na = RMa[:,0]
     sa = RMa[:,1]
     aa = RMa[:,2]
@@ -460,13 +460,14 @@ def orientation_vector_speed(R, R_dot):
     dw    = q_dot[0]
     dv    = q_dot[1:4]
 
-    # For identity parametrization:
-    p_phi     = phi
-    dp_dphi   = 1.0
+    # For linear parametrization:
+    p_phi     = math.sin(phi)
+    dp_dphi   = math.cos(phi)
+
+    if abs(phi) < general.epsilon:
+        return numpy.array([general.infinity, general.infinity, general.infinity])
 
     sin_phi_2 = math.sin(0.5*phi)
-
-    # de = (dw*(p_phi/math.tan(0.5*phi) - 2*dp_dphi)*u + p_phi*dv)/sin_phi_2
     de = (dw*(p_phi/math.tan(0.5*phi) - 2*dp_dphi)*u + p_phi*dv)/sin_phi_2
     return de
 
@@ -477,3 +478,44 @@ def orientation_vector_speed(R, R_dot):
         de = (1.0/sin_phi_2)*(dw*(math.cot(phi/2)*p_phi - 2*dp_dphi)*u + p_phi*dv)
         return de
     '''
+
+def skew(v):
+    '''
+    Return the skew matrix (3X3) of vector v. v has 3 elements
+    '''
+    sk = numpy.zeros((3,3))
+    #sk = numpy.array([v,v,v])
+
+    sk[0,0] = 0
+    sk[0,1] = - v[2]
+    sk[0,2] = v[1]
+
+    sk[1,0] = v[2]
+    sk[1,1] = 0
+    sk[1,2] = - v[0]
+
+    sk[2,0] = - v[1]
+    sk[2,1] = v[0]
+    sk[2,2] = 0
+
+    return sk;
+
+def axial(R):
+    '''
+    Reference: Olivier A. Bauchau et.al, "The Vectorial Parameterization of Rotation", Nonlinear Dynamics, 32, No 1, pp 71 - 92, 2003
+               and http://en.wikipedia.org/wiki/Axis-angle_representation : Log map from SO(3) to so(3)
+    '''
+    return 0.5*numpy.array([  R[2,1] - R[1,2], R[0,2] - R[2,0], R[1,0] - R[0,1] ])
+    
+def relative_trace(RMa,RMd):
+    '''
+    Return the trace of the product of the two given matrices Rma and RMd. RMa will be multiplied by transpose of RMd from left side
+    '''
+    R = numpy.dot(RMa, RMd.T)
+    
+    trace_R = numpy.trace(R) 
+    # numpy.trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None)
+    # trace_R = R[0,0] + R[1,1] + R[2,2]
+
+    return trace_R
+    

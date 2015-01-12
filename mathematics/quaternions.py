@@ -167,6 +167,9 @@ def unit_quaternion(TRM):
         uqn[w+1] = (TRM[w,u] + TRM[u,w])/(2*p)
         uqn[0] = (TRM[w,v] - TRM[v,w])/(2*p)
     
+    if uqn[0] < 0:
+        uqn = - uqn
+
     assert abs(numpy.linalg.norm(uqn) - 1) < 0.000001
     return uqn
 
@@ -180,7 +183,6 @@ def unit_quaternion_speed(TRM, TRMD):
     The last three elements of the output vector, represent the vectorial part 
     The first element, contains the real part of the unit quaternion speed.
     '''
-
     uqns = numpy.zeros((4))
     [u,v,w] = permutation_uvw(TRM)
         
@@ -190,11 +192,18 @@ def unit_quaternion_speed(TRM, TRMD):
     uqns[u+1] = pp/2
     uqns[v+1] = (TRMD[v,u] + TRMD[u,v])/(2*p) - pp*(TRM[v,u] + TRM[u,v])/(2*p*p)
     uqns[w+1] = (TRMD[w,u] + TRMD[u,w])/(2*p) - pp*(TRM[w,u] + TRM[u,w])/(2*p*p)
-    uqns[0] = (TRMD[w,v] - TRMD[v,w])/(2*p)
-    uqns[0] = uqns[0] - pp*(TRM[w,v] - TRM[v,w])/(2*p*p)
+    uqns[0] = (TRMD[w,v] - TRMD[v,w])/(2*p) - pp*(TRM[w,v] - TRM[v,w])/(2*p*p)
+    # to check if the quaternion was negative:
+
+    if (p > 0.000001):
+        w = (TRM[w,v] - TRM[v,w])/(2*p)
+    else:
+        w = 1.0    
+    
+    if w < 0:
+        uqns = - uqns
     
     return uqns
-
 
 def normalized_quaternion(TRM):
     '''

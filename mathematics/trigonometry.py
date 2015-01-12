@@ -94,8 +94,9 @@ def angle_standard_range(angle_rad):
         if abs(mod_mpi_ppi + math.pi) < general.epsilon:
             mod_mpi_ppi = - math.pi
 
-        assert mod_mpi_ppi >= -general.pi 
-        assert mod_mpi_ppi <= general.pi 
+        
+        # assert mod_mpi_ppi >= -general.pi 
+        # assert mod_mpi_ppi <= general.pi 
 
         return mod_mpi_ppi
 

@@ -1,29 +1,23 @@
-# HEADER
-'''   
-@file:          reference_position.py
-@brief:    	    This module provides a class representing the reference poisition of an endeffector and the desired value for it.
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  24 December 2014
-'''
-
-# BODY
+## @file:           reference_position.py
+#  @brief:    	    This module provides a class representing the reference poisition of an endeffector and the desired value for it.
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	4.0
+# 
+#  Last Revision:  	11 January 2015
 
 import numpy, math, metric
 
 from packages.nima.mathematics import vectors_and_matrices as vecmat
 import packages.nima.robotics.kinematics.jacobian.jacobian as jaclib 
 import trajectory as trajlib 
-
 
 class Reference_Position() : 
     ## Old Name: Task_Point:

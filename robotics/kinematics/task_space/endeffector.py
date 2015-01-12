@@ -1,25 +1,18 @@
-# HEADER
-# HEADER
-'''   
-@file:          endeffector.py
-@brief:    	    This module provides a class containing a set of reference positions and orientations in the taskspace together 
-                with their associated poses. 
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney (UTS)
-                Broadway, Ultimo, NSW 2007, Australia
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  11 December 2014
-'''
-# BODY
+## @file:           endeffector.py
+#  @brief:    	    This module provides a class containing a set of reference positions and orientations in the taskspace together 
+#                   with their associated poses. 
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	3.0
+# 
+#  Last Revision:  	11 January 2015
 
 import numpy, math
 
@@ -88,7 +81,7 @@ class Endeffector:
         The following code defines one task frame by default for the link_segment model
         This defined task frame is the orientation of the last link of the model (The defined endeffector by default)
         '''
-        endeffector_orientation_reference_by_default = tflib.Reference_Orientation(self.settings.last_link_number, default_error_function = self.settings.default_orientation_error_function)
+        endeffector_orientation_reference_by_default = tflib.Reference_Orientation(self.settings.last_link_number)
 
         self.reference_orientations = [endeffector_orientation_reference_by_default]
 
@@ -181,11 +174,12 @@ class Endeffector:
         for tf in self.reference_orientations:
             tf.update_orientation(trans_mat)    
             #Counting total number of constraints
-            cnt = cnt + tf.error.W.shape[0]
+            cnt = cnt + tf.error.settings.weight.shape[0]
             #Arranging nine orientation coordinates of each reference_orientation (Elements of the Rotation Matrix) in the endeffector pose vector
+            ra = tf.ra.matrix()
             for i in range(0,3):
                 for j in range(0,3):
-                    self.pose[k] = tf.ra[i,j]
+                    self.pose[k] = ra[i,j]
                     k +=1
 
         self.mo = cnt - self.mp
@@ -375,9 +369,9 @@ class Endeffector:
             if parametrization == 'Rotation Matrix':
                 for j in range(3):
                     for k in range(3):
-                        pose_tpl += rm[j][k],
+                        pose_tpl += rm['matrix'][j][k],
             else:    
-                ov = rotation.orientation_vector(rm, parametrization)
+                ov = rm[parametrization]
                 for j in range(3):
                     pose_tpl += ov[j],
 
@@ -403,14 +397,15 @@ class Endeffector:
             
         for tf in self.reference_orientations:
             if parametrization == 'Rotation Matrix':
+                r = numpy.eye(3)
                 for j in range(3):
                     for k in range(3):
-                        if actual:
-                            tf.ra[j][k] = pose_tuple[cnt]
-                        else:    
-                            tf.rd[j][k] = pose_tuple[cnt]
-                        
+                        r[j][k] = pose_tuple[cnt]
                         cnt += 1
+                if actual:
+                    tf.ra['matrix'] = r
+                else:
+                    tf.rd['matrix'] = r
 
             else:
             

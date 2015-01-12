@@ -23,7 +23,7 @@ import packages.nima.robotics.kinematics.kinematicpy.forward_kinematics as fklib
 import packages.nima.robotics.kinematics.task_space.endeffector as eflib 
 import packages.nima.mathematics.vectors_and_matrices as vecmat
 
-from packages.nima.mathematics import rotation
+from packages.nima.mathematics import orientation
 from packages.nima.mathematics import polynomials
 from packages.nima.mathematics import discrete
 
@@ -288,11 +288,11 @@ class Inverse_Kinematics( fklib.Forward_Kinematics ):
                 break
     
             err_reduced = (frontier.endeffector.error_norm < self.endeffector.error_norm)
-
+            """
             print
             print "Current  Error : ", self.endeffector.error_norm
             print "Frontier Error : ", frontier.endeffector.error_norm
-
+            """
     
             if err_reduced:
                 # print "Error Reduced by DF = ", frontier.settings.damping_factor

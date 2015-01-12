@@ -272,28 +272,6 @@ def cross_old(u,v):
     '''
     return numpy.cross(u,v)
 
-def skew(v):
-    '''
-    Return the skew matrix (3X3) of vector v. v has 3 elements
-    '''
-    sk = numpy.zeros((3,3))
-    #sk = numpy.array([v,v,v])
-
-    sk[0,0] = 0
-    sk[0,1] = - v[2]
-    sk[0,2] = v[1]
-
-    sk[1,0] = v[2]
-    sk[1,1] = 0
-    sk[1,2] = - v[0]
-
-    sk[2,0] = - v[1]
-    sk[2,1] = v[0]
-    sk[2,2] = 0
-
-    return sk;
-
-
 def extended_matrix( R, p ):
     '''
     Convert a (3 X 3) rotation matrix into a (4 X 4) transformation matrix. The added elements will be zero
@@ -352,18 +330,6 @@ def left_dls_inverse(M, k):
     Minv = numpy.dot(numpy.linalg.inv(A + k*k*numpy.eye(m)), M.T)
     return Minv
 
-def relative_trace(RMa,RMd):
-    '''
-    Return the trace of the product of the two given matrices Rma and RMd. RMa will be multiplied by transpose of RMd from left side
-    '''
-    R = numpy.dot(RMa, RMd.T)
-    
-    trace_R = numpy.trace(R) 
-    # numpy.trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None)
-    # trace_R = R[0,0] + R[1,1] + R[2,2]
-
-    return trace_R
-
 def collapse(v, max_norm):
     '''
     if the magnitude(norm) of the given vector is smaller than max_norm, the given vctor is returned
@@ -374,3 +340,4 @@ def collapse(v, max_norm):
         return v*max_norm/l
     else:
         return v
+

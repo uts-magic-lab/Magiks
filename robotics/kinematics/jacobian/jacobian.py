@@ -9,9 +9,9 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	3.0
+#  @version     	4.0
 # 
-#  Last Revision:  	03 January 2015
+#  Last Revision:  	11 January 2015
 
 
 import numpy, math
@@ -67,8 +67,8 @@ class Analytic_Jacobian:
                                               [1 ,  0, 0 ],
                                               [0 ,  0, 0 ] ] )
                     else:
-                        pj_1 = vecmatlib.uvect(trans_mat.H[jj-1],3)
-                        szj_1 = vecmatlib.skew(vecmatlib.uvect(trans_mat.H[jj-1],2))
+                        pj_1  = trans_mat.H[jj-1][0:3,3]
+                        szj_1 = rotation.skew(trans_mat.H[jj-1][0:3,2])
         
                     # RRQJ: rond (partial der)/ rond of q_j (A multiplier which derivates in respect with q_j)
                     RRQJ = vecmatlib.extended_matrix(szj_1, - numpy.dot(szj_1,pj_1) )
@@ -135,72 +135,6 @@ class Geometric_Jacobian:
                 i = i + 1
         return 0
 
-class Task_Jacobian:
-    '''
-    Contains the Task jacobian of a reference_position or reference_orientation with methods for creating and calculating it
-    '''    
-    def __init__(self):
-        '''
-        For example, for rotation matrix, number_of_parametrization_elements is 9
-        '''
-        #Creation of the task jacobian matrix
-        self.value = None # Abstract definition, this property contains the Task Jacobian matrix
-    
-
-    def basis_task_jacobian_for_position(self, tskpnt):
-        '''
-        Calculate and return the basis task jacobian (Jft) according to the basis error function for position represented by: tskpnt.error.basis_error_function
-        In this version only one representation of position error is supported:  "differential_cartesian_coordinates"
-        '''
-        if tskpnt.error.basis_error_function == 'differential_cartesian_coordinates':
-            assert len(tskpnt.error.power) == 3
-            Jft  = - numpy.eye(3)
-
-            for k in range (0, 3):
-                if (tskpnt.error.power[k] != 0) and (tskpnt.error.power[k] != 1):
-                    c = tskpnt.error.power[k]*((tskpnt.r[k] - tskpnt.rd[k])**(tskpnt.error.power[k] - 1))
-                    Jft[k,k] = Jft[k,k]*c
-        else:
-            assert False
-        
-        return Jft
-
-    def basis_task_jacobian_for_orientation(self, tskfrm):
-        '''
-        Calculate and return the task jacobian (Jft) according to the basis error function for orientation represented by: tskfrm.error.basis_error_function
-        In this version only one representation of orientation error is supported:  
-        "Axis Inner Product"
-        '''
-        if tskfrm.error.basis_error_function   == 'Axis Inner Product':
-            Jft = numpy.zeros((3, 9))
-            for k in range(3):
-                if (tskfrm.error.power[k] != 0) and (tskfrm.error.power[k] != 1):
-                    err = numpy.dot(tskfrm.ra[:,k], tskfrm.rd[:,k]) - 1.0
-                    c   = tskfrm.error.power[k]*(err**(tskfrm.error.power[k] - 1))
-                else:
-                    c = 1.0     
-                for j in range(3):
-                    Jft[k, 3*j+k] = c*tskfrm.ra.T[k,j]
-        else:
-            assert False # Any other basis error functions are not supported
-        return Jft
-    
-    def update_for_position(self, tskpnt):
-        '''
-        Calculate and Update the task jacobian for position
-        First calculate the basis task jacobian and then multiplied by the weighting matrix
-        '''
-        btj = self.basis_task_jacobian_for_position(tskpnt)
-        self.value = numpy.dot(tskpnt.error.W, btj)
-    
-    def update_for_orientation(self, tskfrm):
-        '''
-        Calculate and Update the task jacobian for orientation
-        First calculate the basis task jacobian and then multiplied by the weighting matrix
-        '''
-        btj = self.basis_task_jacobian_for_orientation(tskfrm)
-        self.value = numpy.dot(tskfrm.error.W, btj)
-
 class Error_Jacobian:
     '''
     Contains the Error jacobian of a reference_position or reference_orientation with methods for creating and calculating it
@@ -214,23 +148,36 @@ class Error_Jacobian:
         Calculate and return the error jacobian (Jf) according to the basis error function for position represented by: tskpnt.error.basis_error_function
         In this version only one representation of position error is supported:  "differential_cartesian_coordinates"
         '''
-        if tskpnt.error.basis_error_function == 'differential_cartesian_coordinates':
+        if tskpnt.error.settings.representation == 'Cartesian Coordinates':
+            ''' Alternative
+            j  = 0
+            for jj in range(0,config.settings.DOF):
+                if config.settings.free[jj]:
+                    e   = tskpnt.error.value
+                    de  = tskpnt.geometric_jacobian.value[:,j]
+                    b   = self.settings.power*de*(e**(self.settings.power - numpy.ones(4)))    
+                    if j == 0:
+                        J = [b]
+                    else:
+                        J = np.append(J, [b], axis = 0) 
+                    j   = j + 1            
+            '''
             p = 3
-            assert len(tskpnt.error.power) == p
+            assert len(tskpnt.error.settings.power) == p
             Jf  = numpy.copy(tskpnt.geometric_jacobian.value)
 
             for k in range (0,p):
-                if (tskpnt.error.power[k] != 0) and (tskpnt.error.power[k] != 1):
-                    err = tskpnt.error.power[k]*((tskpnt.r[k] - tskpnt.rd[k])**(tskpnt.error.power[k] - 1))
+                if (tskpnt.error.settings.power[k] != 0) and (tskpnt.error.settings.power[k] != 1):
+                    err = tskpnt.error.power[k]*((tskpnt.r[k] - tskpnt.rd[k])**(tskpnt.error.settings.power[k] - 1))
                     j = 0
                     for jj in range(0,config.settings.DOF):
                         if config.settings.free[jj]:
                             Jf[k,j] = tskpnt.geometric_jacobian.value[k,j]*err
                             j = j + 1
-
-        elif tskpnt.error.basis_error_function == 'differential_cylindrical_coordinates':
+                            
+        elif tskpnt.error.settings.representation == 'Cylindrical Coordinates':
             assert False
-        elif tskpnt.error.basis_error_function == 'differential_spherical_coordinates':
+        elif tskpnt.error.settings.representation == 'Spherical Coordinates':
             assert False
         else:
             assert False
@@ -244,155 +191,119 @@ class Error_Jacobian:
         "Axis Inner Product" , "relative_rotation_matrix_trace_minus_three" , "differential_quaternions" , "relative_rotation_angle", 
         "relative_rotation_vector_Cayley_Gibbs_Rodrigues" and "differential_rotation_matrix"
         '''
-        if tskfrm.error.basis_error_function   == 'Axis Inner Product':
-            p = 3
-            Jf = numpy.zeros((p,config.settings.DOF))
-            for k in range (0,p):
-                if tskfrm.error.power[k] == 0:
-                    err  = 0
-                    errp = 0
-                elif tskfrm.error.power[k] == 1:
-                    err  = 1
-                    errp = 0
-                elif tskfrm.error.power[k] == 2:
-                    err  = 2*(numpy.dot(vecmatlib.uvect(tskfrm.rd,k),vecmatlib.uvect(tskfrm.r,k)) - 1)
-                    errp = 2
-                else:
-                    err = tskfrm.error.power[k]*((numpy.dot(vecmatlib.uvect(tskfrm.rd,k),vecmatlib.uvect(tskfrm.r,k)) - 1)**(tskfrm.error.power[k] - 1))
-                j = 0
-                for jj in range(0,tskfrm.ln + 1):
-                    if config.settings.free[jj]:                    
-                        jz1_k_j = numpy.dot(vecmatlib.uvect(analytic.U[tskfrm.ln][j],k),vecmatlib.uvect(tskfrm.rd,k))
-                        Jf[k,j] = jz1_k_j*err
-                        j = j + 1
+        rpn  = tskfrm.error.settings.representation
+        pwr  = tskfrm.error.settings.power
+        if rpn == 'vector':
+            tskfrm.ra.set_generating_function( tskfrm.error.settings.generating_function )
+            tskfrm.rd.set_generating_function( tskfrm.error.settings.generating_function )
+        if tskfrm.error.settings.metric_type == 'relative':
+            p = len(pwr)
+            j  = 0
+            for jj in range(0, tskfrm.ln + 1):
+                if config.settings.free[jj]:
+                    tskfrm.ra.set_speed(analytic.U[tskfrm.ln][j][0:3,0:3])
+                    Oe   = tskfrm.ra / tskfrm.rd
+                    e    = Oe[rpn]
+                    de   = Oe[rpn + '_speed']
+                    if rpn == 'matrix':
+                        e  = e.flatten()   
+                        de = de.flatten()   
+                    b    = pwr*de*(e**(pwr - numpy.ones(p)))    
+                    if j == 0:
+                        J = [b]
+                    else:
+                        J = numpy.append(J, [b], axis = 0) 
+                    j   = j + 1            
 
-        elif tskfrm.error.basis_error_function == 'relative_rotation_matrix_trace_minus_three':
-            p = 1
-            Jf = numpy.zeros((p,config.settings.DOF))
-            for i in range(0,3):
-                for t in range(0,3):
+        elif tskfrm.error.settings.metric_type   == 'differential':
+
+            p  = len(pwr)
+            j  = 0
+            e  = tskfrm.ra[rpn] - tskfrm.rd[rpn]
+            if rpn == 'matrix':
+                e  = e.flatten()
+            
+            for jj in range(0,tskfrm.ln + 1):
+                if config.settings.free[jj]:
+                    tskfrm.ra.set_speed(analytic.U[tskfrm.ln][j][0:3,0:3])
+                    de   = tskfrm.ra[rpn + '_speed']
+                    if rpn == 'matrix':
+                        de = de.flatten()   
+                    b    = pwr*de*(e**(pwr - numpy.ones(p)))    
+                    if j == 0:
+                        J = [b]
+                    else:
+                        J = numpy.append(J, [b], axis = 0) 
+                    j   = j + 1            
+
+        elif tskfrm.error.settings.metric_type   == 'special':
+            if rpn   == 'AxInPr':
+                p = 3
+                rd = tskfrm.rd['matrix']
+                Jf = numpy.zeros((p,config.settings.DOF))
+                for k in range (0,p):
+                    if pwr[k] == 0:
+                        err  = 0
+                        errp = 0
+                    elif pwr[k] == 1:
+                        err  = 1
+                        errp = 0
+                    elif pwr[k] == 2:
+                        err  = 2*(numpy.dot(tskfrm.rd.frame_axis(k),tskfrm.ra.frame_axis(k)) - 1)
+                        errp = 2
+                    else:
+                        err = tskfrm.error.power[k]*((numpy.dot(tskfrm.rd.frame_axis(k),tskfrm.ra.frame_axis(k)) - 1)**(tskfrm.error.power[k] - 1))
                     j = 0
-                    for jj in range(0, tskfrm.ln + 1):
-                        if config.settings.free[jj]:
-                            Jf[0,j] += tskfrm.rd[i,t]*analytic.U[tskfrm.ln][j][i,t]       
-                            j += 1
-                
-        elif tskfrm.error.basis_error_function == 'differential_normalized_quaternions':
-            p = 3
-            Jf = numpy.zeros((p,config.settings.DOF))
-            qnd = quaternions.unit_quaternion(tskfrm.rd)
-
-            j = 0
-            for jj in range(0,tskfrm.ln + 1):
-                if config.settings.free[jj]:
-                    uqns = quaternions.unit_quaternion_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
-                    for k in range (0,p):
-                        if tskfrm.error.power[k] != 0:
-                            jz_k_j = qnd[k+1]*uqns[0] - qnd[0]*uqns[k+1] 
-                            if tskfrm.error.power[k] == 1:
-                               Jf[k,j] = jz_k_j
-                            else:
-                                qn  = quaternions.unit_quaternion(tskfrm.ra)
-                                err = tskfrm.error.power[k]*((qnd[0]*qn[k+1] - qn[0]*qnd[k+1])**(tskfrm.error.power[k] - 1))
-                                Jf[k,j] = jz_k_j*err
-                    j = j + 1
-
-        elif tskfrm.error.basis_error_function == 'differential_quaternions':
-            p = 4
-            Jf = numpy.zeros((p,config.settings.DOF))
-
-            j = 0
-            for jj in range(0,tskfrm.ln + 1):
-                if config.settings.free[jj]:
-                    uqns = quaternions.unit_quaternion_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
-                    
-                    for k in range (0,p):
-                        if tskfrm.error.power[k] != 0:
-                            jz_k_j = uqns[k]
-                            if tskfrm.error.power[k] == 1:
-                                Jf[k,j] = jz_k_j
-                            else:
-                                qn   = quaternions.unit_quaternion(tskfrm.ra)
-                                qnd  = quaternions.unit_quaternion(tskfrm.rd)
-                                err = tskfrm.error.power[k]*((qn[k] - qnd[k])**(tskfrm.error.power[k] - 1))
-                                Jf[k,j] = jz_k_j*err
-                    j = j + 1
-
-        elif tskfrm.error.basis_error_function == 'differential_vectorial_identity':
-            p = 3
-            Jf = numpy.zeros((p,config.settings.DOF))
-
-            j = 0
-            for jj in range(0,tskfrm.ln + 1):
-                if config.settings.free[jj]:
-                    uqns = rotation.orientation_vector_speed(tskfrm.ra, analytic.U[tskfrm.ln][j])
-                    for k in range (0,p):
-                        if tskfrm.error.power[k] != 0:
-                            jz_k_j = uqns[k]
-                            if tskfrm.error.power[k] == 1:
-                               Jf[k,j] = jz_k_j
-                            else:
-                                qn   = rotation.orientation_vector(tskfrm.ra, parametrization = 'vectorial_identity')
-                                qnd  = rotation.orientation_vector(tskfrm.rd, parametrization = 'vectorial_identity')
-                                err = tskfrm.error.power[k]*((qn[k] - qnd[k])**(tskfrm.error.power[k] - 1))
-                                Jf[k,j] = jz_k_j*err
-                    j = j + 1
-
-        elif tskfrm.error.basis_error_function == 'relative_rotation_angle':
-            p = 1
-            Jf = numpy.zeros((p,config.settings.DOF))
-
-            for i in range(0,3):
-                for t in range(0,3):
-                    j = 0
-                    for jj in range(0, tskfrm.ln + 1):
-                        if config.settings.free[jj]:
-                            sin_err = math.sin(tskfrm.error.value[0])
-                            if abs(sin_err) < 0.000001:
-                                sin_err = 0.000001
-                            Jf[0,j] = Jf[0,j] - 0.5*(tskfrm.rd[i,t]/sin_err)*analytic.U[tskfrm.ln][j][i,t]       
+                    for jj in range(0,tskfrm.ln + 1):
+                        if config.settings.free[jj]:                    
+                            jz1_k_j = numpy.dot(analytic.U[tskfrm.ln][j][0:3,k],rd[0:3,k])
+                            Jf[k,j] = jz1_k_j*err
                             j = j + 1
 
-        elif tskfrm.error.basis_error_function == 'relative_rotation_vector_identity':
-            p = 3
-            Jf = tskfrm.geometric_jacobian.value
-        elif tskfrm.error.basis_error_function == 'relative_rotation_vector_linear':
-            p = 3
-            sin_phi = numpy.linalg.norm(tskfrm.error.value)
-            # print sin_phi
-            # cos_phi = math.sqrt(1.0 - sin_phi*sin_phi)
-            Jf = tskfrm.geometric_jacobian.value
-        elif tskfrm.error.basis_error_function == 'relative_rotation_vector_Cayley_Gibbs_Rodrigues':
-            p = 3
-            RRM = numpy.dot(tskfrm.rd, tskfrm.ra.T)
-            trace_RRM = RRM[0,0] + RRM[1,1] + RRM[2,2]
-            t2_plus_1 = 4/(1 + trace_RRM)
-            Jf = t2_plus_1*tskfrm.geometric_jacobian.value
+            if rpn   == 'AxInPr + DiNoQu':
+                p = 6
+                Jf = numpy.zeros((p,config.settings.DOF))
+                for k in range (0,3):
+                    if pwr[k] == 0:
+                        err  = 0
+                        errp = 0
+                    elif pwr[k] == 1:
+                        err  = 1
+                        errp = 0
+                    elif pwr[k] == 2:
+                        err  = 2*(numpy.dot(tskfrm.rd.frame_axis(k),tskfrm.ra.frame_axis(k)) - 1)
+                        errp = 2
+                    else:
+                        err = tskfrm.error.power[k]*((numpy.dot(tskfrm.rd.frame_axis(k),tskfrm.ra.frame_axis(k)) - 1)**(tskfrm.error.power[k] - 1))
+                    j = 0
+                    for jj in range(0,tskfrm.ln + 1):
+                        if config.settings.free[jj]:                    
+                            jz1_k_j = numpy.dot(analytic.U[tskfrm.ln][j][0:3,k],tskfrm.rd.frame_axis(k))
+                            Jf[k,j] = jz1_k_j*err
+                            j = j + 1
+                j   = 0
+                qnd = tskfrm.rd['quaternion']
+                for jj in range(0,tskfrm.ln + 1):
+                    if config.settings.free[jj]:
+                        uqns = quaternions.unit_quaternion_speed(tskfrm.ra['matrix'], analytic.U[tskfrm.ln][j])
+                        for k in range (3,6):
+                            if pwr[k] != 0:
+                                jz_k_j = qnd[k-2]*uqns[0] - qnd[0]*uqns[k-2] 
+                                if pwr[k] == 1:
+                                   Jf[k,j] = jz_k_j
+                                else:
+                                    qn  = tskfrm.ra['quaternion']
+                                    err = pwr[k]*((qnd[0]*qn[k-2] - qn[0]*qnd[k-2])**(pwr[k] - 1))
+                                    Jf[k,j] = jz_k_j*err
+                        j = j + 1
+            else:
+                assert False        
+            return Jf
 
-        elif tskfrm.error.basis_error_function == 'differential_rotation_matrix':
-            p = 9
-            Jf = numpy.zeros((p,config.settings.DOF))
-            k = 0
-            for i in range(0,3):
-                for t in range(0,3):
-                    if tskfrm.error.power[k] != 0:
-                        if tskfrm.error.power[k] == 1:
-                            err = 1
-                        if tskfrm.error.power[k] == 2:
-                            err  = 2*(tskfrm.rd[i,t] - tskfrm.ra[i,t])
-                            errp = 2
-                        else:
-                            err = tskfrm.error.power[k]*(tskfrm.rd[i,t] - tskfrm.ra[i,t])**(tskfrm.error.power[k] - 1)
-                        j = 0
-                        for jj in range(0,tskfrm.ln + 1):
-                            if config.settings.free[jj]:
-                                jz1_k_j = analytic.U[tskfrm.ln][j][i,t]                        
-                                Jf[k,j] = -jz1_k_j*err
-                                j = j + 1
-                    k = k + 1
         else:
-            assert False # Any other basis error functions are not supported
-        return Jf
+            assert False, gen.err_msg(__name__, "basis_error_jacobian_for_orientation", tskfrm.error.settings.metric_type + "is an invalid metric type")        
+
+        return J.T
     
     def update_for_position(self, tskpnt, cnfg):
         '''
@@ -400,7 +311,7 @@ class Error_Jacobian:
         First calculate the basis error jacobian and then multiplied by the weighting matrix
         '''
         bej = self.basis_error_jacobian_for_position(tskpnt, cnfg)
-        self.value = numpy.dot(tskpnt.error.W, bej)
+        self.value = numpy.dot(tskpnt.error.settings.weight, bej)
     
     def update_for_orientation(self, tskfrm, cnfg, analytic):
         '''
@@ -408,7 +319,7 @@ class Error_Jacobian:
         First calculate the basis error jacobian and then multiplied by the weighting matrix
         '''
         bej = self.basis_error_jacobian_for_orientation(tskfrm, cnfg, analytic)
-        self.value = numpy.dot(tskfrm.error.W, bej)
+        self.value = numpy.dot(tskfrm.error.settings.weight, bej)
 
         
 

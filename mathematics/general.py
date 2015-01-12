@@ -36,6 +36,15 @@ def sign_choice(x, y, z):
     else:
         print "Error from sign_choice(): value z can not be zero"
 
+def inv(x):
+    if abs(x) < epsilon:
+        if x > 0:
+            return infinity
+        else:
+            return - infinity    
+    else:
+        return 1.0/x
+
 def round(x):
     
     if abs(x) < epsilon:

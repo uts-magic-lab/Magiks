@@ -1,61 +1,62 @@
-
-# HEADER
-'''   
-@file:          metric.py
-@brief:    	    This module provides a class representing the residual error between 
-                the actual and desired endeffector poses including methods for calculating residual functions based on various conventions for 
-                both position and orientation.
-@author:        Nima Ramezani Taghiabadi
-                PhD Researcher
-                Faculty of Engineering and Information Technology
-                University of Technology Sydney
-                Broadway, Ultimo, NSW 2007
-                Room No.: CB10.03.512
-                Phone:    02 9514 4621
-                Mobile:   04 5027 4611
-                Email(1): Nima.RamezaniTaghiabadi@student.uts.edu.au 
-                Email(2): nima.ramezani@gmail.com
-                Email(3): nima_ramezani@yahoo.com
-                Email(4): ramezanitn@alum.sharif.edu
-
-@version:	    0.3
-Last Revision:  23 October 2012
-'''
-
-# BODY
+## @file        	metric.py
+## @brief:    	    This module provides a class representing the residual error between 
+#                   the actual and desired endeffector poses including methods for calculating residual functions based on various conventions for 
+#                   both position and orientation.
+#  @author      	Nima Ramezani Taghiabadi 
+#
+#               	PhD Researcher 
+#               	Faculty of Engineering and Information Technology 
+#               	University of Technology Sydney (UTS) 
+#               	Broadway, Ultimo, NSW 2007, Australia 
+#               	Phone No. :   04 5027 4611 
+#               	Email(1)  : nima.ramezani@gmail.com 
+#               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
+#  @version     	1.0
+# 
+#  Last Revision:  	11 January 2015
 
 import numpy, math
 
 from packages.nima.mathematics import vectors_and_matrices as vecmat
 from packages.nima.mathematics import quaternions
 from packages.nima.mathematics import rotation
+from packages.nima import general as gen
 
-"""
+key_dic = {
+    'DiRoMa'        : 'Difference of Rotation Matrices',
+    'DiQu'          : 'Difference of Quaternions',
+    'DiNoQu'        : 'Non-redundant Difference of Quaternions',
+    'DiOrVe'        : 'Difference of Orientation Vectors',
+    'ReRoMa'        : 'Trace of Relative Rotation Matrix',
+    'ReRoMaTr'      : 'Trace of Relative Rotation Matrix',
+    'AxInPr     '   : 'Axis Inner Product',
+    'ReQu'          : 'Relative Orientation Vector',
+    'ReOrVe'        : 'Relative Orientation Vector',
+    'ReRoAn'        : 'Relative Rotation Angle'}
+
+type_dic = {
+    'DiRoMa'        : 'matrix',
+    'DiQu'          : 'quaternion',
+    'DiNoQu'        : 'quaternion',
+    'DiOrVe'        : 'vector',
+    'ReRoMa'        : 'matrix',
+    'ReRoMaTr'      : 'matrix',
+    'ReQu'          : 'quaternion',
+    'ReOrVe'        : 'vector',
+    'ReRoAn'        : 'angle'}
+
+## Class Constructor:
 class Metric_Settings():
     '''
     '''
-    def __init__()
-        '''
-        '''
+    def __init__(self, representation = "Cartesian Coordinates", metric_type = "differential"):
+    
+        self.metric_type = metric_type
+
+        self.representation = representation
         
-"""
-
-class Metric:
-    '''
-    Metric includes everything regarding the error between two positions or orientations.
-    '''    
-    def __init__(self):
-        '''    
-        '''
-        # "error.value" is a 3 X 1 vector which represents the value of the error function or error between actual and desired positions.
-        # Elements of "value" can be calculated according to various formulation depending on the values of "W" property
-
-        self.value = numpy.zeros((3))
-        self.rate  = numpy.zeros((3))
-
-        # property "in_target" is True when the actual and desired task points are fully or partially identical according to the defined weighting matrix and power array
-        self.in_target = False
-
+        self.generating_function = 'phi/m'
+    
         '''
         Property "power" determines the power of elements of basis error in the final vector of errors:
         Please refer to the comments of property: "W" in this file.
@@ -74,9 +75,8 @@ class Metric:
 
         and r can be replaced by: X, Y or Z
         '''
-
-        self.power = numpy.array([1, 1, 1])
-            
+        self.power   = numpy.array([1, 1, 1])
+        
         '''
         property "W" is a 3 X 3 Weighting matrix. This matrix will be multiplied by the basis error and basis jacobian.  
     
@@ -119,9 +119,10 @@ class Metric:
         the same for the orientation ...    
             
         '''
-        
-        self.W = numpy.eye(3)
-        
+        self.weight  = numpy.eye(3)
+
+        self.offset  = numpy.zeros((3))
+
         '''
         "self.required_identical_coordinate" is an array of booleans and indicates which coordinates (x, y ,z) should be considered
         as a criteria in determining the confirmity of the actual and desired positions and orientations.
@@ -131,7 +132,31 @@ class Metric:
         Please refer to "example 3" of the comments provided for property: "W" in this file.
         '''
         self.required_identical_coordinate = [True, True, True]
-          
+
+        '''
+        set "precision" or termination criteria by default as: 2 cm. It means actual and desired positions are considered "identical" 
+        if for each position coordinate (x, y, z), the absolute value of the difference of current and desired, does not exceed: 2 cm.
+        '''
+        self.precision            = 0.01
+        self.precision_base       = "Coordinate Difference"
+    
+class Metric:
+    '''
+    Metric includes everything regarding the error between two positions or orientations.
+    '''    
+    def __init__(self, settings = Metric_Settings()):
+        '''    
+        '''
+        self.settings = settings
+
+        # "error.value" is a 3 X 1 vector which represents the value of the error function or error between actual and desired positions.
+        # Elements of "value" can be calculated according to various formulation depending on the values of "W" property
+
+        self.value = numpy.zeros((3))
+        self.rate  = numpy.zeros((3))
+
+        # property "in_target" is True when the actual and desired task points are fully or partially identical according to the defined weighting matrix and power array
+        self.in_target = False
     
     def basis_error(self, current, target ) : 
         '''
@@ -141,7 +166,6 @@ class Metric:
         abstract method 
         '''
         return None 
-    
     
     def update(self, current, target ) : 
         '''       
@@ -156,63 +180,34 @@ class Position_Metric(Metric):
     '''
     includes everything regarding the error between two positions
     '''
-    
-    def __init__(self, basis_error_function = 'differential_cartesian_coordinates'):
+    def __init__(self, settings = Metric_Settings()):
         '''
         '''
-        Metric.__init__(self)
-        #set "differential_cartesian_coordinates" as basis error function for position error        
-        self.basis_error_function = basis_error_function
-        '''
-        set "precision" or termination criteria by default as: 2 cm. It means actual and desired positions are considered "identical" 
-        if for each position coordinate (x, y, z), the absolute value of the difference of current and desired, does not exceed: 2 cm.
-        '''
-        self.precision            = 0.02
-        self.precision_base       = "Coordinate Difference"
-        # Another value is "Error Function"
+        Metric.__init__(self, settings = settings)
+        #set "Cartesian Coordinates" as default representation for position        
+        self.settings = settings
 
-        # define the default weighting matrix as Identity. It considers all three position coordinates in the error function
-        self.W                    = numpy.eye(3)
-        self.C                    = numpy.zeros((3))
-
-        # define the default power array. (Please refer to the documentation)
-        self.power                = numpy.array([1, 1, 1])
-        
-
-    def basis_error(self, current, target ) : 
+    def basis_error(self, current, target ) :
+        func_name = ".basis_error()"    
         # def basis_position_error(self, current, target):
         '''
         return the value of basis_position_error
         '''
-        if self.basis_error_function == 'differential_cartesian_coordinates':
-            p = 3
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            for k in range (0,p):
-                if self.power[k] == 0:
-                    err = 0
-                    f[k] = 1
-                else:
-                    err = current[k] - target[k]
-                    
-                    if self.power[k] == 1:
-                        f[k] = err
-                    else:            
-                        f[k] = err**self.power[k]
-
-        elif self.basis_error_function == 'differential_cylindrical_coordinates':
+        if self.settings.representation == 'Cartesian Coordinates':
+            err = current - target
+            f   = err**self.settings.power    
+        elif self.settings.representation == 'Cylindrical_Coordinates':
             p = 3
             assert len(self.power) == p
             f = numpy.zeros((p))
             assert False
-        elif self.basis_error_function == 'differential_spherical_coordinates':
+        elif self.settings.representation == 'Spherical_Coordinates':
             p = 3
             assert len(self.power) == p
             f = numpy.zeros((p))
             assert False
         else:
-            print 'Wrong basis error function: ' + self.basis_error_function
-            assert False
+            assert False, 'Error from: ' + __name__ + func_name + ": " + self.settings.representation + " is an invalid representation"
 
         return f
 
@@ -266,11 +261,11 @@ class Position_Metric(Metric):
         Calculates the error vector between the actual and desired positions of the corresponding taskpoint
         '''
         be = self.basis_error(current, target)
-        assert self.W.shape[1] == len(be)
-        self.value = numpy.dot(self.W, be)
+        assert self.settings.weight.shape[1] == len(be)
+        self.value = numpy.dot(self.settings.weight, be)
         self.in_target = True
         for k in range(0,3):
-            if self.required_identical_coordinate[k]:
+            if self.settings.required_identical_coordinate[k]:
                 deviation = abs(target[k] - current[k])
                 self.in_target = self.in_target and (deviation < self.precision) 
 
@@ -280,149 +275,87 @@ class Orientation_Metric(Metric):
     includes everything regarding the error between two orientations
     '''
     
-    def __init__(self, basis_error_function = 'Axis Inner Product'):
-        '''
-        '''     
-        Metric.__init__(self)
-        #set "Axis Inner Product" as basis error function for position error        
-        self.basis_error_function = basis_error_function
-        self.precision_base = 'Axis Angle'
-        if self.basis_error_function == 'Axis Inner Product':
-            # define the default weighting matrix as Identity. It considers all three axis in the error function
-            self.W                    = numpy.eye(3)
-            self.C                    = numpy.array([-1.0, -1.0, -1.0])
-
-            # define the default power array. (Please refer to the documentation)
-            self.P   = numpy.array([1, 1, 1])
-        else:
-            assert False   
-        
+    def __init__(self, settings = Metric_Settings(representation = 'diag', metric_type = 'relative')):
+        Metric.__init__(self, settings = settings)
+        #set "Axis Inner Product" as default basis error function for orientation error        
         '''
         set "precision" or termination criteria by default as: 2.0 degrees. It means actual and desired orientations are considered "identical" 
         if for each frame axis (i, j, k), the absolute value of the angle between current and desired frames, does not exceed: 2.0 degrees.
         '''
-        self.precision = 2.0
+        self.settings.precision_base = 'Axis Angle'
+        self.precision               = 1.0
 
+        if self.settings.representation == 'diag':
+            self.offset = numpy.array([-1.0, -1.0, -1.0])
+        elif self.settings.representation in ['trace', 'angle']:
+            self.weight   = numpy.array([[1]])
+            ms.power      = numpy.array([1])
+            if self.settings.representation == 'trace':
+                self.offset   = numpy.array([-3.0])
+            else:    
+                self.offset   = numpy.array([0.0])
+        else:
+            self.offset   = numpy.zeros(3)
+        
 
     def basis_error(self, current, target ) : 
+        
         # def basis_orientation_error(self, current, target):
+        rpn =  self.settings.representation
+        if rpn == 'vector':
+            current.set_generating_function( self.settings.generating_function )
+            target.set_generating_function( self.settings.generating_function )
         '''
         '''
-        if self.basis_error_function == 'Axis Inner Product':
-            p = 3
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            for k in range (0,p):
-                if self.power[k] == 0:
-                    err = 0
-                    f[k] = 1
-                else:
-                    err = numpy.dot(vecmat.uvect(target, k), vecmat.uvect(current, k))
-                    if self.power[k] == 1 :
-                        f[k] = err
-                    else:            
-                        f[k] = err**self.power[k]
+        if self.settings.metric_type == 'relative':
+            Oe   = current/target
+            e    = Oe[rpn]
+        elif self.settings.metric_type == 'differential':
+            e  = current[rpn] - target[rpn]
 
-        elif self.basis_error_function == 'relative_rotation_matrix_trace_minus_three':
-            '''
-            represents the orientation error by calculating the trace of relative rotation matrix minus three: Trace(R_a * R_d^T) - 3
-            '''
-            p = 1
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-
-            z = numpy.trace(numpy.dot(current, target.T)) - 3
-            
-            f[0] = z**self.power[0]
-            
-        elif self.basis_error_function == 'normalized_differential_quaternions':
-            p = 3
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            z = numpy.zeros((p))
-            qn  = quaternions.unit_quaternion(current)
-            
-            '''
-            Remember that the following code line is implemented many times resulting the same value, so it is better to be defined once
-            '''
-            qnd = quaternions.unit_quaternion(target)
-            
-            for k in range (0,p):
-                z[k] = - qnd[0]*qn[k+1] + qn[0]*qnd[k+1]    
-                f[k] = z[k]**self.power[k]
-
-        elif self.basis_error_function == 'differential_quaternions':
-            p = 4
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            z = numpy.zeros((p))
-            qn  = quaternions.unit_quaternion(current)
-            qnd = quaternions.unit_quaternion(target)
-            z   = qn - qnd
-            for k in range (0,p):
-                f[k] = z[k]**self.power[k]
-
-        elif self.basis_error_function == 'differential_vectorial_identity':
-            p = 3
-            assert len(self.power) == p
-            f  = numpy.zeros((p))
-            z  = numpy.zeros((p))
-            oa = rotation.orientation_vector(current, parametrization = 'vectorial_identity')
-            od = rotation.orientation_vector(target , parametrization = 'vectorial_identity')
-            z  = oa - od
-            for k in range (0,p):
-                f[k] = z[k]**self.power[k]
-
-        elif self.basis_error_function == 'relative_rotation_angle':
-            p = 1
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-
-            z = rotation.relative_rotation_angle(current,target)
-            
-            f[0] = z**self.power[0]
-
-        elif self.basis_error_function == 'relative_rotation_vector_identity':
-            p = 3
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            z = rotation.relative_rotation_vector(current,target,'vectorial_identity')
-            for k in range (0,p):
-                f[k] = z[k]**self.power[k]
-
-        elif self.basis_error_function == 'relative_rotation_vector_Cayley_Gibbs_Rodrigues':
-            p = 3
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            z = rotation.relative_rotation_vector(current, target, 'Cayley_Gibbs_Rodrigues')
-            for k in range (0,p):
-                f[k] = z[k]**self.power[k]
-
-        elif self.basis_error_function == 'relative_rotation_vector_linear':
-            p = 3
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            # Rz = numpy.dot(current, target.T)
-            z = rotation.relative_rotation_vector(current,target,'vectorial_linear')
-            
-            for k in range (0,p):
-                f[k] = z[k]**self.power[k]
-
-        elif self.basis_error_function == 'differential_rotation_matrix':
-            p = 9
-            assert len(self.power) == p
-            f = numpy.zeros((p))
-            
-            k = 0
-            for i in range(0,3):
-                for j in range(0,3):
-                    err = target[i,j] - current[i,j]
-                    f[k] = err**self.power[k]
-                    k = k + 1
-
+        elif self.settings.metric_type == 'special':
+            if self.settings.representation == 'AxInPr':
+                p = 3
+                assert len(self.settings.power) == p
+                f = numpy.zeros((p))
+                for k in range (0,p):
+                    if self.settings.power[k] == 0:
+                        err = 0
+                        f[k] = 1
+                    else:
+                        err = numpy.dot(target.frame_axis(k), current.frame_axis(k))
+                        if self.settings.power[k] == 1 :
+                            f[k] = err
+                        else:            
+                            f[k] = err**self.settings.power[k]
+            if self.settings.representation == 'AxInPr + DiNoQu':
+                p = 6
+                assert len(self.settings.power) == p
+                f = numpy.zeros((p))
+                for k in range (0,3):
+                    if self.settings.power[k] == 0:
+                        err = 0
+                        f[k] = 1
+                    else:
+                        err = numpy.dot(target.frame_axis(k), current.frame_axis(k))
+                        if self.settings.power[k] == 1 :
+                            f[k] = err
+                        else:            
+                            f[k] = err**self.settings.power[k]
+                qn  = current['quaternion']
+                qnd = target['quaternion']
+                for k in range (3,6):
+                    z    = - qnd[0]*qn[k-2] + qn[0]*qnd[k-2]    
+                    f[k] = z**self.settings.power[k]
+            else:
+                assert False
+            return f        
         else:
-            assert False
+            assert False, gen.err_str(__name__, "basis_error", self.settings.metric_type + " is an invalid metric type")
+        if self.settings.representation == 'matrix':
+            e = e.flatten()
 
+        f  = e**self.settings.power 
         return f
     """
     def basis_error_rate(self, R, Rd, R_dot, Rd_dot ) : 
@@ -455,16 +388,16 @@ class Orientation_Metric(Metric):
         '''
         be = self.basis_error(current, target)
 
-        assert self.W.shape[1] == len(be)
+        assert self.settings.weight.shape[1] == len(be)
         
-        self.value = numpy.dot(self.W, be) + self.C
+        self.value = numpy.dot(self.settings.weight, be) + self.settings.offset
 
         if self.precision_base == 'Axis Angle':
         
             self.in_target = True
             for k in range(0,3):
-                if self.required_identical_coordinate[k]:
-                    cos_teta = numpy.dot(vecmat.uvect(target,k),vecmat.uvect(current,k))
+                if self.settings.required_identical_coordinate[k]:
+                    cos_teta = numpy.dot(target.frame_axis(k), current.frame_axis(k))
                     if (cos_teta < 1.00000) and (cos_teta > -1.00000):
                         deviation = abs((180.0/math.pi)*math.acos(cos_teta))
                         self.in_target = self.in_target and (deviation < self.precision) 
