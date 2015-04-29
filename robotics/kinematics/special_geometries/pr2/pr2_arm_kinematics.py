@@ -26,15 +26,13 @@ import packages.nima.mathematics.general as gen
 from interval import interval, inf, imath
 from sets import Set
 
-import packages.nima.robotics.kinematics.kinematicpy.general as genkin
-import packages.nima.robotics.kinematics.kinematicpy.inverse_kinematics as iklib
-import packages.nima.robotics.kinematics.kinematicpy.manipulator_library as maniplib
-import packages.nima.robotics.kinematics.joint_space.configuration as configlib
-import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
-import packages.nima.robotics.kinematics.joint_space.trajectory as jtrajlib
+import packages.nima.robotics.kinematics.magiks_core.general as genkin
+import packages.nima.robotics.kinematics.magiks_core.manipulator_library as maniplib
+
 import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.trigonometry as trig
-import packages.nima.mathematics.vectors_and_matrices as vecmat
+import packages.nima.mathematics.geometry.trigonometry as trig
+import packages.nima.mathematics.geometry.trajectory as trajlib
+import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
 
 drc        = math.pi/180.00
 default_ql = drc*np.array([-130.0, 70.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
@@ -826,7 +824,7 @@ class PR2_ARM():
     
     def feasible_joint_stepsize(self, direction, max_speed, ttr):
         q0        = np.copy(self.config.q)
-        err       = self.pose_metric()
+        # err       = self.pose_metric()  Why did I use this?
         (el, eh)  = self.config.joint_stepsize_interval(direction = direction, max_speed = max_speed, delta_t = ttr) 
         assert el < 1.0
         if eh > 1.0:
@@ -1131,7 +1129,7 @@ class PR2_ARM():
 
         ori_traj = trajlib.Orientation_Trajectory_Segment()
         ori_traj.capacity = 200
-        pos_traj = trajlib.Polynomial_Trajectory()
+        pos_traj = trajlib.Trajectory_Polynomial()
         if phi_end > js_traj.phi_end:
             phi_end = js_traj.phi_end
 
@@ -1169,7 +1167,7 @@ class PR2_ARM():
         if phi_end > pos_traj.phi_end:
             phi_end = pos_traj.phi_end
 
-        jt          = trajlib.Polynomial_Trajectory(dimension = 7)
+        jt          = trajlib.Trajectory_Polynomial(dimension = 7)
         jt.capacity = 2
 
         jt.add_point(phi = 0.0, pos = np.copy(self.config.q), vel = np.zeros(7))
@@ -1339,5 +1337,3 @@ class PR2_ARM():
 
         return self.Delta
         
-
-

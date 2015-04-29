@@ -23,10 +23,10 @@ import time, math
 import skilled_pr2 as spr
 import pyride_interpreter as pint
 
-import packages.nima.robotics.kinematics.task_space.trajectory as traj
-import packages.nima.robotics.kinematics.task_space.trajectory_shapes as tsh
-import packages.nima.mathematics.rotation as rot
 import packages.nima.mathematics.general as gen
+import packages.nima.mathematics.geometry.shape_trajectories as tsh
+import packages.nima.mathematics.geometry.trajectory as traj
+import packages.nima.mathematics.geometry.rotation as rot
 
 '''
 import sys

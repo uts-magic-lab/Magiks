@@ -25,12 +25,10 @@ import pyride_interpreter as pint
 import PyPR2, numpy, math, time
 
 import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.trigonometry as trig
-import packages.nima.mathematics.rotation as rot
-import packages.nima.mathematics.vectors_and_matrices as vecmat
-
-import packages.nima.robotics.kinematics.task_space.special_trajectories as strajlib
-import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
+import packages.nima.mathematics.geometry.trigonometry as trig
+import packages.nima.mathematics.geometry.rotation as rot
+import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
+import packages.nima.mathematics.geometry.trajectory as trajlib
 
 import packages.nima.robotics.computer_vision.laser_scan_support as lss
 
@@ -749,8 +747,8 @@ class PyRide_PR2(pr2lib.PR2):
         '''
         # assert genmath.equal(vecmat.angle(center, normal), 0.0), "Error from PyRide_PR2(): center and normal must be perpendicular"
 
-        #tt = trajlib.Polynomial_Trajectory()
-        #jt = trajlib.Polynomial_Trajectory(dimension = 7)
+        #tt = trajlib.Trajectory_Polynomial()
+        #jt = trajlib.Trajectory_Polynomial(dimension = 7)
         d_theta = angle/N
         r       = numpy.linalg.norm(center)
         ttr     = r*d_theta/self.arm_speed
@@ -886,9 +884,9 @@ class PyRide_PR2(pr2lib.PR2):
     '''
 
     ## Runs a given arm task-space pose trajectory on the robot. The given trajectory will be tracked by the wrist.
-    #  @param pos_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Polynomial_Trajectory()
+    #  @param pos_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Trajectory_Polynomial()
     #                  specifying the trajectory in the 3D taskspace to be tracked by the arm.
-    #  @param ori_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Polynomial_Trajectory()
+    #  @param ori_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Trajectory_Polynomial()
     #                  specifying the trajectory in the 3D taskspace to be tracked by the arm.
     def arm_trajectory(self, pos_traj, ori_traj = None, resolution = 20, relative = True, wait = True):
         '''

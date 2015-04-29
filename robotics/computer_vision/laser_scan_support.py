@@ -22,7 +22,7 @@ First Revision: 12 December 2014
 import numpy as np
 import copy, math
 
-import packages.nima.mathematics.vectors_and_matrices as vecmat
+import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
 
 def ls_line(dist, angle):
     '''

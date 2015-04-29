@@ -18,20 +18,18 @@ Changes from version 4.0:
     1- Comments added for doxygen
 
 '''
-import copy
-import pr2_arm_kinematics as armlib
-import packages.nima.mathematics.general as gen
-import packages.nima.general as pygen
-import packages.nima.mathematics.rotation as rotlib
-import packages.nima.mathematics.vectors_and_matrices as vecmat
-import packages.nima.mathematics.trigonometry as trig
-
 from interval import interval, inf, imath
 
-import numpy, math
-import packages.nima.robotics.kinematics.kinematicpy.general as genkin
-import packages.nima.robotics.kinematics.joint_space.configuration as configlib
-import packages.nima.robotics.kinematics.task_space.trajectory as trajlib
+import copy, numpy, math
+import pr2_arm_kinematics as armlib
+
+import packages.nima.general as pygen
+import packages.nima.mathematics.general as gen
+import packages.nima.mathematics.geometry.rotation as rotlib
+import packages.nima.mathematics.geometry.trigonometry as trig
+import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
+import packages.nima.mathematics.geometry.trajectory as trajlib
+import packages.nima.robotics.kinematics.magiks_core.general as genkin
 
 drc        = math.pi/180.00
 

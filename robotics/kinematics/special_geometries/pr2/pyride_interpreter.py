@@ -21,8 +21,8 @@ Changes from ver 3.0:
 
 import PyPR2, numpy, math, time
 import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.vectors_and_matrices as vecmat
-import packages.nima.mathematics.rotation as rot
+import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
+import packages.nima.mathematics.geometry.rotation as rot
 
 from cgkit.cgtypes import quat, mat3
 

@@ -29,5 +29,23 @@ def replace_if_none(a, b):
     else:
         return a
 
-def err_str(s1, s2, s3):
-    return "Error from: " + s1 + '.' + s2 + "(): " + s3    
+def err_str(file_path, class_name, function_name, err_message):
+    s  = '\n \n' + 'Error from: ' + '\n \n'
+
+    s += file_path
+
+    if class_name != '':
+        s += '.' + class_name
+
+    if function_name != '':
+        s += '.' + function_name            
+
+    if (class_name != '') or (function_name != ''):
+        s += '()'
+
+    s += ': ' + '\n \n' + err_message + '\n'
+    return  s
+
+## Returns the most common element in the given list
+def most_common(lst):
+    return max(set(lst), key=lst.count)
