@@ -127,41 +127,6 @@ def _check_type(T, allowed):
             types = ', '.join([t.__name__ for t in allowed] + [T.__name__])
             raise TypeError("unsupported mixed types: %s" % types)
 
-
-def _exact_ratio(x):
-    """Convert Real number x exactly to (numerator, denominator) pair.
-
-    >>> _exact_ratio(0.25)
-    (1, 4)
-
-    x is expected to be an int, Fraction, Decimal or float.
-    """
-    try:
-        try:
-            # int, Fraction
-            return (x.numerator, x.denominator)
-        except AttributeError:
-            # float
-            try:
-                return x.as_integer_ratio()
-            except AttributeError:
-                # Decimal
-                try:
-                    return _decimal_to_ratio(x)
-                except AttributeError:
-                    msg = "can't convert type '{}' to numerator/denominator"
-                    raise TypeError(msg.format(type(x).__name__)) from None
-    except (OverflowError, ValueError):
-        # INF or NAN
-        if __debug__:
-            # Decimal signalling NANs cannot be converted to float :-(
-            if isinstance(x, Decimal):
-                assert not x.is_finite()
-            else:
-                assert not math.isfinite(x)
-        return (x, None)
-
-
 # FIXME This is faster than Fraction.from_decimal, but still too slow.
 def _decimal_to_ratio(d):
     """Convert Decimal d to exact integer ratio (numerator, denominator).

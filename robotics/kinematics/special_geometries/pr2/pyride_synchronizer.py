@@ -6,34 +6,50 @@
 #               	Faculty of Engineering and Information Technology 
 #               	University of Technology Sydney (UTS) 
 #               	Broadway, Ultimo, NSW 2007, Australia 
-#               	Phone No. :   04 5027 4611 
+#               	Phone No. : 04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	5.0
+#  @version     	6.0
 # 
 #  Start date:      09 April 2014
-#  Last Revision:  	03 January 2015
+#  Last Revision:  	14 May 2015
 
 '''
-Changes from ver 4.0:
-    1- documentation added and modified for doxygen
-    2- base and tilt laser activate and deactivate functions trnasferred to pyride_interpreter.py
+Changes from ver 5.0:
+    1- The new version supports MAGIKS (The general velocity-based IK engine) for online trajectory tracking
+       In association with version 4.0 of pr2_arm_kinematics     
 '''    
 
 import pr2_kinematics as pr2lib
 import pyride_interpreter as pint
-import PyPR2, numpy, math, time
+import PyPR2, numpy, math, time, copy
 
 import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.geometry.trigonometry as trig
 import packages.nima.mathematics.geometry.rotation as rot
 import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
-import packages.nima.mathematics.geometry.trajectory as trajlib
 
 import packages.nima.robotics.computer_vision.laser_scan_support as lss
 
+from packages.nima.mathematics.geometry import geometry as geo, trajectory as trajlib
+
 r_arm_joint_names =['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint']
 l_arm_joint_names =['l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint', 'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint']
+
+def read_raw_trajectory(duration = 10.0, delay = 0.5):
+    t0 = time.time()
+    t  = t0
+    
+    pint.activate_trajectory_input()
+    rt = trajlib.Trajectory_Polynomial()
+    
+    while t - t0 < duration:
+        print "I am adding this point: ", pint.rt_position ," at time: ", t-t0
+        rt.add_point(phi = t - t0, pos = numpy.copy(pint.rt_position))
+        time.sleep(delay)
+        t = time.time()
+    
+    return rt
 
 def calibrate_pr2_r_arm():
     # Calibration:
@@ -159,7 +175,7 @@ class PyRide_PR2(pr2lib.PR2):
     '''
     '''
     ## Class Constructor    
-    def __init__(self, vts = False):
+    def __init__(self, run_magiks = False):
 
         q_d = numpy.zeros(18)
         self.r_arm_joint_names = r_arm_joint_names
@@ -182,7 +198,7 @@ class PyRide_PR2(pr2lib.PR2):
         assert gen.equal(q_r[9], q_l[9])
 
         #pr2lib.PR2.__init__(self)
-        super(PyRide_PR2, self).__init__(a0 = q_r[7], d2 = q_r[8], d4 = q_r[9], d7 = q_t[5], l0 = q_t[4], b0 = q_t[6])
+        super(PyRide_PR2, self).__init__(a0 = q_r[7], d2 = q_r[8], d4 = q_r[9], d7 = q_t[5], l0 = q_t[4], b0 = q_t[6], run_magiks = run_magiks)
 
         q_d = numpy.concatenate((q_r[0:7], q_t[0:4], q_l[0:7]))    
         super(PyRide_PR2, self).set_config(q_d)
@@ -192,9 +208,8 @@ class PyRide_PR2(pr2lib.PR2):
         self.larm.set_target(self.larm.wrist_position(), self.larm.wrist_orientation())
         
         ## A float specifying the speed of arm gripper in the operational space in m/sec
-        self.arm_speed     = 0.02
+        self.arm_speed     = 0.1
 
-    
         self.arm_max_speed = 1.0
         self.base_laser_scan_range = range(400, 640)
         self.tilt_laser_scan_range = range(80, 300)
@@ -930,3 +945,111 @@ class PyRide_PR2(pr2lib.PR2):
             pint.wait_until_finished(limb_list = moving_limbs, max_time = 10*L/self.arm_speed)
         
         self.sync_object()
+
+    def arm_track(self, k = 1.0, delay = 0.1, max_speed = 1.0, relative = True):
+    
+        ts        = time.time()
+        t0        = 0.0
+
+        arm = self.reference_arm()
+        assert arm.magiks_running
+
+        self.sync_object()
+
+        # activate raw trajectory input:
+        pint.activate_trajectory_input()
+        if pint.rt_orientation == None:
+            H  = arm.ik.transfer_matrices()
+            ra = arm.ik.task_frame[0].orientation(H)
+            pint.rt_orientation = numpy.copy(ra['matrix'])
+
+        if relative:
+            H     = arm.ik.transfer_matrices()
+            p0    = arm.ik.task_point[0].position(H) - numpy.dot(ROT, pint.rt_position)
+            ra    = arm.ik.task_frame[0].orientation(H)
+            R0    = numpy.dot(ra['matrix'], pint.rt_orientation.T)
+        else:
+            p0    = numpy.zeros(3)
+            R0    = numpy.eye(3)  
+        
+        t     = time.time() - ts
+        dt    = t - t0
+        t0    = t
+
+        stay  = True
+        cnt   = 0
+        q_dot = numpy.zeros(7)
+
+        while stay:
+            cnt  += 1
+            p = p0 + numpy.dot(ROT, pint.rt_position)
+            # p = p0 + pint.rt_position
+            R = numpy.dot(R0, pint.rt_orientation)
+            # arm.set_target(p, R)
+            arm.ik.set_target([p], [geo.Orientation_3D(R, numpy.zeros((3,3)))])
+            
+            t     = time.time() - ts
+            dt    = t - t0
+
+            # print
+            # print "q_dot          : ", q_dot
+            # print "ik.q           : ", ik.q
+            # print "ik.q + dt*q_dot: ", ik.q + dt*q_dot
+            
+            # ik.set_config(ik.q + dt*q_dot)
+
+            # print "q_dt after sync: ", (ik.q - q_p)/dt
+
+            err = arm.ik.pose_error()
+            ern = arm.ik.pose_error_norm()
+            Je  = arm.ik.error_jacobian()
+
+            if arm.ik.ik_settings.algorithm == "JPI":
+                Je_dag = numpy.linalg.pinv(Je)
+            else:
+                assert False
+
+            # q_dot = - numpy.dot(Je_dag, numpy.append(pint.rt_velocity, numpy.zeros(3)) + k*err)
+            # q_dot = - numpy.dot(Je_dag, k*numpy.append(pint.rt_velocity, numpy.zeros(3)))
+            q_dot   = k*arm.ik.ik_direction()
+            # q_dot = arm.ik_direction()
+            
+            qf = arm.config.q + q_dot*dt # estimated joint values in the future (next time step)
+            arm.ik.set_config(qf)  
+            '''
+            if arm.ik.pose_error_norm() < ern:
+                # error is expected to reduce, send the joint speed
+                landa = 1.0
+                pint.send_arm_joint_speed(q_dot, is_left_arm = self.larm_reference)
+            else:
+                # error is going to raise, send the speed with a gain
+                landa = 0.01/(0.01 + ern)
+            '''
+            pint.send_arm_joint_speed(q_dot, is_left_arm = self.larm_reference)
+            '''
+            # pint.send_arm_joint_speed(q_dot*k, is_left_arm = self.larm_reference)                            
+
+            if cnt == 100*(cnt/100):
+                print
+                print "cnt:     ", cnt
+                print "traj pos:", pint.rt_position
+                print "Actual:  ", ik.task_point[0].position(ik.transfer_matrices())
+                print "Desired: ", ik.task_point[0].rd
+                print "Pose err:", ik.pose_error_norm()   
+                print "Qd Norm: ", numpy.linalg.norm(q_dot)
+            '''
+            t     = time.time() - ts
+            t0    = t
+
+            # time.sleep(0.01)
+            '''
+            print
+            print "CJV: ", ik.q
+            print "EJV: ", ik.q + dt*q_dot
+            '''
+            stay  = (t < 100.0)
+        
+        print "Time Out!"
+        pint.send_arm_joint_speed(numpy.zeros(7), is_left_arm = self.larm_reference)
+        pint.deactivate_trajectory_input()
+        # self.sync_object()

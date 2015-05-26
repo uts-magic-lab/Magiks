@@ -40,13 +40,14 @@ array([ -1.26299826e-01,   1.77046412e+00,  -1.02862191e+00,
 '''
 class Skilled_PR2(ps.PyRide_PR2):
     def __init__(self):
-        super(Skilled_PR2, self).__init__(vts = False)
+        super(Skilled_PR2, self).__init__()
         self.height = 0.05
         self.width  = 0.05
         self.depth  = 0.02    
         self.write_from_shape = True
         self.write_from_shape_complete = False
         self.timeout = 20.0
+        self.arm_speed = 0.05
 
         self.larm_startpoint      = None
         self.rarm_startpoint      = None
@@ -128,7 +129,7 @@ class Skilled_PR2(ps.PyRide_PR2):
         time.sleep(3)
         self.catch_the_pen()
         time.sleep(5)
-        self.get_ready(False)
+        # self.get_ready(False)
         pint.deactivate_tilt_laser()
 
     def show_the_people(self, return_back = True):
@@ -286,7 +287,13 @@ class Skilled_PR2(ps.PyRide_PR2):
         if not gen.equal(jt.phi_end, shape_trajectory.phi_end):
             print "Warning from PyRide_PR2.draw_shape(): All the shape is not in the workspace. Part of it will be drawn !"
         
+        
         L = sum(shape_trajectory.points_dist())
+        '''
+        shape_trajectory.plot3d()
+        for j in range(7):
+            jt.plot(axis = j, show_points = True)
+        '''
         pint.run_config_trajectory(jt, duration = L/self.arm_speed, is_left_arm = self.larm_reference)
 
     def switch_arm(self):
@@ -321,12 +328,12 @@ class Skilled_PR2(ps.PyRide_PR2):
                 phi     = 1.0
                 (x0,y0) = cs.pts[0]
                 pos0    = self.rarm_startpoint + self.box_width_rarm*x0*wr/width_pixels + self.box_height_rarm*(height_pixels-y0)*hr/height_pixels
-                pr      = traj.Polynomial_Trajectory(dimension = 3)
+                pr      = traj.Trajectory_Polynomial(dimension = 3)
                 pr.add_point(0.0, np.copy(pos0), np.zeros(3))
                 for (x,y) in cs.pts[1:]:
                     pos  = self.rarm_startpoint + self.box_width_rarm*x*wr/width_pixels + self.box_height_rarm*(height_pixels-y)*hr/height_pixels
                     pr.add_point(phi, pos)
-                    pr.new_segment()
+                    # pr.new_segment()
                     phi += 1.0
 
                 pr.consistent_velocities()
@@ -337,12 +344,12 @@ class Skilled_PR2(ps.PyRide_PR2):
                 phi     = 1.0
                 (x0,y0) = cs.pts[0]
                 pos0    = self.larm_startpoint + self.box_width_larm*x0*wl/width_pixels + self.box_height_larm*(height_pixels-y0)*hl/height_pixels
-                pl      = traj.Polynomial_Trajectory(dimension = 3)
+                pl      = traj.Trajectory_Polynomial(dimension = 3)
                 pl.add_point(0.0, np.copy(pos0), np.zeros(3))
                 for (x,y) in cs.pts[1:]:
                     pos  = self.larm_startpoint + self.box_width_larm*x*wl/width_pixels + self.box_height_larm*(height_pixels-y)*hl/height_pixels
                     pl.add_point(phi, pos)
-                    pl.new_segment()
+                    # pl.new_segment()
                     phi += 1.0
 
                 pl.consistent_velocities()
@@ -426,6 +433,13 @@ class Skilled_PR2(ps.PyRide_PR2):
                     print "Trajectory: ", il, " Step 2 for Left Arm"
                 self.larm_reference = True
                 # self.arm_trajectory(pl, relative = False, delta_phi = 0.5, wait = False)
+                nseg = len(pl.segment)
+                print "len(pl.segment)", nseg
+                print "num.points.last.seg:", len(pl.segment[nseg-1].point)
+                print pl.segment[nseg-1].point[0]
+                print pl.segment[nseg-1].point[1]
+                print pl.segment[nseg-1].points_dist()
+
                 self.draw_shape(pl)
                 step_l += 1    
 
@@ -434,6 +448,8 @@ class Skilled_PR2(ps.PyRide_PR2):
                 t0 = time.time()
                 if not silent:
                     print "Trajectory: ", ir, " Step 3 for Right Arm"
+                
+                self.sync_object()
                 pos    = self.rarm.wrist_position() - nr*self.depth
                 self.rarm.set_target(pos, ori_r)
                 assert self.rarm.inverse_update(optimize = True)
@@ -444,10 +460,16 @@ class Skilled_PR2(ps.PyRide_PR2):
                 t0 = time.time()
                 if not silent:
                     print "Trajectory: ", il, " Step 3 for Left Arm"
+
+                self.sync_object()
                 pos    = self.larm.wrist_position() - nl*self.depth
                 self.larm.set_target(pos, ori_l)
                 assert self.larm.inverse_update(optimize = True)
                 pint.take_larm_to(self.larm.config.q, time_to_reach = 1.0)
+                '''
+                self.larm_reference = True
+                self.arm_back(dx = self.depth, relative = True)
+                '''
                 step_l += 1    
 
             if (pint.rarm_reached) and (step_r == 4):

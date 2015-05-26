@@ -124,6 +124,7 @@ key_dic = {
     'OM'    : 'Orientation Metric', 
     'JM'    : 'Joint Mapping', 
     'DF'    : 'Damping Factor',
+    'DFG'   : 'Damping Factor Gain',
     'MNI'   : 'Maximum Number of Iterations',
 
     # Inverse:
@@ -136,7 +137,8 @@ key_dic = {
     'Position Metric'                   : 'PM', 
     'Orientation Metric'                : 'OM', 
     'Joinr Mapping'                     : 'JM', 
-    'Damping Factor'                    : 'DF'
+    'Damping Factor'                    : 'DF',
+    'Damping Factor Gain'               : 'DFG'
 }
 
 
@@ -331,9 +333,9 @@ class Kinematic_Manager_Settings(object):
         err_head       = "Error from kinematic_manager.Kinematic_Manager_Settings." 
 
 
-        self.str_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'JM', 'WCTP', 'WCIC', 'DF']
-        self.csv_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'JM', 'WCTP', 'WCIC', 'DF']
-        self.key_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PM', 'OM', 'JM', 'WCTP', 'WCIC', 'PP','PO', 'DF']
+        self.str_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'JM', 'WCTP', 'WCIC', 'DF', 'DFG']
+        self.csv_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PP', 'PO', 'PM', 'OM', 'JM', 'WCTP', 'WCIC', 'DF', 'DFG']
+        self.key_parameter_set = ['AS', 'AL','MAN', 'KC', 'MNI', 'PM', 'OM', 'JM', 'WCTP', 'WCIC', 'PP','PO', 'DF', 'DFG']
 
         # Geometry Settings set from the Name of the manipulator
         self.geo_settings           = manlib.manip_geo_settings(manip_name)
@@ -412,7 +414,7 @@ class Kinematic_Manager_Settings(object):
         for p in parameter_set:
             value = self.parameter_value(p)
             param = key_dic[p]
-            if p in ['KC','PP','PO', 'DF', 'MNI', 'WCTP', 'WCIC']:
+            if p in ['KC','PP','PO', 'DF', 'DFG', 'MNI', 'WCTP', 'WCIC']:
                 s += param + " "*(45-len(param)) +': ' + value + '\n'
             else:
                 s += param + " "*(45-len(param)) + ': ' + key_dic[value] + '\n'
@@ -466,7 +468,12 @@ class Kinematic_Manager_Settings(object):
                 return str(self.ik_settings.initial_damping_factor)
             else:
                 return 'NA'
-
+        elif parameter == 'DFG':
+            if self.ik_settings.algorithm == 'DLS(ADF)':
+                return str(self.ik_settings.df_gain)
+            else:
+                return 'NA'
+        
         elif parameter == 'WCTP':
             return self.workspace_settings_tp.gen_key()
         elif parameter == 'WCIC':
@@ -489,7 +496,7 @@ class Kinematic_Manager_Settings(object):
         for p in parameter_set:
             value = self.parameter_value(p)
             s    += key_dic[p] + ',' + p + ',' + value + ','
-            if not p in ['KC','PP','PO', 'DF', 'MNI', 'WCTP', 'WCIC']:
+            if not p in ['KC','PP','PO', 'DF', 'DFG','MNI', 'WCTP', 'WCIC']:
                 s += key_dic[value]
             s += '\n'
         return s
@@ -510,7 +517,7 @@ class Kinematic_Manager_Settings(object):
         for p in parameter_set:
             value = self.parameter_value(p)
             s    += key_dic[p] + '&' + p + '&' + value + '&'
-            if not p in ['KC','PP','PO', 'DF', 'MNI', 'WCTP', 'WCIC']:
+            if not p in ['KC','PP','PO', 'DF', 'DFG','MNI', 'WCTP', 'WCIC']:
                 s += key_dic[value]
             s += '\\ \n'
             s += lf
@@ -547,7 +554,7 @@ class Kinematic_Manager_Settings(object):
         if parameter_set == None:
             parameter_set = self.key_parameter_set
         for p in parameter_set:
-            if p in ['KC','PP','PO', 'DF', 'MNI', 'WCTP', 'WCIC']:
+            if p in ['KC','PP','PO', 'DF', 'DFG','MNI', 'WCTP', 'WCIC']:
                 s     += p + ':' + self.parameter_value(p) + '_'
             else:
                 s     += self.parameter_value(p) + '_'

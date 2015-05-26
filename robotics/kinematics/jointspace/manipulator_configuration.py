@@ -48,6 +48,11 @@ class Manipulator_Configuration_Settings:
 
         self.joint_handling = [joint_mapping for i in range(DOF)]
         self.limited        = [True for i in range(0, DOF)]
+
+        ## Specify if the joint limits must be respected when new joint values are being set
+        #  If this property is True, the system checks for the given joint values to be in the defined feasible range
+        #  and fails with an error if given joint values are beyond the limits.
+        #  If False, any value for the joints are accepted.
         self.joint_limits_respected = True
 
         # ql  - A vector of real numbers representing lower bounds for the joint configuration
@@ -385,6 +390,9 @@ class Manipulator_Configuration(object):
         return c
 
 	## Use this function to set the joint configuration to the given desired values.
+    #  If property joint_limits_respected is True, the system checks for given qd to be in the defined feasible range
+    #  and fails with an error if given joint values are beyond the limits
+    #  If property joint_limits_respected is False, any value for the joints are accepted.
 	#  @param qd A numpy array of size 7 containing the desired joint values to be set
 	#  @return A boolean: True if the given joints are in range and the configuration is set, False if not	
     def set_config(self, qd, set_qstar = True):

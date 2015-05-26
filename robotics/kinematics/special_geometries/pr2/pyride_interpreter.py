@@ -9,13 +9,13 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	4.0 
+#  @version     	5.0 
 #
-#  Last Revision:  	03 January 2015
+#  Last Revision:  	13 May 2015
 
 '''
-Changes from ver 3.0:
-	1- functions for activating and deactivating laser and tilt scan transferred to this library from pyride_synchronizer.py
+Changes from ver 4.0:
+	1- Added functions for receiving online dmp trajectory from pyride
 	
 '''
 
@@ -58,12 +58,21 @@ counter      = 0
 ## Counter for the base laser scan. This counter starts increasing as soon as 
 #  the base laser scan is activated by function activate_base_laser()
 bl_cnt       = 0
+## Counter for the raw trajectory function calls. This counter starts increasing as soon as 
+#  the raw trajectory input is activated by function activate_raw_trajectory_input()
+rt_cnt       = 0
 
 bl_dist      = None
 bl_active    = False
 tl_cnt       = 0
 tl_dist      = None
 tl_active    = False
+
+rt_orientation   = None
+rt_position      = numpy.zeros(3)
+rt_velocity      = numpy.zeros(3)
+rt_acceleration  = numpy.zeros(3)
+rt_active        = False
 
 # Service event functions
 
@@ -123,11 +132,27 @@ def set_callback_functions():
     PyPR2.onMoveBodySuccess      = on_move_body_finished
     PyPR2.onMoveBodyFailed       = on_move_body_failed
 
+def on_trajectory_received( data ):
+    global rt_cnt, rt_active
+    rt_active = True
+    rt_cnt += 1
+    rt_position[0] = data['position'][0]
+    rt_position[1] = data['position'][1]
+    rt_position[2] = data['position'][2]
+
+    rt_velocity[0] = data['velocity'][0]
+    rt_velocity[1] = data['velocity'][1]
+    rt_velocity[2] = data['velocity'][2]
+
+    rt_acceleration[0] = data['acceleration'][0]
+    rt_acceleration[1] = data['acceleration'][1]
+    rt_acceleration[2] = data['acceleration'][2]
+
 set_callback_functions()
 
 # Conversion Functions
 
-## Use this function to convert a task for left arm joint move, into a joint dictionary known by pyride
+## Use this function to convert a vector of left arm joint values, into a joint dictionary known by pyride
 #  @param q A numpy vector of 7 elements containing the desired left arm joint values
 #  @time_to_reach A float specifying the amount of time (in seconds) needed to reach the target
 #  @return A dictionary known by pyride which can be passed to function <provide the link>  
@@ -145,6 +170,14 @@ def gen_rarm_joint_posvel_dict(q, q_dot, time_to_reach):
 
 def gen_larm_joint_posvel_dict(q, q_dot, time_to_reach):
     g={'l_wrist_roll_joint': {'position':q[6], 'velocity': q_dot[6]}, 'l_forearm_roll_joint': {'position':q[4], 'velocity': q_dot[4]}, 'l_elbow_flex_joint': {'position':q[3], 'velocity': q_dot[3]}, 'l_shoulder_lift_joint': {'position':q[1] - math.pi/2, 'velocity': q_dot[1]}, 'l_upper_arm_roll_joint': {'position':q[2], 'velocity': q_dot[2]}, 'l_wrist_flex_joint': {'position':q[5], 'velocity': q_dot[5]}, 'l_shoulder_pan_joint': {'position':q[0], 'velocity': q_dot[0]}, 'time_to_reach':time_to_reach}
+    return(g)
+
+def gen_larm_joint_vel_dict(q):
+    g={'l_wrist_roll_joint': q[6], 'l_forearm_roll_joint': q[4], 'l_elbow_flex_joint': q[3], 'l_shoulder_lift_joint': q[1], 'l_upper_arm_roll_joint': q[2], 'l_wrist_flex_joint': q[5], 'l_shoulder_pan_joint': q[0]}
+    return(g)
+
+def gen_rarm_joint_vel_dict(q):
+    g={'r_wrist_roll_joint': q[6], 'r_forearm_roll_joint': q[4], 'r_elbow_flex_joint': q[3], 'r_shoulder_lift_joint': q[1], 'r_upper_arm_roll_joint': q[2], 'r_wrist_flex_joint': q[5], 'r_shoulder_pan_joint': q[0]}
     return(g)
 
 def gen_rarm_joint_vector_from_dic(g):
@@ -434,8 +467,39 @@ def bl_midpoint():
     '''
     p0 = PyPR2.getRelativeTF('base_footprint' , 'base_laserscan')['position']    
 
-
 # Actuating Functions
+
+'''
+def activate_trajectory_input(name = 'fig8', amplitude = 1.0, system_freq = 0.1, sample_freq = 2, cycle = 1):
+    global rt_cnt
+    rt_cnt = 0
+    PyPR2.registerRawTrajectoryInput( on_trajectory_received )
+    PyPR2.recallRhythDMPTrajectory(name=name, amplitude=amplitude, system_freq= system_freq, sample_freq= sample_freq, cycle= cycle)
+'''
+
+def activate_trajectory_input():
+    '''
+    To start receiving raw trajectory input, you should send a ROS service request call:
+    rosservice call /rhyth_dmp/recall_dmp_traj <figure name> <amplitude> <frequency> <sampling frequency> <number of cycles>
+    For example:
+    rosservice call /rhyth_dmp/recall_dmp_traj fig8 1.0 1.0 200 3
+
+    generates 3 cycles of figure eight with frequency 1.0
+    '''
+    global rt_cnt
+    rt_cnt = 0
+    PyPR2.registerRawTrajectoryInput( on_trajectory_received )
+    assert PyPR2.useJointVelocityControl(True)
+
+def deactivate_trajectory_input():
+    global rt_cnt, rt_position, rt_velocity, rt_acceleration, rt_orientation
+    rt_cnt = 0
+    PyPR2.registerRawTrajectoryInput( None )
+    assert PyPR2.useJointVelocityControl(False)
+    rt_orientation   = None
+    rt_position      = numpy.zeros(3)
+    rt_velocity      = numpy.zeros(3)
+    rt_acceleration  = numpy.zeros(3)
 
 def activate_base_laser():
 	global bl_cnt
@@ -455,8 +519,7 @@ def deactivate_base_laser():
 def deactivate_tilt_laser():
     global tl_active
     PyPR2.registerBaseScanCallback( None )
-    pint.tl_active = False
-
+    tl_active = False
 
 def set_lg(x = 1):
     '''
@@ -706,4 +769,12 @@ def run_config_trajectory(j_traj, duration = 10.0, dt = None, phi_dot = None, is
     dic_list.append(g) 
     
     PyPR2.moveArmWithJointTrajectoryAndSpeed(dic_list)
-        
+
+def send_arm_joint_speed(q_dot, is_left_arm = False):
+    if is_left_arm:
+        g = gen_larm_joint_vel_dict(q_dot)
+    else:
+        g = gen_rarm_joint_vel_dict(q_dot)
+
+    PyPR2.moveArmWithJointVelocity(**g)
+

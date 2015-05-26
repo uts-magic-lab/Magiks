@@ -53,6 +53,7 @@ key_dic = {
     'NI-max': 'Number of Iterations-Maximum',
     'NI-min': 'Number of Iterations-Minimum',
     'NI-avr': 'Number of Iterations-Average',
+    'NI-med': 'Number of Iterations-Median',
     'NI-sdv': 'Number of Iterations-Standard Deviation',
     'NI-mse': 'Number of Iterations-Mean Standard Error',
     'NT-max': 'Number of Trials-Maximum',
@@ -62,6 +63,7 @@ key_dic = {
     'RT-max': 'Running Time-Maximum (ms)',
     'RT-min': 'Running Time-Minimum (ms)',
     'RT-avr': 'Running Time-Average (ms)',
+    'RT-med': 'Running Time-Median (ms)',
     'RT-sdv': 'Running Time-Standard Deviation (ms)', 
     'RT-mse': 'Running Time-Mean Standard Error',
 
@@ -450,6 +452,9 @@ class Test_Log_Data_Statistics():
         self.mean_num_trial = float(self.sum_num_trial) / self.num_run
         self.mean_run_time  = self.sum_run_time / self.num_run
         self.mean_stp_time  = sum_stp_time / self.num_run
+
+        self.median_num_iter  = statistics.median(num_iter_list)
+        self.median_run_time  = statistics.median(run_time_list)
 
         sum_var_num_iter  = 0
         sum_var_run_time  = 0

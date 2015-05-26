@@ -19,6 +19,8 @@
 
 import math, time, copy, numpy as np
 
+from packages.nima import general as genpy
+
 from packages.nima.mathematics.geometry import geometry as geo, trajectory as trajlib
 from packages.nima.mathematics.algebra import polynomials, vectors_and_matrices as vecmat
 from packages.nima.mathematics.discrete import discrete
@@ -51,9 +53,11 @@ class Inverse_Kinematics_Settings():
         assert run_mode in self.__class__.all_run_modes, self.__class__.err_head + func_name + ": The given run_mode is not known!"
         assert algorithm in self.__class__.all_algorithms, self.__class__.err_head + func_name + ": The given algorithm is not known!"
         
-        self.ngp_active             = True
-        self.joint_limits_respected = True
-        self.return_min_config      = False
+        self.ngp_active             = False  # Nullspace Gradient Projection Active?
+        self.joint_limits_respected = False  # Continue iterations until all joints are in range?
+        self.return_min_config      = True   # If True returns the configuration corresponding to minimum error achieved if False returnts the config of the last iteration
+
+        self.df_gain                = 2.0   # Determines the damping factor gain in DLS-ADF algorithm
 
         self.algorithm              = algorithm
         self.run_mode               = run_mode
@@ -152,7 +156,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
         #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
         if self.ik_settings.algorithm == "JI":
-            Je_dagger = np.linalg.inv(Je)
+            Je_dag = np.linalg.inv(Je)
         elif self.ik_settings.algorithm == "JPI":
             Je_dag = np.linalg.pinv(Je)
         elif self.ik_settings.algorithm == "JT":
@@ -313,12 +317,12 @@ class Inverse_Kinematics( eflib.Endeffector ):
             '''
 
             if err_reduced:
-                # print "Error Reduced by DF = ", frontier.settings.damping_factor
+                # print "Error Reduced by DF = ", frontier.damping_factor
                 self.copy_from(frontier)
-                frontier.damping_factor = frontier.damping_factor/2
+                frontier.damping_factor = frontier.damping_factor/frontier.ik_settings.df_gain
             else:
-                # print "Error NOT Reduced by DF = ", frontier.settings.damping_factor
-                df       = frontier.damping_factor*2
+                # print "Error NOT Reduced by DF = ", frontier.damping_factor
+                df       = frontier.damping_factor*frontier.ik_settings.df_gain
                 (niter, telap) = frontier.log_info
                 frontier = copy.deepcopy(self)
                 frontier.damping_factor = df
@@ -330,6 +334,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
             not_arrived = (not self.in_target() ) or (rs and (not ir))
             have_time   = (counter < self.ik_settings.number_of_steps)
+
+            # print "pose error norm = ", self.pose_error_norm()
         #
             
     def run(self):
@@ -452,7 +458,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
                 elif self.ik_settings.algorithm == "DLS(ADF)":
                     self.run_dls_vdf()
                 else:
-                    assert False, "Error from: " + __name__ + func_name + ": " + self.ik_settings.algorithm + " is not a valid value for algorithm" 
+                    assert False, genpy.err_str(__name__, self.__class__.__name__,'inverse_update', self.ik_settings.algorithm + ' is not a valid value for algorithm')
  
             self.start_node += 1
 

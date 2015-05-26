@@ -9,15 +9,16 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	4.0 
+#  @version     	5.0 
 #
-#  Last Revision:  	30 December 2014
+#  Last Revision:  	18 May 2015
 
 '''
-Changes from ver 3.0:
-    1- Comments added for doxygen
-    2- function joint_jacobian() renamed to joint_redundancy_jacobian() 
-    3- property JJ renamed to JRJ
+Changes from ver 4.0:
+    1- Supports run_magiks
+       Property ik an instance of class Inverse_Kinematics() of module magiks_core
+       supports velocity-based IK for PR2 arm.
+
 '''
 
 import copy, time, math
@@ -33,6 +34,9 @@ import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.geometry.trigonometry as trig
 import packages.nima.mathematics.geometry.trajectory as trajlib
 import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
+
+import packages.nima.robotics.kinematics.magiks_core.inverse_kinematics as iklib
+import packages.nima.robotics.kinematics.magiks_core.manipulator_library as manlib
 
 drc        = math.pi/180.00
 default_ql = drc*np.array([-130.0, 70.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
@@ -283,7 +287,7 @@ class PR2_ARM():
     #			 The joint weights will be used in the optimization of redundancy. 
     #            If the weight of a joint is 0, the joint is considered as unlimited. 
     #            This means the value of that joint does not need to be in a specific range. 
-    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = default_ql, qh = default_qh, W = default_W):
+    def __init__(self, a0 = 0.1, d2 = 0.4, d4 = 0.321, ql = default_ql, qh = default_qh, W = default_W, run_magiks = False):
 
 		## A boolean specifying if orientation of the endeffector should be respected or not in finding the Inverse Kinematic solution
         self.orientation_respected = True
@@ -366,6 +370,18 @@ class PR2_ARM():
 		# Sets the target initially as the endeffector pose corresponding to the midrange joint configuration:
         self.set_target(self.wrist_position(), self.wrist_orientation())
 
+        if run_magiks:
+            cs       = manlib.manip_config_settings('PR2ARM', joint_mapping = 'NM')
+            cs.ql    = np.copy(self.config.ql)
+            cs.qh    = np.copy(self.config.qh)
+            es       = iklib.eflib.Endeffector_Settings()
+            iks      = iklib.Inverse_Kinematics_Settings(algorithm = 'JPI')
+            self.ik  = iklib.Inverse_Kinematics(cs, manlib.PR2ARM_geometry_settings, es, iks)
+            self.magiks_running = True
+        else:
+            self.magiks_running = False
+
+
 	## Sets the robot configuration to the desired given joint values
 	#  @param qd A numpy array of 7 elements containing the values of the given joints
 	#  @return A boolean: True  if the given configuration is successfully set, False if the given configuration is not successfully set. 
@@ -381,22 +397,20 @@ class PR2_ARM():
         print arm.wrist_position()
         print arm.wrist_orientation()	
         '''
-        if self.config.set_config(qd):
+        if self.magiks_running:
+            permit = self.ik.set_config(qd) and self.config.set_config(qd)
+        else:
+            permit = self.config.set_config(qd)
+
+        if permit:
             self.wrist_position_vector    = None
             self.wrist_orientation_matrix = None
             self.JRJ          = None
             self.E           = None
             self.F           = None
             self.Delta       = None
-            '''
-            if self.velocity_based_ik_required:
-                self.ik.configuration.q = np.copy(qd)
-                self.ik.configuration.initialize()
-                self.ik.forward_update()
-            '''
             return True
         else:
-            print "Could not set the given joints."
             return False
 
 	## Sets the endeffector target to a desired position and orientation.
@@ -1161,7 +1175,9 @@ class PR2_ARM():
             phi_end = pos_traj.phi_end
 
         if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
+            ori_traj = trajlib.Orientation_Path()
+            ori_traj.add_point(0.0, self.wrist_orientation())
+            ori_traj.add_point(pos_traj.phi_end, self.wrist_orientation())
             ori_traj.current_orientation = self.wrist_orientation()
 
         if phi_end > pos_traj.phi_end:
@@ -1174,7 +1190,7 @@ class PR2_ARM():
 
         phi   = phi_start
         pos_traj.set_phi(phi)
-        ori_traj.set_phi(phi)
+        # ori_traj.set_phi(phi)
         if relative:
             p0    = self.wrist_position() - pos_traj.current_position
             R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
@@ -1191,7 +1207,7 @@ class PR2_ARM():
             if phi == phi_end:
                 stay = False
             pos_traj.set_phi(phi)
-            ori_traj.set_phi(phi)
+            # ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
             R = np.dot(R0, ori_traj.current_orientation)
             self.set_target(p, R)

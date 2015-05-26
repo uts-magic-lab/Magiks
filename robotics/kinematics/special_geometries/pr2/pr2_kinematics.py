@@ -55,7 +55,7 @@ class PR2(object):
 	#  @param l0 A float specifying half of the distance between the arms 	
 	#  @param ql A numpy vector of size 18 containing the lower bounds of the arm joints	
 	#  @param qh A numpy vector of size 18 containing the upper bounds of the arm joints
-    def __init__(self, a0 = 0.1, b0 = 0.05, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh):
+    def __init__(self, a0 = 0.1, b0 = 0.05, d2 = 0.4, d4 = 0.321, d7 = 0.168, l0 = 0.188, ql = default_ql, qh = default_qh, run_magiks = False):
 
         assert (len(ql) == 18) and (len(qh) == 18), "Error from " + __name__ + " Constructor" + ": ql and qh must be numpy vectors of size 18"
 		##  A numpy vector of size 7 containing the lower bounds of the arm joints 
@@ -101,11 +101,11 @@ class PR2(object):
 
         ## An instance of class \ref packages.nima.robotics.kinematics.special_geometries.pr2.pr2_arm_kinematics.PR2_ARM() 
         #  containing the kinematic properties and methods of the right arm
-        self.rarm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[0:7]  , qh = qh[0:7]  , W = self.W[0:7])
+        self.rarm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[0:7]  , qh = qh[0:7]  , W = self.W[0:7], run_magiks = run_magiks)
 
         ## An instance of class \ref packages.nima.robotics.kinematics.special_geometries.pr2.pr2_arm_kinematics.PR2_ARM() 
         #  containing the kinematic properties and methods of the left arm
-        self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7])
+        self.larm = armlib.PR2_ARM(a0 = a0, d2 = d2, d4 = d4, ql = ql[11:18], qh = qh[11:18], W = self.W[0:7], run_magiks = run_magiks)
 
         self.d7 = d7
         self.b0 = b0

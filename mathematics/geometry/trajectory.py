@@ -127,7 +127,7 @@ class Path(object):
         s += str(self.point[len(self.point) - 1]) + '\n'
         return s
 
-    ## Use thid function to append a key point to the end of the trajectory segment
+    ## Use this function to append a key point to the end of the trajectory segment
     #  @param phi The phase value (\f$ \phi \f$) of the key point to be added
     #  @param pos The desired position vector at the key point to be added
     #  @param vel The desired velocity vector at the key point to be added
@@ -156,7 +156,8 @@ class Path(object):
         if n < self.capacity:
             self.point.append(Key_Point(phi, pos, vel, acc))
             self.phi_end     = phi
-            self.set_phi(phi)
+            if len(self.point) > 1:
+                self.set_phi(phi)
             self.interpolated = False
         else:
             print "Error from " + __name__ + func_name + ": Can not take more points than its capacity"
@@ -271,7 +272,6 @@ class Path(object):
         for t in x:
             self.set_phi(t)
             y.append(self.current_value(field_name = wtp, axis = axis))
-
         if show_points:
             px = []
             py = []
@@ -325,22 +325,22 @@ class Path_Polynomial(Path):
         '''
         if not self.interpolated:
             n = len(self.point)
-            if n == 0:
+            if n > 1:
+                pnt = [[] for j in range(self.dim)]
+
+                for i in range(n):
+                    for j in range(self.dim):
+                        pnt[j].append(pl.Point(t = self.point[i].phi, x = self.point[i].pos[j], v = self.point[i].vel[j], a = self.point[i].acc[j]))
+
+                for j in range(self.dim):
+                    self.traj[j].interpolate_smart(pnt[j])
+
+                self.phi_end = self.point[n-1].phi
+                self.interpolated = True
+                return True
+            else:
                 print "Error from Path_Polynomial.interpolate(): No key points defined !"
                 return False 
-
-            pnt = [[] for j in range(self.dim)]
-
-            for i in range(n):
-                for j in range(self.dim):
-                    pnt[j].append(pl.Point(t = self.point[i].phi, x = self.point[i].pos[j], v = self.point[i].vel[j], a = self.point[i].acc[j]))
-
-            for j in range(self.dim):
-                self.traj[j].interpolate_smart(pnt[j])
-
-            self.phi_end = self.point[n-1].phi
-            self.interpolated = True
-            return True
 
     ## Sets the current phase value
     #  @param phi A float specifying the desired phase value. The given value must not exceed the phase of the last key point.
@@ -350,20 +350,20 @@ class Path_Polynomial(Path):
         check phi to be valid. Many changes must be delivered. 
             1- current_position must be a function returning property pos
         '''
-        if not gen.equal(phi, self.current_phi):
-            assert phi <= self.phi_end, genpy.err_str(__name__, __class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
-            assert len(self.point) > 1, genpy.err_str(__name__, __class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
-            self.current_phi      = phi
+        # if not gen.equal(phi, self.current_phi):
+        assert phi <= self.phi_end, genpy.err_str(__name__, self.__class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
+        assert len(self.point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
+        self.current_phi      = phi
 
-            if not self.interpolated:
-                self.interpolate()
-            self.current_position = np.zeros(self.dim)
-            self.current_velocity = np.zeros(self.dim)
-            self.current_acceleration = np.zeros(self.dim)
-            for j in range(self.dim):
-                self.current_position[j]     = self.traj[j].position( t = phi )
-                self.current_velocity[j]     = self.traj[j].velocity( t = phi )
-                self.current_acceleration[j] = self.traj[j].acceleration( t = phi )
+        if not self.interpolated:
+            self.interpolate()
+        self.current_position = np.zeros(self.dim)
+        self.current_velocity = np.zeros(self.dim)
+        self.current_acceleration = np.zeros(self.dim)
+        for j in range(self.dim):
+            self.current_position[j]     = self.traj[j].position( t = phi )
+            self.current_velocity[j]     = self.traj[j].velocity( t = phi )
+            self.current_acceleration[j] = self.traj[j].acceleration( t = phi )
 
 class Orientation_Path(Path):
     def __init__(self, representation = 'vector', generating_function = 'phi/m'):
@@ -544,6 +544,7 @@ class Trajectory(object):
         for t in x:
             self.set_phi(t)
             y.append(self.current_value(field_name = wtp, axis = axis))
+            
 
         if show_points:
             px = []
@@ -552,6 +553,7 @@ class Trajectory(object):
                 for pnt in self.segment[i].point:
                     px.append(self.segment_start[i] + pnt.phi)
                     py.append(pnt.value(field_name = wtp, axis = axis))
+                    
 
             plt.plot(x, y, px, py, 'o') 
         else:
