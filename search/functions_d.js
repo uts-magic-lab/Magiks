@@ -1,0 +1,11 @@
+var searchData=
+[
+  ['n',['N',['../namespacepackages_1_1nima_1_1mathematics_1_1geometry_1_1shape__trajectories.html#a5155cbaa166e285c18e6fd200bc6c51f',1,'packages::nima::mathematics::geometry::shape_trajectories']]],
+  ['nearest_5fconfigs',['nearest_configs',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1taskspace_1_1workspace_1_1_workspace.html#a80f2186e5075cc2e1fedd92ff224bbaf',1,'packages::nima::robotics::kinematics::taskspace::workspace::Workspace']]],
+  ['new_5fsegment',['new_segment',['../classpackages_1_1nima_1_1mathematics_1_1geometry_1_1trajectory_1_1_trajectory.html#ac1bcaff7d4dc5562da9632e63e432f17',1,'packages.nima.mathematics.geometry.trajectory.Trajectory.new_segment()'],['../classpackages_1_1nima_1_1mathematics_1_1geometry_1_1trajectory_1_1_trajectory___polynomial.html#ac1bcaff7d4dc5562da9632e63e432f17',1,'packages.nima.mathematics.geometry.trajectory.Trajectory_Polynomial.new_segment()']]],
+  ['nkc',['NKC',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html#acd122d90343015b15ceae3b706ae89d7',1,'packages::nima::robotics::kinematics::magiks_core::kinematic_manager::Kinematic_Manager_Settings']]],
+  ['noo',['noo',['../classpackages_1_1nima_1_1mathematics_1_1geometry_1_1geometry_1_1_orientation__3_d.html#aa9b2902b91b7df99200ccf9b62633b97',1,'packages::nima::mathematics::geometry::geometry::Orientation_3D']]],
+  ['normalize',['normalize',['../classpackages_1_1nima_1_1mathematics_1_1algebra_1_1quaternions_1_1_quaternion.html#abc55bb8b9e9fcc1129ad4cde5e11d4a6',1,'packages.nima.mathematics.algebra.quaternions.Quaternion.normalize()'],['../namespacepackages_1_1nima_1_1mathematics_1_1algebra_1_1vectors__and__matrices.html#a035288eb530076644cb3e4be19e4ffd1',1,'packages.nima.mathematics.algebra.vectors_and_matrices.normalize()']]],
+  ['normalized_5fquaternion',['normalized_quaternion',['../namespacepackages_1_1nima_1_1mathematics_1_1algebra_1_1quaternions.html#a7055190ef7161db12c72e3914ab304cf',1,'packages::nima::mathematics::algebra::quaternions']]],
+  ['number_5fin_5fbase',['number_in_base',['../namespacepackages_1_1nima_1_1mathematics_1_1discrete_1_1discrete.html#a70e5702a8f1bcd6dae9234fc9612709d',1,'packages::nima::mathematics::discrete::discrete']]]
+];
