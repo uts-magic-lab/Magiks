@@ -66,7 +66,13 @@ target/
 
 # Special Folders:
 
-mathematics/geometry/old/
-robotics/kinematics/special_geometries/pr2/old/
-robotics/kinematics/special_geometries/pr2/text/
+packages/nima/mathematics/geometry/old/
+packages/nima/robotics/kinematics/special_geometries/pr2/old/
+packages/nima/robotics/kinematics/special_geometries/pr2/text/
+
+projects
+packages/bebo
+packages/shams
+packages/matej
+packages/libforge
 
