@@ -313,6 +313,7 @@ class Path(object):
         plt.show()
 
 class Path_Polynomial(Path):
+    ## Class Constrauctor
     def __init__(self, dimension = 3):
         super(Path_Polynomial, self).__init__(dimension = dimension)            
         self.traj = [pl.Polynomial() for j in range(self.dim)] 

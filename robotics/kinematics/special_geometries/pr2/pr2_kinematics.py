@@ -6,7 +6,7 @@
 #               Faculty of Engineering and Information Technology 
 #               University of Technology Sydney (UTS) 
 #               Broadway, Ultimo, NSW 2007, Australia 
-#               Phone No. :   04 5027 4611 
+#               Phone No. : +61(0) 4 5027 4611 
 #               Email(1)  : nima.ramezani@gmail.com 
 #               Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
 #  @version     4.0 
@@ -219,7 +219,6 @@ class PR2(object):
             self.larm_endeff_position_updated    = False
             self.rarm_endeff_orientation_updated = False
             self.larm_endeff_orientation_updated = False
-            self.in_target_updated               = False
             self.redun_jacob_updated             = False
             self.redun_jacob_ext_updated         = False
             self.geometric_jacob_updated         = False
@@ -228,7 +227,6 @@ class PR2(object):
             self.div_phi_ofun_updated            = False
             self.ofun_computed                   = False
             self.redundant_parameters_updated    = False
-            self.in_target_evaluated             = False
 
             return True
         else:
@@ -248,10 +246,18 @@ class PR2(object):
         sets the endeffector target to the given position and orientation
         variables self.xd and self.Rd should not be manipulated by the user. Always use this function
         '''    
-        self.xd = target_position
-        self.Rd = target_orientation
+        self.xd = numpy.copy(target_position)
+        self.Rd = numpy.copy(target_orientation)
 
-        # Specify the relative target for the right arm
+        arm = self.reference_arm()
+        if self.larm_reference:
+            pe = self.p_EFR_WR
+            p0 = self.p_BR_BO
+        else:
+            pe = self.p_EFL_WL
+            p0 = self.p_BL_BO
+
+        # Specify the relative target for the arm
         '''
         print "in ST: p_BR_BO = ", self.p_BR_BO
 
@@ -260,12 +266,11 @@ class PR2(object):
         relative_endeffector_position    = - self.p_BR_BO + numpy.dot(self.R_B.T,target_position - self.p_BO - numpy.dot(target_orientation,self.p_EFR_WR))
         print "rel_ef_pos[2]  = ", relative_endeffector_position[2]
         '''
-        relative_endeffector_position    = - self.p_BR_BO + numpy.dot(self.R_B.T,target_position - self.p_BO - numpy.dot(target_orientation,self.p_EFR_WR))
+        relative_endeffector_position    = - p0 + numpy.dot(self.R_B.T,target_position - self.p_BO - numpy.dot(target_orientation, pe))
         relative_endeffector_orientation = numpy.dot(self.R_B.T, target_orientation)
-        #set the relative pose for the arm
-        self.rarm.set_target(relative_endeffector_position,relative_endeffector_orientation)
+        #set the relative pose for the right arm
+        arm.set_target(relative_endeffector_position, relative_endeffector_orientation)
 
-        self.in_target_evaluated           = False
 
     ##  Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector \f$ \phi \f$.
     #   @param phi Is a numpy vector of five elements containing the values of five redundant parameters in free-base mode.
@@ -561,7 +566,7 @@ class PR2(object):
             l0  = self.l0
         else:
             arm = self.larm
-            l0  = - slef.l0
+            l0  = - self.l0
 
         if not self.div_theta_err_updated:
 
@@ -910,7 +915,6 @@ class PR2(object):
         else:
             return safety_factor*eta_h
 
-
     def steepest_descent_redundancy_correction(self):
         '''
         Finds the steepest descent direction of the objective function for redundancy vector "phi"
@@ -923,16 +927,12 @@ class PR2(object):
         
         return eta*steepest_descent_redundancy_direction
 
-
     def endeffector_in_target(self):
         '''
         Returns true is endeffector is in target
         '''
-        if not self.in_target_evaluated:
-            self.in_target = vecmat.equal(self.xd, self.endeffector_position()) and vecmat.equal(self.Rd, self.endeffector_orientation())
-            self.in_target_evaluated = True
+        self.in_target = vecmat.equal(self.xd, self.endeffector_position()) and vecmat.equal(self.Rd, self.endeffector_orientation())
         return self.in_target
-
 
     def optimize_config(self, silent = True):
         '''
@@ -981,7 +981,6 @@ class PR2(object):
                 k = k/2
             else:
                 k = 1.0   
-
     
     def extended_config(self, q):
         qq = numpy.copy(self.q)
@@ -1029,7 +1028,6 @@ class PR2(object):
         else:            
             print "Error from PR2().inverse_update: Unknown control mode"
             return False
-
 
     def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True):
         '''

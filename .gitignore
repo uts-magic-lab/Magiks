@@ -59,5 +59,14 @@ target/
 # zip files
 *.tar.gz
 
+# MAGIKS TEST FILES
+*.log
+*.csv
+*.res
 
+# Special Folders:
+
+mathematics/geometry/old/
+robotics/kinematics/special_geometries/pr2/old/
+robotics/kinematics/special_geometries/pr2/text/
 

@@ -10,10 +10,10 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	2.0
+#  @version     	3.0
 #
-#  start date:      07 January 2015 
-#  Last Revision:  	07 January 2015 
+#  start date:      02 May 2015 
+#  Last Revision:  	02 May 2015 
 
 import math, numpy as np, trigonometry as trig, rotation as rot
 
@@ -22,8 +22,10 @@ from packages.nima.mathematics.algebra import vectors_and_matrices as vm, quater
 import packages.nima.general as genpy
 import packages.nima.mathematics.general as gen
 
-# from cgkit.cgtypes import quat, mat3, vec3
-
+'''
+Changes from version 2:
+All cgkit functions removed
+'''
 """
 References:
 
@@ -201,20 +203,11 @@ class Orientation_3D(object):
         ## A numpy 3x3 rotation matrix: Representation of orientation as 3x3 numpy rotation matrix 
         self.R = None
 
-        ## An instance of type cgkit.cgtypes.Mat3(): Representation of orientation as 3x3 rotation matrix 
-        self.R_cgt = None
-
         ## A numpy vector of size 4: Quaternion representation of orientation as a numpy vector
         self.Q = None
 
-        ## An instance of type cgkit.cgtypes.quat(): Quaternion representation of orientation
-        self.Q_cgt = None
-
         ## A numpy vector of size 3: Representation of orientation as a non-redundant numpy vector (depends on the generator function)
         self.p = None
-
-        ## An instance of type cgkit.cgtypes.vec3(): Representation of orientation as a non-redundant vector
-        self.p_cgt = None
 
         ## A float: Angle phi in Angle-Axis representation of orientation
         self.phi = None
@@ -222,13 +215,7 @@ class Orientation_3D(object):
         ## A numpy vector of size 3: Unit vector u in Angle-Axis representation of orientation
         self.u = None
 
-        ## An instance of type cgkit.cgtypes.vec3(): Unit vector u in Angle-Axis representation of orientation
-        self.u_cgt = None
-
         self.H = None
-
-        ## An instance of type cgkit.cgtypes.vec3(): Representation of orientation by three Euler-Kardan angles 
-        self.exyz_cgt = None
 
         ## A numpy vector of 3 elements: Non-redundant representation of orientation by three <em> Spherical Orientation Angles </em>
         self.sa = None
@@ -372,11 +359,11 @@ class Orientation_3D(object):
             return self.R
 
         elif self.Q != None:
-            self.Q_cgt = quat(self.Q)
+            self.R = rot.rotation_matrix(self.Q) 
             return self.matrix()
 
         elif (self.phi != None) and (self.u != None):
-            ux = rotation.skew(self.u)
+            ux = rot.skew(self.u)
             self.R = np.eye(3) + math.sin(self.phi)*ux + (1.0 - math.cos(self.phi))*np.dot(ux,ux)
             return self.R
 
@@ -391,19 +378,6 @@ class Orientation_3D(object):
             v2_z = v2*gen.inv(z)
             self.R = np.eye(3) + v2_z*px + 0.5*v2*px2
             return self.R
-
-        elif (self.phi != None) and (self.u_cgt != None):
-            self.Q = quat()
-            self.Q.fromAngleAxis(self.phi, self.u_cgt)
-            return self.matrix()
-
-        elif self.R_cgt != None:
-            self.R = np.array(self.R_cgt)
-            return self.R
-
-        elif self.Q_cgt != None:
-            self.R_cgt = self.Q_cgt.toMat3()
-            return self.matrix()
 
         else:
             return None
@@ -443,18 +417,6 @@ class Orientation_3D(object):
             self.generating_function = gen_fun_str
             self.p  = None
             self.pd = None
-
-    def matrix_cgt(self):
-        if self.R_cgt == None:
-            self.R_cgt =  mat3(tuple(self.matrix()))
-        return self.R_cgt
-
-    def quaternion_cgt(self):
-        if self.Q_cgt == None:
-            Q = quat()
-            Q.fromMat(self.matrix_cgt())
-            self.Q_cgt = Q
-        return self.Q_cgt
 
     def gen_fun(self, phi):
         if self.generating_function == 'm*sin(phi/m)':

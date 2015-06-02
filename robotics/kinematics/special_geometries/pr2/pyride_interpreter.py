@@ -22,9 +22,9 @@ Changes from ver 4.0:
 import PyPR2, numpy, math, time
 import packages.nima.mathematics.general as gen
 import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
-import packages.nima.mathematics.geometry.rotation as rot
+import packages.nima.mathematics.geometry.geometry as geo
 
-from cgkit.cgtypes import quat, mat3
+# from cgkit.cgtypes import quat, mat3
 
 # Global Variables
 
@@ -408,9 +408,8 @@ def pos_rarm_grip():
     pl = vecmat.as_vector(PyPR2.getRelativeTF('base_footprint' , 'r_gripper_l_finger_tip_link')['position'])
     p  = (pl + pr)/2
 
-    o = PyPR2.getRobotPose()['orientation']
-    Rb = rot.rotation_matrix(o)
-    pg = numpy.dot(Rb, p) # p global is Rb Multiply by p
+    orient = geo.Orientation_3D(PyPR2.getRobotPose()['orientation'], representation = 'quaternion')
+    pg     = numpy.dot(orient.matrix(), p) # p global is Rb Multiply by p
 
     p0 = PyPR2.getRobotPose()['position']
 
@@ -429,13 +428,12 @@ def pos_larm_grip():
     pl = vecmat.as_vector(PyPR2.getRelativeTF('base_footprint' , 'l_gripper_l_finger_tip_link')['position'])
     p  = (pl + pr)/2
 
-    o = PyPR2.getRobotPose()['orientation']
+    orient = geo.Orientation_3D(PyPR2.getRobotPose()['orientation'], representation = 'quaternion')
     '''
     qt = quat(h)   # convert to cgkit quaternion
     Rb = qt.toMat3()  # convert to rotation matrix 
     '''
-    Rb = rot.rotation_matrix(o)
-    pg = numpy.dot(Rb, p) # p global is Rb Multiply by p
+    pg = numpy.dot(orient.matrix(), p) # p global is Rb Multiply by p
 
     p0 = PyPR2.getRobotPose()['position']
 
@@ -455,11 +453,10 @@ def body_angle(in_degrees=True ):
     else:
         gain = 1.0     
 
-    o = PyPR2.getRobotPose()['orientation']
-    qt = quat(o)   # convert to cgkit quaternion
-    (tau, (x, y, z)) = qt.toAngleAxis() 
-     
-    return (gen.sign(z)*gain*tau)
+    orient = geo.Orientation_3D(PyPR2.getRobotPose()['orientation'], representation = 'quaternion')
+    tau = orient.angle()
+    u   = orient.axis()
+    return (gen.sign(u[2])*gain*tau)
 
 def bl_midpoint(): 
     '''
@@ -631,8 +628,13 @@ def move_robot_to(x, y , tau, time_to_reach = 5.0, in_degrees = True):
     dx = x - p0[0]
     dy = y - p0[1]
 
+    '''
     o  = quat(rp['orientation'])   # convert to cgkit quaternion
     R  = numpy.linalg.inv(o.toMat3())
+    '''
+    o  = geo.Orientation_3D(rp['orientation'], representation = 'quaternion')
+    R  = numpy.linalg.inv(o.matrix())
+
     dp = numpy.dot(R.T, vecmat.as_vector([dx, dy, 0.0]))
     tau0 = body_angle(in_degrees = in_degrees)
     PyPR2.moveBodyTo( dp[0], dp[1], gain*(tau - tau0), time_to_reach)
