@@ -12,13 +12,13 @@ Currently, Magiks is dependant on the following Python library packages
 * sympy.
 * cgkit.
 
-The following sections give detailed instructions on how these required libraries can be installed on your system. *NOTE* that we assume your target machine use a recent Ubuntu Linux system.
+The following sections give detailed instructions on how these required libraries can be installed on your system. **NOTE** that we assume your target machine use a recent Ubuntu Linux system.
 
 ### Install numpy,sympy and other required dependancies
 First, we install required packages from the standard Ubuntu distribution repository:
 
-```sudo apt-get update``` (make sure we have latest package listing).
-```sudo apt-get install python-pip python-pygame python-matplotlib python-numpy python-sympy scons```
+1. ```sudo apt-get update``` (make sure we have latest package listing).
+2. ```sudo apt-get install python-pip python-pygame python-matplotlib python-numpy python-sympy scons```.
 
 ### Compile and install crlibm library
 There is no standard package for crlibm library on Ubuntu/Debian system. The
