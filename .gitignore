@@ -68,6 +68,6 @@ target/
 
 magiks/specific_geometries/nao/
 magiks/specific_geometries/turtlesim/
-packages
-projects
+/packages
+/projects
 
