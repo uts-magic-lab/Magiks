@@ -15,8 +15,8 @@
 
 import math, numpy
 
-import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.geometry.trigonometry as trig
+from math_tools import general as gen
+from math_tools.geometry import trigonometry as trig
 
 
 

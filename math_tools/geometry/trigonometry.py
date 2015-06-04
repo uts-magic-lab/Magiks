@@ -16,8 +16,8 @@
 
 import math,numpy
 
-import packages.nima.mathematics.general as gen
-from interval import interval
+from math_tools import general as gen
+from interval   import interval
 
 def in_domain_sin(x):
     '''

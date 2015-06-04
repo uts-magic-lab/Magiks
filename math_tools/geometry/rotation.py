@@ -14,12 +14,10 @@
 #  start date:      February 2011 
 #  Last Revision:  	11 January 2015 
 
-import math, numpy 
-import packages.nima.general as genpy
-import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.algebra.quaternions as quat
-import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
-import packages.nima.mathematics.geometry.trigonometry as trig
+import math, numpy, general as genpy, trigonometry as trig
+
+from math_tools import general as gen
+from math_tools.algebra import vectors_and_matrices as vecmat, quaternions as quat
 
 i_uv = numpy.array([1.0, 0.0, 0.0])
 j_uv = numpy.array([0.0, 1.0, 0.0])

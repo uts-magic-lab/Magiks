@@ -20,9 +20,9 @@ Changes from ver 4.0:
 '''
 
 import PyPR2, numpy, math, time
-import packages.nima.mathematics.general as gen
-import packages.nima.mathematics.algebra.vectors_and_matrices as vecmat
-import packages.nima.mathematics.geometry.geometry as geo
+from math_tools.algebra  import vectors_and_matrices as vecmat
+from math_tools.geometry import geometry as geo
+from math_tools import general as gen
 
 # from cgkit.cgtypes import quat, mat3
 

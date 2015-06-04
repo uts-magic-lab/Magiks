@@ -15,12 +15,11 @@
 #  start date:      02 May 2015 
 #  Last Revision:  	02 May 2015 
 
-import math, numpy as np, trigonometry as trig, rotation as rot
+import math, numpy as np, trigonometry as trig, rotation as rot, general as genpy
 
-from packages.nima.mathematics.algebra import vectors_and_matrices as vm, quaternions as quat
+from math_tools.algebra import vectors_and_matrices as vm, quaternions as quat
+from math_tools import general as gen
 
-import packages.nima.general as genpy
-import packages.nima.mathematics.general as gen
 
 '''
 Changes from version 2:

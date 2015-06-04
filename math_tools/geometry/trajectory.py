@@ -25,10 +25,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from packages.nima import general as genpy
-from packages.nima.mathematics import general as gen
-from packages.nima.mathematics.algebra import polynomials as pl
-from packages.nima.mathematics.geometry import geometry as geo
+import general as genpy
+from math_tools import general as gen
+from math_tools.algebra import polynomials as pl
+from math_tools.geometry import geometry as geo
 
 ## This class, introduces a structure for a key point in the multi-dimensional space. 
 #  Key points are used to generate a trajectory. 
