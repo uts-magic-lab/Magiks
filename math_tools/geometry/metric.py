@@ -15,10 +15,9 @@
 # 
 #  Last Revision:  	11 January 2015
 
-import numpy, math, rotation
+import numpy, math, rotation, general as genpy
 
-from packages.nima import general as genpy
-from packages.nima.mathematics.algebra import vectors_and_matrices as vecmat, quaternions as quat
+from math_tools.algebra import vectors_and_matrices as vecmat, quaternions as quat
 
 key_dic = {
     'DiRoMa'        : 'Difference of Rotation Matrices',

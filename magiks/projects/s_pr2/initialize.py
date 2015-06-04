@@ -18,5 +18,5 @@ sys.path.append(mtpltlib_path)
 import sys
 sys.path.append("/home/nimasoft/Dropbox/software/python/magiks/projects/s_pr2/")
 import initialize
-from magiks.specific_geometries.pr2 import skilled_pr2 as spr
+from magiks.specific_geometries.pr2 import pyride_synchronizer as ps
 '''

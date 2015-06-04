@@ -27,13 +27,12 @@ Major change from previous version:
 '''
 
 # BODY
-import numpy as np, math, random
-import packages.nima.general as genpy
+import numpy as np, math, random, general as genpy
 
-from packages.nima.mathematics import general as gen
-from packages.nima.mathematics.algebra import vectors_and_matrices as vecmat
-from packages.nima.mathematics.geometry import trigonometry as trig
-from packages.nima.mathematics.discrete import discrete
+from math_tools import general as gen
+from math_tools.algebra import vectors_and_matrices as vecmat
+from math_tools.geometry import trigonometry as trig
+from math_tools.discrete import discrete
 
 
 class Manipulator_Configuration_Settings:

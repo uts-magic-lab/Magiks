@@ -29,6 +29,7 @@ Changes from version 4.0:
 
 import copy, numpy, math, sys
 import general as pygen
+import pr2_arm_kinematics
 
 from interval   import interval, inf, imath
 from math_tools import general as gen

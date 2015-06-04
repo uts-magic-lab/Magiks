@@ -23,7 +23,7 @@ Changes from ver 4.0:
 
 import copy, time, math
 import numpy as np
-import packages.nima.mathematics.general as gen
+from math_tools import general as gen
 
 from interval import interval, inf, imath
 from sets import Set

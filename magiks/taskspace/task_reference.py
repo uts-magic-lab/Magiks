@@ -13,8 +13,7 @@
 # 
 #  Last Revision:  	28 January 2015
 
-import numpy, math
-import packages.nima.general as genpy
+import numpy, math, general as genpy
 
 from magiks.jacobian import jacobian as jaclib
 from math_tools.algebra import vectors_and_matrices as vecmat

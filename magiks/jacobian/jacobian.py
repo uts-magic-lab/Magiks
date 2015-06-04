@@ -16,8 +16,8 @@
 
 import numpy, math
 
-from packages.nima.mathematics.geometry import rotation
-from packages.nima.mathematics.algebra import quaternions, vectors_and_matrices as vecmatlib 
+from math_tools.geometry import rotation
+from math_tools.algebra import quaternions, vectors_and_matrices as vecmatlib 
 
 class Analytic_Jacobian(object):
     '''
