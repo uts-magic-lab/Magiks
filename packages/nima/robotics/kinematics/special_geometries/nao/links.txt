@@ -1,3 +1,0 @@
-http://simspark.sourceforge.net/wiki/index.php/Models
-http://simspark.sourceforge.net/wiki/images/e/e0/Models_SoccerbotAnatomy.png
-http://simspark.sourceforge.net/wiki/images/4/42/Models_NaoBoxModel.png

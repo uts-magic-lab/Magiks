@@ -66,13 +66,8 @@ target/
 
 # Special Folders:
 
-packages/nima/mathematics/geometry/old/
-packages/nima/robotics/kinematics/special_geometries/pr2/old/
-packages/nima/robotics/kinematics/special_geometries/pr2/text/
-
+magiks/specific_geometries/nao/
+magiks/specific_geometries/turtlesim/
+packages
 projects
-packages/bebo
-packages/shams
-packages/matej
-packages/libforge
 
