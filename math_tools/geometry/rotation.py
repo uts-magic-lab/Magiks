@@ -300,14 +300,14 @@ def angle_axis(TRM):
     an_ax = numpy.zeros((4))
     an_ax[0] = 1.00
 
-    q = quaternions.unit_quaternion(TRM)
+    q = quat.unit_quaternion(TRM)
 
     trace_R = TRM[0,0] + TRM[1,1] + TRM[2,2]
 
     cos_phi_2 = q[0]
     cos_phi = 0.5*(trace_R - 1)
 
-    phi = trigonometry.arccos(cos_phi)
+    phi = trig.arccos(cos_phi)
 
     """
     if cos_phi_2 < 0:
@@ -335,7 +335,7 @@ def spherical_angles(TRM):
     sa[0] = ax[0]
         
     sa[2] = math.atan2(ax[2], ax[1])
-    sa[1] = trigonometry.arccos(ax[3])
+    sa[1] = trig.arccos(ax[3])
 
     return sa
 
@@ -353,7 +353,7 @@ def orientation_vector(TRM, parametrization):
         rv = spherical_angles(TRM)
         return rv
     elif parametrization == 'unit_quaternion':
-        rv = quaternions.unit_quaternion(TRM)
+        rv = quat.unit_quaternion(TRM)
         return rv
     elif parametrization == 'angle_axis':
         rv = angle_axis(TRM)
@@ -411,7 +411,7 @@ def relative_rotation_vector(RMa,RMd,parametrization):
     else:
         p = numpy.linalg.norm(rrvl)
         u = rrvl/p
-        phi = trigonometry.arcsin(p)
+        phi = trig.arcsin(p)
 
         if parametrization == 'vectorial_identity':
             rrv = phi*u
@@ -440,7 +440,7 @@ def relative_rotation_angle(RMa,RMd):
 
     cos_phi = 0.5*(trace_R - 1)
 
-    phi = trigonometry.arccos(cos_phi)
+    phi = trig.arccos(cos_phi)
 
     return phi
 
@@ -452,7 +452,7 @@ def relative_rotation_angle(RMa,RMd):
 #   rotation matrix
 #   @return A numpy vector of size 3 containing the derivative of the non-redundant orientation vector 
 def orientation_vector_speed(R, R_dot):
-    q_dot = quaternions.unit_quaternion_speed(R, R_dot)
+    q_dot = quat.unit_quaternion_speed(R, R_dot)
     ax    = angle_axis(R)
     phi   = ax[0]
     u     = ax[1:4]

@@ -495,17 +495,16 @@ class Orientation_3D(object):
 
     def quaternion(self):
         if self.Q == None:
-            """
             r       = self.matrix()
-            self.Q  = quaternions.unit_quaternion(r)
-            print "1.", self.Q
-            """
+            self.Q  = quat.unit_quaternion(r)
+
+            '''
             phi = self.angle()
             u   = self.axis()
             e   = math.sin(phi/2)*u
             w   = math.cos(phi/2)    
             self.Q  = np.array([w, e[0], e[1], e[2]])
-
+            '''
             # Q = self.quaternion_cgt()
             # self.Q = np.array([Q.w, Q.x, Q.y, Q.z])
         return self.Q
@@ -528,11 +527,6 @@ class Orientation_3D(object):
 
         return self.phi
 
-    def axis_cgt(self):
-        if self.u == None:
-            (self.phi, self.u_cgt) = self.quaternion_cgt().toAngleAxis() 
-        return self.u_cgt
-
     def spherical(self):
         if self.sa == None:
             self.sa = np.zeros((3))
@@ -549,23 +543,11 @@ class Orientation_3D(object):
 
     def axis(self):
         if self.u == None:
-            '''
-            # Alternative 1:
             r  = self.matrix()
             ax = rot.angle_axis(r)
             self.phi = ax[0]
             self.u   = ax[1:4]
-            print "1.",self.u 
-            '''
-            # Alternative 2:
-            sin_phi = math.sin(self.angle())
-            if gen.equal(sin_phi, 0.0):
-                self.u   = np.zeros(3)
-            else:         
-                self.u   = rot.axial(self.matrix())/sin_phi
 
-            # Alternative 3:
-            # self.u = np.array(self.axis_cgt())
         return self.u
 
     def frame_axis(self, k):
@@ -584,13 +566,6 @@ class Orientation_3D(object):
             self.u   = value[1:4]
         elif representation == 'vector':
             self.p = value
-        elif representation == 'matrix_cgt':
-            self.R_cgt = value
-        elif representation == 'quaternion_cgt':
-            self.Q_cgt = value
-        elif representation == 'angle_axis_cgt':
-            self.phi   = value[0]
-            self.u_cgt = vec3(value[1:4])
         else:
             assert False, genpy.err_str(__name__ , self.__class__.__name__ , '__setitem__', representation + ' is not a valid value for representation')
 
@@ -632,12 +607,6 @@ class Orientation_3D(object):
             return np.trace(self.matrix_velocity())
         elif representation == 'diag_velocity':
             return np.diag(self.matrix_velocity())
-        elif representation == 'matrix_cgt':
-            return self.matrix_cgt()
-        elif representation == 'quaternion_cgt':
-            return self.quaternion_cgt()
-        elif representation == 'angle_axis_cgt':
-            return self.angle_axis_cgt()
         else:
             assert False, genpy.err_str(__name__ , self.__class__.__name__ , '__getitem__', representation + ' is not a valid value for representation')
 
