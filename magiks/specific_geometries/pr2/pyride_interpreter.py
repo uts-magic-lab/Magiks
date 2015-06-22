@@ -747,7 +747,11 @@ def run_config_trajectory(j_traj, duration = 10.0, dt = None, phi_dot = None, is
     if dt == None:
         dt = 0.1*duration
 
-    while t < duration: 
+    stay = True
+    while stay:
+        if (t > duration) or gen.equal(t, duration, epsilon = 0.1*dt):
+            t    = duration
+            stay = False
 
         j_traj.set_phi(t*phi_dot)
         if is_left_arm:
@@ -759,17 +763,6 @@ def run_config_trajectory(j_traj, duration = 10.0, dt = None, phi_dot = None, is
 
         t = t + dt
 
-    if t > duration:
-        t = duration
-
-    j_traj.set_phi(t*phi_dot)
-    if is_left_arm:
-        g   = gen_larm_joint_posvel_dict(j_traj.current_position, j_traj.current_velocity*phi_dot, dt)
-    else:
-        g   = gen_rarm_joint_posvel_dict(j_traj.current_position, j_traj.current_velocity*phi_dot, dt)
-
-    dic_list.append(g) 
-    
     PyPR2.moveArmWithJointTrajectoryAndSpeed(dic_list)
 
 def send_arm_joint_speed(q_dot, is_left_arm = False):

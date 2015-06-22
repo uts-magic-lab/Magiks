@@ -19,6 +19,8 @@ Last Revision:  09 September 2014
 
 '''
 
+import numpy as np
+
 def show(s, value, silent):
     if not silent:
         print s, value    
@@ -46,10 +48,16 @@ def err_str(file_path, class_name, function_name, err_message):
     s += ': ' + '\n \n' + err_message + '\n'
     return  s
 
-def check_type(var, default, type_list, file_path, class_name, function_name, var_name):
+def check_type(var, type_list, file_path='', class_name='', function_name='', var_name='', array_length = None, shape_length = None, shape = None, default = None):
     if var == None:
         var = default
     assert type(var) in type_list, err_str(file_path, class_name, function_name, 'Argument '+ var_name + ' must be ' + str(type_list))
+    if array_length != None:
+        assert len(var) == array_length, err_str(file_path, class_name, function_name, 'Argument '+ var_name + ' must have ' + str(array_length) + ' elements')
+    if (shape_length != None) and (type(var) == np.ndarray):
+        assert len(var.shape) == shape_length, err_str(file_path, class_name, function_name, 'Argument '+ var_name + ' must have dimension ' + str(shape_length))
+    if (shape != None) and (type(var) == np.ndarray):
+        assert var.shape == shape, err_str(file_path, class_name, function_name, 'Argument '+ var_name + ' must have shape ' + str(shape))
     return var
 
 def check_valid(var, valid_list, file_path, class_name, function_name, var_name):

@@ -15,7 +15,10 @@
 #  start date:    February 2011 
 #  Last Revision:  	03 January 2015 
 
-import math, numpy
+silent = True
+
+import math, numpy, sys
+import general_python as genpy
 
 class Point(object):
     def __init__(self, t = 0.0, x = 0.0, v = None, a = None):
@@ -82,9 +85,17 @@ class Polynomial(object):
                     A[i, j] = j*(j-1)*(p.t**(j-2))
                 i = i + 1
                 u = numpy.append(u, p.a)
-        
-        self.coeff = numpy.dot(numpy.linalg.inv(A), u)
-            
+
+        try:
+            self.coeff = numpy.dot(numpy.linalg.inv(A), u)
+        except:
+            print genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'The matrix of coefficients is singular')
+            print "Matrix of coefficients:" 
+            print A
+            print 
+            print "Determinent = ", numpy.linalg.det(A)
+            print
+            assert False 
 
     def interpolate(self, t, u, v = []):
         '''

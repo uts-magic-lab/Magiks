@@ -27,9 +27,9 @@ Major change from previous version:
 '''
 
 # BODY
-import numpy as np, math, random, general as genpy
+import numpy as np, math, random, general_python as genpy
 
-from math_tools import general as gen
+from math_tools import general_math as gen
 from math_tools.algebra import vectors_and_matrices as vecmat
 from math_tools.geometry import trigonometry as trig
 from math_tools.discrete import discrete

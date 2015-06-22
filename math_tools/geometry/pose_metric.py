@@ -1,4 +1,4 @@
-## @file        	metric.py
+## @file        	pose_metric.py
 ## @brief:    	    This module provides a class representing the residual error between 
 #                   the actual and desired endeffector poses including methods for calculating residual functions based on various conventions for 
 #                   both position and orientation.
@@ -15,7 +15,7 @@
 # 
 #  Last Revision:  	11 January 2015
 
-import numpy, math, rotation, general as genpy
+import numpy, math, rotation, general_python as genpy
 
 from math_tools.algebra import vectors_and_matrices as vecmat, quaternions as quat
 

@@ -21,6 +21,6 @@ def set_file_path( verbose=False ):
     sys.path.append(  super_path )
     
     # super package : 
-    import mathematics
-    return mathematics.set_file_path( verbose=verbose ) 
+    import math_tools
+    return math_tools.set_file_path( verbose=verbose ) 
 

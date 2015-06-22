@@ -15,10 +15,10 @@
 #  start date:      02 May 2015 
 #  Last Revision:  	02 May 2015 
 
-import math, numpy as np, trigonometry as trig, rotation as rot, general as genpy
+import math, sys, numpy as np, trigonometry as trig, rotation as rot, general_python as genpy
 
-from math_tools.algebra import vectors_and_matrices as vm, quaternions as quat
-from math_tools import general as gen
+from math_tools.algebra import vectors_and_matrices as vm, quaternions as quat, optimization as opt
+from math_tools import general_math as gen
 
 
 '''
@@ -57,19 +57,14 @@ param_set = [
         ]
 '''
 
-## This class, introduces a structure for a point in the multi-dimensional space. 
-#  Key points are used to generate a trajectory. 
-#  A key point contains a phase value specifying the point phase (time), 
-#  and three numpy vectors specifying the desired position, velocity and acceleration at that point.
-#  The values of some or all elements of velocity, acceleration and position can be None 
-#  but for each key point, at least one position, velocity or acceleration value must be specified per each element.
-class Point(object):
+## This class, introduces a structure for a point in the three-dimensional space. 
+class Point_3D(object):
     
-   ## Class Constructor
-   #  @param pos The desired position vector at the key point
-   #  @param vel The desired velocity vector at the key point
-   #  @param acc The desired acceleration vector at the key point   
-   def __init__(self, pos, vel = None, acc = None, representation = 'vector'):
+    ## Class Constructor
+    #  @param pos The desired position vector at the key point
+    #  @param vel The desired velocity vector at the key point
+    #  @param acc The desired acceleration vector at the key point   
+    def __init__(self, pos, vel = None, acc = None, representation = 'cartesian'):
        
        ## An integer indicating the dimension of space in which the kepy point is defined.
        #  This number specifies the number of elements of position, velocity and acceleration vectors  
@@ -79,62 +74,153 @@ class Point(object):
        self.set_velocity(vel, representation)
        self.set_acceleration(acc, representation)
 
-   def clear(self):
-       # A numpy vector indicating the position of the point
+    def clear(self):
+       # A numpy vector indicating the position of the point in cartesian coordinates
        self.p = None
 
-   def clear_velocity(self):
-       # A numpy vector indicating the velocity of the point
+       # A numpy vector indicating the position of the point in spherical coordinates
+       self.s = None
+
+       # A numpy vector indicating the position of the point in cylindrical coordinates
+       self.c = None
+
+    def clear_velocity(self):
+       # A numpy vector indicating the velocity of the point in cartesian coordinates
        self.pd     = None
 
-   def clear_acceleration(self):
-       # A numpy vector indicating the acceleration of the point
-       self.pdd    = None
+       # A numpy vector indicating the velocity of the point in spherical coordinates
+       self.sd     = None
 
-   def __getitem__(self, representation):
-       if representation == 'vector':
-           return self.p
-       elif representation == 'vector_velocity':
-           return self.pd
-       elif representation == 'vector_acceleration':     
-           return self.pdd
+       # A numpy vector indicating the velocity of the point in cylindrical coordinates
+       self.cd     = None
+
+    def clear_acceleration(self):
+       # A numpy vector indicating the acceleration of the point in cartesian coordinates
+       self.pdd    = None
+       # A numpy vector indicating the acceleration of the point in spherical coordinates
+       self.sdd    = None
+       # A numpy vector indicating the acceleration of the point in cylindrical coordinates
+       self.cdd    = None
+
+    def __getitem__(self, representation):
+       if representation == 'cartesian':
+           return self.cartesian()
+       elif representation == 'cartesian_velocity':
+           return self.cartesian_velocity()
+       elif representation == 'cartesian_acceleration':     
+           return self.cartesian_acceleration()
+       if representation == 'spherical':
+           return self.spherical()
+       elif representation == 'spherical_velocity':
+           return self.spherical_velocity()
+       elif representation == 'spherical_acceleration':     
+           return self.spherical_acceleration()
+       if representation == 'cylindrical':
+           return self.cylindrical()
+       elif representation == 'cylindrical_velocity':
+           return self.cylindrical_velocity()
+       elif representation == 'cylindrical_acceleration':     
+           return self.cylindrical_acceleration()
        else:
            assert False, genpy.err_str(__name__ , self.__class__.__name__ , '__getitem__', representation + ' is not a valid value for representation')
 
-   def is_none(self) :
+    def is_none(self) :
        return self.p == None     
 
-   def velocity_is_none(self) :
+    def velocity_is_none(self) :
        return self.pd == None     
 
-   def acceleration_is_none(self) :
+    def acceleration_is_none(self) :
        return self.pdd == None     
 
-   def set_velocity(self, value, representation): 
+    def set_velocity(self, value, representation): 
        self.clear_velocity() 
-       if representation == 'vector':
+       if representation == 'cartesian':
            self.pd   = value
+       elif representation == 'spherical':
+           self.sd   = value
+       elif representation == 'cylindrical':
+           self.cd   = value
        else:
            assert False, genpy.err_str(__name__ , self.__class__.__name__ , 'set_velocity', representation + ' is not a valid value for representation')
-  
-   def set_acceleration(self, value, representation): 
+
+    def set_acceleration(self, value, representation): 
        self.clear_acceleration() 
-       if representation == 'vector':
+       if representation == 'cartesian':
            self.pdd   = value
+       elif representation == 'spherical':
+           self.sdd   = value
+       elif representation == 'cylindrical':
+           self.cdd   = value
        else:
            assert False, genpy.err_str(__name__ , self.__class__.__name__ , 'set_acceleration', representation + ' is not a valid value for representation')
 
-   def __setitem__(self, representation, value):
-       self.clear() 
-       if representation == 'vector':
-           self.p   = value
-       else:
-           assert False, genpy.err_str(__name__ , self.__class__.__name__ , '__setitem__', representation + ' is not a valid value for representation')
+    def __setitem__(self, representation, value):
+        self.clear() 
+        if representation == 'cartesian':
+            self.p   = value
+        elif representation == 'spherical':
+            '''
+            s[0] = ro
+            s[1] = theta
+            s[2] = phi
+            '''
+            self.s   = value
+        elif representation == 'cylindrical':
+            '''
+            c[0] = r
+            c[1] = theta
+            c[2] = z
+            '''
+            self.c   = value
+        else:
+            assert False, genpy.err_str(__name__ , self.__class__.__name__ , '__setitem__', representation + ' is not a valid value for representation')
 
-   ## This function is the string representation of the key point
-   #  @param None
-   #  @return A string representing all the information about the key point  
-   def __str__( self ):
+    def cartesian(self):
+        if self.p != None:
+            return self.p
+        elif self.s != None:
+            self.p    = np.zeros(3)
+            self.p[0] = self.s[0]*math.cos(self.s[1])*math.cos(self.s[2])
+            self.p[1] = self.s[0]*math.sin(self.s[1])*math.cos(self.s[2])
+            self.p[2] = self.s[0]*math.sin(self.s[2])
+            return self.p
+        elif self.c != None:
+            self.p    = np.zeros(3)
+            self.p[0] = self.c[0]*math.cos(self.c[1])
+            self.p[1] = self.c[0]*math.sin(self.c[1])
+            self.p[2] = self.c[2]
+            return self.p
+        else:
+            return None            
+
+    def spherical(self):
+        if self.s == None:
+            self.s    = np.zeros(3)
+            [r, t, z] = self.cylindrical()
+            self.s[0] = math.sqrt(r*r + z*z)  # ro
+            self.s[1] = t                     # theta  
+            self.s[2] = math.atan2(z, r)      # phi
+        return self.s
+
+    def cylindrical(self):
+        if self.c == None:
+            self.c    = np.zeros(3)
+            [x, y, z] = self.cartesian()
+            self.c[0] = math.sqrt(x*x + y*y)  # r
+            self.c[1] = math.atan2(y, x)      # theta
+            self.c[2] = z
+        return self.c
+
+    def dist(self, point):
+        p1 = self.cartesian()
+        p2 = point.cartesian()
+        return np.linalg.norm(p1 - p2)
+
+    ## This function is the string representation of the key point
+    #  @param None
+    #  @return A string representing all the information about the key point  
+    def __str__( self ):
        s  = "Point Dimension: " + str(self.dim) + '\n' 
 
        if self.p != None: 
@@ -145,37 +231,52 @@ class Point(object):
            s += "Acceleration   : " + str(self.pdd) + '\n'
        return s
 
-   ## Use this function to get the current value of position, velocity or acceleration in a desired dimension 
-   #  @param field_name A string, must be selected from 
-   #                    set: ['position', 'velocity', 'acceleration'  
-   #                    specifying which vector is desired.  
-   #  @param axis A non-negative integer specifying which element of the vector should be returned. 
-   #             (Must not be greater than the space dimension) 
-   #  @return A float containing the value of the element specified by argument \b axis from the vector specified by argument \b field_name   
-   def value(self, field_name = 'position', axis = 0):
-       assert (axis <= self.dim), "Error from " + __name__ + func_name + ": Argument axis must not esxeed the space dimension"
-       assert (axis >= 0), "Error from " + __name__ + func_name + ": Argument axis can not have a negative value"  
-       
-       if field_name == 'position':
-           return self.pos[axis]
-       elif field_name == 'velocity':
-           return self.vel[axis]
-       elif field_name == 'acceleration':
-           return self.acc[axis]
-       else:
-           print "Error from " + __name__ + func_name + ": " + field_name + " is not not a valid value for argument field_name"
+    ## Use this function to get the current value of position, velocity or acceleration in a desired dimension 
+    #  @param field_name A string, must be selected from 
+    #                    set: ['position', 'velocity', 'acceleration'  
+    #                    specifying which vector is desired.  
+    #  @param axis A non-negative integer specifying which element of the vector should be returned. 
+    #             (Must not be greater than the space dimension) 
+    #  @return A float containing the value of the element specified by argument \b axis from the vector specified by argument \b field_name   
+    def value(self, field_name = 'position', axis = 0):
+        assert (axis <= self.dim), "Error from " + __name__ + func_name + ": Argument axis must not esxeed the space dimension"
+        assert (axis >= 0), "Error from " + __name__ + func_name + ": Argument axis can not have a negative value"  
+        
+        if field_name == 'position':
+            return self.pos[axis]
+        elif field_name == 'velocity':
+            return self.vel[axis]
+        elif field_name == 'acceleration':
+            return self.acc[axis]
+        else:
+            print "Error from " + __name__ + func_name + ": " + field_name + " is not not a valid value for argument field_name"
 
+    def __add__(p1, p2):
+        return Point_3D(pos = p1.cartesian() + p2.cartesian())
 
+    def __sub__(p1, p2):
+        return Point_3D(pos = p1.cartesian() - p2.cartesian())
+
+    def __neg__(p):
+        return Point_3D(pos = - p.cartesian())
+
+## This class, introduces a rotation in the three-dimensional space. 
+#  It supports various representations and convensions of orientation. 
+#  This class also supports computation orientation speed represented by various convensions.
 class Orientation_3D(object):
 
+    ## private
     def clear_acceleration(self):    
         ## A numpy vector of size 3 containing \f$ \ddot{\p} \f$ (second derivative of orientation vector \f$ p \f$ w.r.t. time) 
-        #  where \f$ p \f$ is the vectorial representation of orientation which is defined according to property \b self.generating_function
+        #  where \f$ p \f$ is the vectorial representation of orientation which is defined according to property \b self.parametrization
         self.pdd = None
 
         ## A numpy 3x3 rotation matrix: Representation of orientation acceleration as 3x3 numpy rotation matrix second derivative w.r.t. time
         self.Rdd = None
 
+    ## Clears all velocity properties. All velocity properties (self.omega, self.Rd, self.Qd, self.ud, self.pd, self.phid) will be set to None.
+     # @param None
+     # @return None
     def clear_velocity(self):    
         ## A numpy vector of size 3 containing the <em> angular velocity </em> representation of orientation velocity
         self.omega = None
@@ -195,9 +296,12 @@ class Orientation_3D(object):
         self.ud = None
 
         ## A numpy vector of size 3 containing \f$ \dot{\p} \f$ (derivative of orientation vector \f$ p \f$ w.r.t. time) 
-        #  where \f$ p \f$ is the vectorial representation of orientation which is defined according to property \b self.generating_function
+        #  where \f$ p \f$ is the vectorial representation of orientation which is defined according to property \b self.parametrization
         self.pd = None
 
+    ## Clears all rotation properties. All rotation properties (self.R, self.Q, self.u, self.p, self.phi, self.H, self.sa) will be set to None.
+     # @param None
+     # @return None
     def clear(self):
         ## A numpy 3x3 rotation matrix: Representation of orientation as 3x3 numpy rotation matrix 
         self.R = None
@@ -219,21 +323,36 @@ class Orientation_3D(object):
         ## A numpy vector of 3 elements: Non-redundant representation of orientation by three <em> Spherical Orientation Angles </em>
         self.sa = None
 
+    ## Use this function to find out if a rotation by any convention is defined for the instance
+     # @param None
+     # @return A boolean: True if all rotation properties (self.p, self.R, self.u, self.phi, self.Q) are set to None, False, if otherwise. 
     def is_none(self) :
         return (self.p == None) and (self.R == None) and (self.u == None) and (self.phi == None) and (self.Q == None)
 
+    ## Use this function to find out if a rotation velocity is defined for the instance
+     # @param None
+     # @return A boolean: True if all rotation speed properties (self.Rd, self.ud, self.phid, self.Qd, self.pd) are set to None, False, if otherwise. 
     def velocity_is_none(self) :
         return (self.pd == None) and (self.Rd == None) and (self.ud == None) and (self.phid == None) and (self.Qd == None)
 
+    ## private    
     def acceleration_is_none(self) :
         return self.pdd == None     
         
     ## Class Constructor:
-    #  @param The orientation:
+    #  @param ori: The orientation or rotation defined
     #         \li A tuple or numpy vector of 4 elements if representation = 'quaternion',    
-    def __init__(self, ori, ori_velocity = None, ori_acceleration = None, representation = 'matrix', generating_function = 'phi/m'):
+    #         \li A 3 X 3 numpy matrix if representation = 'matrix',    
+    #         \li A tuple or numpy vector of 4 elements if representation = 'angle_axis',
+    #         \li A tuple or numpy vector of 3 elements if representation = 'vector',
+    #  @param  representation: A string: Must be one of the supported convensions:
+    #         \li matrix
+    #         \li quaternion
+    #         \li angle_axis
+    #         \li vector
+    def __init__(self, ori, representation = 'matrix', ori_velocity = None, ori_acceleration = None, parametrization = 'identity'):
         self.representation      = representation
-        self.generating_function = generating_function
+        self.parametrization = parametrization
         self.__setitem__(representation, ori)
         self.m = 1.0
         if ori_velocity == None:
@@ -383,7 +502,7 @@ class Orientation_3D(object):
 
     def vector(self):
         if self.p == None:
-            if (self.generating_function == 'm*sin(phi/m)') and (self.m == 1.0): # Special Case: Linear parametrization
+            if (self.parametrization == 'linear') and (self.m == 1.0): # Special Case: Linear parametrization p(phi) = sin(phi)
                 self.p = rot.axial(self.matrix())
                 return self.p
             else:
@@ -397,7 +516,7 @@ class Orientation_3D(object):
         if self.velocity_is_none():
             return None    
         elif self.pd == None:
-            if (self.generating_function == 'm*sin(phi/m)') and (self.m == 1.0): # Special Case: Linear parametrization
+            if (self.parametrization == 'linear') and (self.m == 1.0): # Special Case: Linear parametrization p(phi) = sin(phi)
                 self.pd = rot.axial(self.matrix_velocity())
                 return self.pd
             else:
@@ -411,58 +530,73 @@ class Orientation_3D(object):
     def vector_acceleration(self):
         return self.pdd
 
-    def set_generating_function(self, gen_fun_str = 'phi/m'):
-        if gen_fun_str != self.generating_function:
-            self.generating_function = gen_fun_str
+    ## Sets the parametrization for the generating function in vectorial representation of orientation.
+    #  @param parametrization A string specifying the parametrization. Valid values are:
+    #                         'identity', 'linear', 'cayley-gibbs-rodrigues', 'bauchau-trainelli', 'exponential'
+    #  @return None
+    def set_parametrization(self, parametrization = 'identity'): # p(phi) = (phi/m)
+        valid_parametrizations = ['identity', 'linear', 'cayley-gibbs-rodrigues', 'bauchau-trainelli', 'exponential']
+        genpy.check_valid(parametrization, valid_parametrizations, __name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'parametrization')
+        if parametrization != self.parametrization:
+            self.parametrization = parametrization
             self.p  = None
             self.pd = None
+            if self.parametrization in ['cayley-gibbs-rodrigues']: 
+                self.m = 2.0
+            else:
+                self.m = 1.0
 
+    ## Returns the value of the generating function for the given angle phi
+    #  @param phi A float variable specifying the angle
+    #  @return A float containing the value of the generating function for the given phi.
+    #          The generating function depends on property self.parametrization 
     def gen_fun(self, phi):
-        if self.generating_function == 'm*sin(phi/m)':
+        genpy.check_type(phi, [float, np.float64], __name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'phi')
+        if self.parametrization == 'linear': # generating function: p(phi) = m*sin(phi/m)
             return self.m*math.sin(phi/self.m)
-        elif self.generating_function == 'phi/m': # Identity parametrization if m = 1
+        elif self.parametrization == 'identity': # p(phi) = phi/m (m = 1.0)
             return phi/self.m
-        elif self.generating_function == 'm*tan(phi/m)': # Cayley-Gibbs-Rodrigues parameterization if m = 2
+        elif self.parametrization == 'cayley-gibbs-rodrigues': # p(phi) = m*tan(phi/m)  (m = 2)
             return self.m*math.tan(phi/self.m)
-        elif self.generating_function == '(6*(phi - sin(phi)))**(1.0/3.0)':  # Bauchau-Trainelli parametrization
+        elif self.parametrization == 'bauchau-trainelli':  #  p(phi) = (6*(phi - sin(phi)))**(1.0/3.0)
             s   = math.sin(phi)
             a   = 6*(phi - s)
             return a**0.33333333
-        elif self.generating_function == 'exp(phi)-1': # Exponential
+        elif self.parametrization == 'exponential': # p(phi) = exp(phi)-1
             return  math.exp(phi) - 1.0
         else:
             assert False,"Not Supported!"
 
     def gen_fun_inv(self, p):
-        if self.generating_function == 'm*sin(phi/m)':
+        if self.parametrization == 'linear':  # generating function: p(phi) = m*sin(phi/m)
             return self.m*trig.arcsin(p/self.m)
-        elif self.generating_function == 'phi/m': # Identity parametrization if m = 1
+        elif self.parametrization == 'identity':  # p(phi) = phi/m (m = 1)
             return self.m*p
-        elif self.generating_function == 'm*tan(phi/m)': # Cayley-Gibbs-Rodrigues parameterization if m = 2
+        elif self.parametrization == 'cayley-gibbs-rodrigues': # p(phi) = m*tan(phi/m)  (m = 2)
             return self.m*trig.arctan(p/self.m)
-        elif self.generating_function == '(6*(phi - sin(phi)))**(1.0/3.0)':  # Bauchau-Trainelli parametrization
+        elif self.parametrization == 'bauchau-trainelli':  # p(phi) = (6*(phi - sin(phi)))**(1.0/3.0)
             assert False, "Not Supported!"
-        elif self.generating_function == 'exp(phi)-1': # Exponential
+        elif self.parametrization == 'exponential': # p(phi) = exp(phi)-1
             return  math.log(p+1.0)
         else:
             assert False,"Not Supported!"
 
     def gen_fun_derivative(self, phi):
-        if self.generating_function == 'm*sin(phi/m)':
+        if self.parametrization == 'linear':
             return math.cos(phi/self.m)
-        elif self.generating_function == 'phi/m': # Identity parametrization if m = 1
+        elif self.parametrization == 'identity':
             return 1.0/self.m
-        elif self.generating_function == 'm*tan(phi/m)': # Cayley-Gibbs-Rodrigues parameterization if m = 2
+        elif self.parametrization == 'cayley-gibbs-rodrigues':
             t  = math.tan(phi/self.m)
             return 1.0 + t*t
-        elif self.generating_function == '(6*(phi - sin(phi)))**(1.0/3.0)':  # Bauchau-Trainelli parametrization
+        elif self.parametrization == 'bauchau-trainelli':  # Bauchau-Trainelli parametrization
             s   = math.sin(phi)
             c   = math.cos(phi)
             a   = 6*(phi - s)
             f   = a**0.33333333
             b   = gen.inv(f)
             return  2*(1.0-c)*b*b
-        elif self.generating_function == 'exp(phi)-1': # Exponential
+        elif self.parametrization == 'exponential': # Exponential
             return  math.exp(phi)
         else:
             assert False,"Not Supported!"
@@ -471,7 +605,7 @@ class Orientation_3D(object):
         if phi == None:
             phi = self.angle()
 
-        if gen.equal(phi, 0.0) and self.generating_function == 'phi/m':
+        if gen.equal(phi, 0.0) and self.parametrization == 'identity':
             return self.m
 
         p = self.gen_fun(phi)    
@@ -481,7 +615,7 @@ class Orientation_3D(object):
         if phi == None:
             phi = self.angle()
 
-        if gen.equal(phi, 0.0) and self.generating_function == 'phi/m':
+        if gen.equal(phi, 0.0) and self.parametrization == 'identity':
             return self.m
 
         p = self.gen_fun(phi)    
@@ -512,7 +646,7 @@ class Orientation_3D(object):
     def angle(self):
         if self.phi == None:
             if self.p != None:
-                self.phi = self.gen_fun_inv(np.linalg.norm(p))
+                self.phi = self.gen_fun_inv(np.linalg.norm(self.p))
             else:
                 # Alternative 1: (self.phi, self.u_cgt) = self.quaternion_cgt().toAngleAxis() 
                 # Alternative 2: self.phi  = trig.arccos(0.5*(np.trace(self.matrix()) - 1.0))
@@ -672,10 +806,10 @@ class Orientation_3D(object):
             r_dot = np.dot(r1_dot, r2.T) + np.dot(r1, r2_dot.T)
             o = Orientation_3D(r, r_dot)
 
-        if o1.generating_function == o2.generating_function:
-            o.set_generating_function(o1.generating_function)
+        if o1.parametrization == o2.parametrization:
+            o.set_parametrization(o1.parametrization)
         else:
-            o.generating_function = None
+            o.parametrization = None
         o.representation = o1.representation    
         return o
             
@@ -691,11 +825,69 @@ class Orientation_3D(object):
             r_dot = np.dot(r1_dot, r2) + np.dot(r1, r2_dot)
             o = Orientation_3D(r, r_dot)
             
-        if o1.generating_function == o2.generating_function:
-            o.set_generating_function(o1.generating_function)
+        if o1.parametrization == o2.parametrization:
+            o.set_parametrization(o1.parametrization)
         else:
-            o.generating_function = None
+            o.parametrization = None
         o.representation = o1.representation    
         return o
             
-            
+class Ellipsoid(object):
+    ## Class Constructor
+    #  Creates an ellipsoid with given charachteristic matrix A and center. The equation of the ellipsoid is given as:
+    #  $$
+    #  **(x - c)**^T \cdot **M** \cdot **(x - c)** 
+    #  $$
+    #  @param M      A numpy square matrix representing the charachteristic matrix of the ellipsoid.
+    #  @param center An instance of class Point_3D() specifying the ellipsoid center
+    def __init__(self, M = np.eye(3), center = Point_3D(pos = np.zeros(3))):
+        '''
+        For example to have a non-rotated ellipsoid centered at the origin with equation:
+        x^2/a^2 + y^2/b^2 + z^2/c^2 = 1
+        Arguments M and center must be selected as:
+             [ a^(-2)   0      0     ]
+        M =  [   0    b^(-2)   0     ]
+             [   0      0    c^(-2)  ]
+
+        center = (0, 0, 0)    
+        '''
+        # Checking arguments:
+        func_name = sys._getframe().f_code.co_name
+        genpy.check_type(M, [np.ndarray], __name__, self.__class__.__name__, func_name, 'M', shape = (3,3))
+        (landa, V) =  np.linalg.eig(M)
+        # V is a rotation that transforms from principal coordinate system to the actual coordinate system
+        # if x is a vector in principal CS and x' is its representation in actual CS: x' = V*x and x = V^T*x'
+        assert vm.positive(landa, non_zero = True) and gen.equal(np.linalg.norm(V.imag) , 0.0), genpy.err_str(__name__, self.__class__.__name__, func_name, 'Matrix M must have real and positive eigen values')
+        #
+        self.M      = M
+        self.center = center
+        self.a      = math.sqrt(1.0/landa[0])
+        self.b      = math.sqrt(1.0/landa[1])
+        self.c      = math.sqrt(1.0/landa[2])
+        self.R      = V.real
+        
+    def volume(self):
+        return (4.0/3.0)*math.pi*self.a*self.b*self.c
+
+    def min_dist(self, point):
+        p0 = np.dot(self.R, point.cartesian() - self.center['cartesian'])
+        (theta, phi) = opt.distance_from_ellipsoid(a  = self.a, b = self.b, c = self.c, x0 = p0[0], y0 = p0[1], z0 = p0[2], silent = False)
+        px  = self.a*math.cos(theta)*math.cos(phi)
+        py  = self.b*math.sin(theta)*math.cos(phi)
+        pz  = self.c*math.sin(phi)
+        pp  = np.array([px, py, pz])
+        return Point_3D(pos = np.dot(self.R, pp) + self.center['cartesian'])
+        
+    def max_dist(self, point):
+        p0 = np.dot(self.R, point.cartesian() - self.center['cartesian'])
+        (theta, phi) = opt.distance_from_ellipsoid(a  = self.a, b = self.b, c = self.c, x0 = p0[0], y0 = p0[1], z0 = p0[2], silent = False, maximum = True)
+        px  = self.a*math.cos(theta)*math.cos(phi)
+        py  = self.b*math.sin(theta)*math.cos(phi)
+        pz  = self.c*math.sin(phi)
+        pp  = np.array([px, py, pz])
+        return Point_3D(pos = np.dot(self.R, pp) + self.center['cartesian'])
+
+    def possess(self, point):
+        x_c = point.cartesian() - self.center.cartesian()
+        d   = np.dot(np.dot((x_c).T, self.M), x_c)
+        return gen.equal(d, 1.0)

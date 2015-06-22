@@ -28,15 +28,15 @@ Changes from version 4.0:
 '''
 
 import copy, numpy, math, sys
-import general as pygen
+import general_python as pygen
 import pr2_arm_kinematics
 
 from interval   import interval, inf, imath
-from math_tools import general as gen
+from math_tools import general_math as gen
 from math_tools.geometry import rotation as rotlib, trigonometry as trig, trajectory as trajlib
 from math_tools.algebra import vectors_and_matrices as vecmat
 
-from magiks.magiks_core import general as genkin
+from magiks.magiks_core import general_magiks as genkin
 
 drc        = math.pi/180.00
 
@@ -557,7 +557,7 @@ class PR2(object):
     #  @return A numpy vector of size 3, containing the current position of the right arm gripper endpoint.
     def rarm_end_position(self, relative = None ):        
         assert self.control_mode in all_control_modes, pygen.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.control_mode + " is an invalid value for control mode")
-        relative = pygen.check_type(relative, self.control_mode == 'Fixed-Base', [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative')
+        relative = pygen.check_type(relative, [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative', default = self.control_mode == 'Fixed-Base')
         
         if relative:
             return self.pos_rarm_grip_wrt_tor()
@@ -574,7 +574,7 @@ class PR2(object):
     #  @return A numpy vector of size 3, containing the current position of the left arm gripper endpoint.
     def larm_end_position(self, relative = None):        
         pygen.check_valid(self.control_mode, all_control_modes, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'control_mode')
-        relative = pygen.check_type(relative, self.control_mode == 'Fixed-Base', [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative')
+        relative = pygen.check_type(relative, [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative', default = self.control_mode == 'Fixed-Base')
 
         if relative:
             return self.pos_larm_grip_wrt_tor()
@@ -597,7 +597,7 @@ class PR2(object):
 
     def rarm_end_orientation(self, relative = None):        
         pygen.check_valid(self.control_mode, all_control_modes, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'control_mode')
-        relative = pygen.check_type(relative, self.control_mode == 'Fixed-Base', [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative')
+        relative = pygen.check_type(relative, [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative', default = self.control_mode == 'Fixed-Base')
         '''
         Returns the cartesian coordiantes of the right arm gripper as the endeffector frame.
         '''    
@@ -612,7 +612,7 @@ class PR2(object):
 
     def larm_end_orientation(self, relative = None):        
         pygen.check_valid(self.control_mode, all_control_modes, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'control_mode')
-        relative = pygen.check_type(relative, self.control_mode == 'Fixed-Base', [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative')
+        relative = pygen.check_type(relative, [bool], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'relative', default = self.control_mode == 'Fixed-Base')
         '''
         Returns the cartesian coordiantes of the left arm gripper as the endeffector frame.
         '''    

@@ -14,9 +14,9 @@
 #  start date:      February 2011 
 #  Last Revision:  	11 January 2015 
 
-import math, numpy, general as genpy, trigonometry as trig
+import math, numpy, general_python as genpy, trigonometry as trig
 
-from math_tools import general as gen
+from math_tools import general_math as gen
 from math_tools.algebra import vectors_and_matrices as vecmat, quaternions as quat
 
 i_uv = numpy.array([1.0, 0.0, 0.0])

@@ -1,5 +1,5 @@
 
-#Initialize Package: kinematics
+#Initialize Package: magiks
 
 def set_file_path( verbose=False ):  
     '''

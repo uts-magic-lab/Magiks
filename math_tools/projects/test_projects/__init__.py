@@ -1,3 +1,6 @@
+
+
+
 def set_file_path( verbose=False ):  
     '''
     execute the set_file_path function of the super package. 
@@ -7,7 +10,7 @@ def set_file_path( verbose=False ):
     import sys
     
     file_path   = os.path.abspath( os.path.dirname( __file__ ) )  
-    super_path  = os.path.abspath( os.path.join( file_path, '..' ))
+    super_path  = os.path.abspath( os.path.join( file_path, '../..' ))
     
     if verbose :
         print 
@@ -17,4 +20,7 @@ def set_file_path( verbose=False ):
     
     sys.path.append(  super_path )
     
-    return True
+    # super package : 
+    import projects
+    return projects.set_file_path( verbose=verbose ) 
+

@@ -19,14 +19,14 @@
 
 # BODY
 
-import copy, math, numpy as np
+import copy, math, sys, numpy as np
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-import general as genpy
-from math_tools import general as gen
+import general_python as genpy
+from math_tools import general_math as genmath
 from math_tools.algebra import polynomials as pl
 from math_tools.geometry import geometry as geo
 
@@ -99,14 +99,13 @@ class Path(object):
     
     ## Class Constructor
     #  @param dimension A positive integer specifying the dimension of the space in which the trajectory segment is defined
-    def __init__(self, dimension = 3):
+    def __init__(self, dimension = 3, capacity = 3):
         # By default, initially the trajectory is a constant position at [0,0,0] (not changing)
         # You should add points to it to make your trajectory
 
         self.current_phi            = 0.0
         self.phi_end                = 0.0
-        self.capacity               = 3 # determines how many key points can it hold
-        self.interpolated           = False
+        self.capacity               = capacity # determines how many key points it can hold
 
         self.dim                    = dimension
         self.current_position       = np.zeros(self.dim)
@@ -135,37 +134,23 @@ class Path(object):
     #  @return None   
     def add_point(self, phi, pos, vel = None, acc = None):
         n = len(self.point)
+        assert n < self.capacity, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "The path capacity is full! Can not take more points than its capacity")
+
         if n > 0:
-            assert phi >= self.point[n-1].phi
+            assert phi >= self.point[n-1].phi, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Given phi is less than the last point's phase")
 
         nn  = np.array([None for j in range(self.dim)])
+        pos = genpy.check_type(pos, [np.ndarray], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'pos', array_length = self.dim, default = np.copy(nn))
+        vel = genpy.check_type(vel, [np.ndarray], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'vel', array_length = self.dim, default = np.copy(nn))
+        acc = genpy.check_type(acc, [np.ndarray], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'acc', array_length = self.dim, default = np.copy(nn))
 
-        if pos == None:
-            pos = np.copy(nn)
-        else:
-            assert len(pos) == self.dim 
-        if vel == None:
-            vel = np.copy(nn)
-        else:
-            assert len(vel) == self.dim 
-        if acc == None:
-            acc = np.copy(nn)
-        else:
-            assert len(acc) == self.dim 
+        self.point.append(Key_Point(phi, pos, vel, acc))
+        self.phi_end     = phi
 
-        if n < self.capacity:
-            self.point.append(Key_Point(phi, pos, vel, acc))
-            self.phi_end     = phi
-            if len(self.point) > 1:
-                self.set_phi(phi)
-            self.interpolated = False
-        else:
-            print "Error from " + __name__ + func_name + ": Can not take more points than its capacity"
-    
     ## Computes the euclidean distances of each key point from the next and return the result in a vector.
     #  The segment must have at least two key points, otherwise an error is printed and None is returned. 
     #  @param None
-    #  @return A numpy vector  
+    #  @return A numpy vector containing the distance between the points  
     def points_dist(self):
         n_pnt = len(self.point)
         if n_pnt > 1:  
@@ -193,7 +178,7 @@ class Path(object):
         check phi to be valid. Many changes must be delivered. 
             1- current_position must be a function returning property pos
         '''
-        if not gen.equal(phi, self.current_phi):
+        if not genmath.equal(phi, self.current_phi):
             assert phi <= self.phi_end, genpy.err_str(__name__, __class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
             assert len(self.point) > 1, genpy.err_str(__name__, __class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
             self.current_phi      = phi
@@ -247,7 +232,6 @@ class Path(object):
         
         self.phi_start = phi_start    
         self.phi_end   = phi_end
-        self.interpolated = False
         self.interpolate()
 
     def current_value(self, field_name= 'position', axis = 0):
@@ -314,8 +298,8 @@ class Path(object):
 
 class Path_Polynomial(Path):
     ## Class Constrauctor
-    def __init__(self, dimension = 3):
-        super(Path_Polynomial, self).__init__(dimension = dimension)            
+    def __init__(self, dimension = 3, capacity = 3):
+        super(Path_Polynomial, self).__init__(dimension = dimension, capacity = capacity)            
         self.traj = [pl.Polynomial() for j in range(self.dim)] 
 
     def interpolate(self):
@@ -324,24 +308,22 @@ class Path_Polynomial(Path):
         At least one position and one phi is required.
         phi[0] must be zero.
         '''
-        if not self.interpolated:
-            n = len(self.point)
-            if n > 1:
-                pnt = [[] for j in range(self.dim)]
+        n = len(self.point)
+        if n > 1:
+            pnt = [[] for j in range(self.dim)]
 
-                for i in range(n):
-                    for j in range(self.dim):
-                        pnt[j].append(pl.Point(t = self.point[i].phi, x = self.point[i].pos[j], v = self.point[i].vel[j], a = self.point[i].acc[j]))
-
+            for i in range(n):
                 for j in range(self.dim):
-                    self.traj[j].interpolate_smart(pnt[j])
+                    pnt[j].append(pl.Point(t = self.point[i].phi, x = self.point[i].pos[j], v = self.point[i].vel[j], a = self.point[i].acc[j]))
 
-                self.phi_end = self.point[n-1].phi
-                self.interpolated = True
-                return True
-            else:
-                print "Error from Path_Polynomial.interpolate(): No key points defined !"
-                return False 
+            for j in range(self.dim):
+                self.traj[j].interpolate_smart(pnt[j])
+
+            self.phi_end = self.point[n-1].phi
+            return True
+        else:
+            print "Error from Path_Polynomial.interpolate(): No key points defined !"
+            return False 
 
     ## Sets the current phase value
     #  @param phi A float specifying the desired phase value. The given value must not exceed the phase of the last key point.
@@ -351,13 +333,11 @@ class Path_Polynomial(Path):
         check phi to be valid. Many changes must be delivered. 
             1- current_position must be a function returning property pos
         '''
-        # if not gen.equal(phi, self.current_phi):
+        # if not genmath.equal(phi, self.current_phi):
         assert phi <= self.phi_end, genpy.err_str(__name__, self.__class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
         assert len(self.point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
         self.current_phi      = phi
 
-        if not self.interpolated:
-            self.interpolate()
         self.current_position = np.zeros(self.dim)
         self.current_velocity = np.zeros(self.dim)
         self.current_acceleration = np.zeros(self.dim)
@@ -367,10 +347,9 @@ class Path_Polynomial(Path):
             self.current_acceleration[j] = self.traj[j].acceleration( t = phi )
 
 class Orientation_Path(Path):
-    def __init__(self, representation = 'vector', generating_function = 'phi/m'):
-        super(Orientation_Path, self).__init__(dimension = 3)    
-        self.current_orientation    = geo.Orientation_3D(self.current_position, self.current_velocity, self.current_acceleration, representation = representation, generating_function = generating_function)
-        self.capacity               = 2 # determines how many key points can it hold
+    def __init__(self, representation = 'vector', parametrization = 'identity', capacity = 2):
+        super(Orientation_Path, self).__init__(dimension = 3, capacity = capacity)    
+        self.current_orientation  = geo.Orientation_3D(ori = self.current_position, ori_velocity = self.current_velocity, ori_acceleration = self.current_acceleration, representation = representation, parametrization = parametrization)
 
     def set_phi(self, phi):
         super(Orientation_Path, self).set_phi(phi = phi)
@@ -380,20 +359,24 @@ class Orientation_Path(Path):
 
     def add_point(self, phi, ori):
         rpn                     = self.current_orientation.representation
-        ori.generating_function = self.current_orientation.generating_function
+        ori.parametrization = self.current_orientation.parametrization
         pos = ori[rpn]
         vel = ori[rpn + '_velocity']
         acc = ori[rpn + '_acceleration']
         super(Orientation_Path, self).add_point(phi, pos, vel, acc)
 
 class Orientation_Path_Polynomial(Orientation_Path, Path_Polynomial):
-    def __init__(self, representation = 'vector', generating_function = 'phi/m'):
-        super(Orientation_Path_Polynomial, self).__init__(representation = representation, generating_function = generating_function)    
+    def __init__(self, representation = 'vector', parametrization = 'identity'):
+        super(Orientation_Path_Polynomial, self).__init__(representation = representation, parametrization = parametrization)    
 
 class Trajectory(object):
 
-    def __init__(self, dimension = 3):
+    def __init__(self, dimension = 3, capacity = 3):
         self.dim            = dimension
+
+        ## Specifies the default segment capacity. 
+        #  When a new segment is added, it will have the default capacity unless specified differently.
+        self.capacity       =  capacity
 
         self.current_position       = np.zeros(self.dim)
         self.current_velocity       = np.zeros(self.dim)
@@ -430,11 +413,12 @@ class Trajectory(object):
         self.segment_start.append(self.phi_end)
         self.phi_end = self.phi_end + new_seg.phi_end
 
-    def new_segment(self):
+    def new_segment(self, capacity = None):
+        capacity = genpy.check_type(capacity, self.capacity, [int], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'capacity')
         nn   = np.array([None for j in range(self.dim)])
         lsi  = len(self.segment) - 1
-        seg  = Path(dimension = self.dim) 
-        assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'new_segment', 'Can not create a new segment. The last segment needs at least two points.')
+        seg  = Path(dimension = self.dim, capacity = capacity) 
+        assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'Can not create a new segment. The last segment needs at least two points.')
         lslp = self.segment[lsi].point[len(self.segment[lsi].point) - 1] # last_seg_last_point
         seg.add_point(0.0, lslp.pos, nn, np.copy(nn))
         self.add_segment(seg)
@@ -477,30 +461,40 @@ class Trajectory(object):
         self.current_velocity = self.segment[i].current_velocity
         self.current_acceleration = self.segment[i].current_acceleration
  
+    ## Use this function to append a key point to the end of the trajectory with desired position, velocity and acceleration
+    #  The given point will be added to the end of the last segment of the trajectory, unless the segment capacity if full
+    #  (number of segment points equals the capacity of that segment). 
+    #  In this case, a new segment will be added and the given point is added to the new segment.
+    #  The capacity of the added segment is specified by property self.capacity
+    #  @param phi The phase value (\f$ \phi \f$) of the key point to be added. 
+    #             This argument should be greater than the phase of the last added point specified by the property self.phi_end
+    #  @param pos The desired position vector at the key point to be added
+    #  @param vel The desired velocity vector at the key point to be added
+    #  @param acc The desired acceleration vector at the key point to be added
+    #  @return None   
     def add_point(self, phi, pos, vel = None, acc = None):
-        '''
-        Adds a point to the end of the trajectory with desired position, velocity and acceleration
-        '''
+        genpy.check_type(phi, [float, np.float64], __name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'phi', default = None)
+        
         lsi = len(self.segment) - 1
 
         if lsi < 0:
-            assert gen.equal(phi, 0.0)
+            assert genmath.equal(phi, 0.0), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be zero for the first point")
             seg = Path_Polynomial(dimension = self.dim) 
             seg.add_point(0.0, pos, vel, acc)
             self.add_segment(seg)
-        elif len(self.segment[lsi].point) < self.segment[lsi].capacity:
-            assert phi >= self.phi_end
-            phi0 = self.segment_start[lsi]
-            self.segment[lsi].add_point(phi - phi0, pos, vel, acc)
         else:
-            assert phi >= self.phi_end
-            self.new_segment()
-            self.segment[lsi+1].add_point(phi-self.phi_end, pos, vel, acc)
+            assert (phi > self.phi_end) and (not genmath.equal(phi, self.phi_end)), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be greater than the last point's phase " + str(self.phi_end))
+            if len(self.segment[lsi].point) < self.segment[lsi].capacity:
+                phi0 = self.segment_start[lsi]
+                self.segment[lsi].add_point(phi - phi0, pos, vel, acc)
+            else:
+                self.new_segment()
+                self.segment[lsi+1].add_point(phi-self.phi_end, pos, vel, acc)
 
         lsi = len(self.segment) - 1
         self.phi_end = self.segment_start[lsi] + self.segment[lsi].phi_end
-        self.interpolated = False
 
+    ## private
     def add_vector(self, delta_phi, delta_pos, vel = None, acc = None):
         assert delta_phi > 0
         phi  = self.phi_end + delta_phi
@@ -611,9 +605,9 @@ class Trajectory(object):
         plt.show()
 
 class Orientation_Trajectory(Trajectory):
-    def __init__(self, representation = 'vector', generating_function = 'phi/m'):
+    def __init__(self, representation = 'vector', parametrization = 'identity'):
         super(Orientation_Trajectory, self).__init__()
-        self.current_orientation    = geo.Orientation_3D(self.current_position, self.current_velocity, self.current_acceleration, representation = representation, generating_function = generating_function)
+        self.current_orientation    = geo.Orientation_3D(self.current_position, ori_velocity = self.current_velocity, ori_acceleration = self.current_acceleration, representation = representation, parametrization = parametrization)
     
     def set_phi(self, phi):
         super(Orientation_Trajectory, self).set_phi(phi = phi)
@@ -623,21 +617,22 @@ class Orientation_Trajectory(Trajectory):
 
     def add_point(self, phi, ori):
         rpn                     = self.current_orientation.representation
-        ori.generating_function = self.current_orientation.generating_function
+        ori.parametrization     = self.current_orientation.parametrization
         pos = ori[rpn]
         vel = ori[rpn + '_velocity']
         acc = ori[rpn + '_acceleration']
         super(Orientation_Trajectory, self).add_point(phi, pos, vel, acc)
 
 class Trajectory_Polynomial(Trajectory):
-    def __init__(self, dimension=3):
-        super(Trajectory_Polynomial, self).__init__(dimension = dimension)
+    def __init__(self, dimension = 3, capacity = 3):
+        super(Trajectory_Polynomial, self).__init__(dimension = dimension, capacity = capacity)
 
-    def new_segment(self):
+    def new_segment(self, capacity = None):
+        capacity = genpy.check_type(capacity, [int], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'capacity', default = self.capacity)
         nn   = np.array([None for j in range(self.dim)])
         lsi  = len(self.segment) - 1
         assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'new_segment', 'Can not create a new segment. The last segment needs at least two points.')
-        seg  = Path_Polynomial(dimension = self.dim) 
+        seg  = Path_Polynomial(dimension = self.dim, capacity = capacity) 
         lslp = self.segment[lsi].point[len(self.segment[lsi].point) - 1] # last_seg_last_point
         seg.add_point(0.0, lslp.pos, nn, np.copy(nn))
         self.add_segment(seg)
@@ -647,8 +642,7 @@ class Trajectory_Polynomial(Trajectory):
             seg.interpolate()
 
     def consistent_velocities(self):
-        if not self.interpolated:
-            self.interpolate()
+        self.interpolate()
         lsi = len(self.segment) - 1
 
         for i in range(lsi + 1):
@@ -668,7 +662,7 @@ class Trajectory_Polynomial(Trajectory):
                         lp.vel[j] = self.segment[ip1].point[0].vel[j]
                 elif self.segment[ip1].point[0].vel[j] == None:
                     self.segment[ip1].point[0].vel[j] = lp.vel[j]
-                elif not gen.equal(lp.vel[j], self.segment[ip1].point[0].vel[j]):
+                elif not genmath.equal(lp.vel[j], self.segment[ip1].point[0].vel[j]):
                     v = 0.5*(lp.vel[j] + self.segment[ip1].point[0].vel[j])
                     lp.vel[j] = v
                     self.segment[ip1].point[0].vel[j] = v
@@ -676,14 +670,10 @@ class Trajectory_Polynomial(Trajectory):
                     # Already Consistent! Do nothing
                     assert True
     
-        for seg in self.segment:
-            seg.interpolated = False
-
         self.interpolate()         
 
     def consistent_accelerations(self):
-        if not self.interpolated:
-            self.interpolate()
+        self.interpolate()
         lsi = len(self.segment) - 1
         self.segment[0].point[0].acc = np.zeros(self.dim)
         for i in range(lsi + 1):
@@ -703,7 +693,7 @@ class Trajectory_Polynomial(Trajectory):
                         lp.acc[j] = self.segment[ip1].point[0].acc[j]
                 elif self.segment[ip1].point[0].acc[j] == None:
                     self.segment[ip1].point[0].acc[j] = lp.acc[j]
-                elif not gen.equal(lp.acc[j], self.segment[ip1].point[0].acc[j]):
+                elif not genmath.equal(lp.acc[j], self.segment[ip1].point[0].acc[j]):
                     a = 0.5*(lp.acc[j] + self.segment[ip1].point[0].acc[j])
                     lp.acc[j] = a
                     self.segment[ip1].point[0].acc[j] = a
@@ -711,11 +701,8 @@ class Trajectory_Polynomial(Trajectory):
                     # Already Consistent! Do nothing
                     assert True
     
-        for seg in self.segment:
-            seg.interpolated = False
-
         self.interpolate()         
 
 class Orientation_Trajectory_Polynomial(Orientation_Trajectory, Trajectory_Polynomial):
-    def __init__(self, representation = 'vector', generating_function = 'phi/m'):
-        super(Orientation_Trajectory_Polynomial, self).__init__(representation = representation, generating_function = generating_function)    
+    def __init__(self, representation = 'vector', parametrization = 'identity'):
+        super(Orientation_Trajectory_Polynomial, self).__init__(representation = representation, parametrization = parametrization)    

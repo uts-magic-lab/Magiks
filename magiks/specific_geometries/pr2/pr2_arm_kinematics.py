@@ -23,17 +23,15 @@ Changes from ver 4.0:
 
 import copy, time, math
 import numpy as np
-from math_tools import general as gen
 
 from interval import interval, inf, imath
 from sets import Set
 
-
-from math_tools import general as gen
+from math_tools import general_math as genmath
 from math_tools.geometry import trigonometry as trig, trajectory as trajlib
 from math_tools.algebra import vectors_and_matrices as vecmat
 
-from magiks.magiks_core import general as genkin, inverse_kinematics as iklib, manipulator_library as manlib
+from magiks.magiks_core import general_magiks as genkin, inverse_kinematics as iklib, manipulator_library as manlib
 
 drc        = math.pi/180.00
 default_ql = drc*np.array([-130.0, 70.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
@@ -109,9 +107,9 @@ class PR2_ARM_Configuration():
 	#  @return A boolean: True if the given joint angle qi is in feasible range for the i-th joint (within the specified joint limits for that joint)
     def joint_in_range(self,i, qi):
         qi = trig.angle_standard_range(qi) 
-        if abs(qi - self.ql[i]) < gen.epsilon:
+        if abs(qi - self.ql[i]) < genmath.epsilon:
             qi = self.ql[i]
-        if abs(qi - self.qh[i]) < gen.epsilon:
+        if abs(qi - self.qh[i]) < genmath.epsilon:
             qi = self.qh[i]
 
         return ((qi <= self.qh[i]) and (qi >= self.ql[i]))
@@ -122,7 +120,7 @@ class PR2_ARM_Configuration():
     def all_joints_in_range(self, qd):
         flag = True
         for i in range(0, 7):
-            if not gen.equal(self.w[i], 0.0):
+            if not genmath.equal(self.w[i], 0.0):
                 flag = flag and self.joint_in_range(i, qd[i])
         return flag
 
@@ -137,7 +135,7 @@ class PR2_ARM_Configuration():
 	#  @param max_speed A float parameter specifying the maximum feasible speed for a joint change. (Set by infinity by default)	
 	#  @param delta_t The step time in which the change(correction) is to be applied.
 	#  @return An instance of type <a href="http://pyinterval.googlecode.com/svn/trunk/html/index.html">Interval()</a>
-    def joint_stepsize_interval(self, direction, max_speed = gen.infinity, delta_t = 0.001):
+    def joint_stepsize_interval(self, direction, max_speed = genmath.infinity, delta_t = 0.001):
         '''
         The correction of joints is always restricted by joint limits and maximum feasible joint speed
         If you want to move the joints in a desired direction, how much are you allowed to move?	
@@ -149,16 +147,16 @@ class PR2_ARM_Configuration():
         etta_h = []
 
         for i in range(7):
-            if not gen.equal(direction[i], 0.0):
+            if not genmath.equal(direction[i], 0.0):
                 if (self.w[i] != 0.0):
                     a = (self.ql[i] - self.q[i])/direction[i]    
                     b = (self.qh[i] - self.q[i])/direction[i]
-                    etta_l.append(gen.sign_choice(a, b, direction[i]))
-                    etta_h.append(gen.sign_choice(b, a, direction[i]))
+                    etta_l.append(genmath.sign_choice(a, b, direction[i]))
+                    etta_h.append(genmath.sign_choice(b, a, direction[i]))
 
                 a = delta_t*max_speed/direction[i]
-                etta_l.append(gen.sign_choice(-a, a, direction[i]))
-                etta_h.append(gen.sign_choice( a,-a, direction[i]))
+                etta_l.append(genmath.sign_choice(-a, a, direction[i]))
+                etta_h.append(genmath.sign_choice( a,-a, direction[i]))
 
         if (etta_l == []) or (etta_h == []):
             return (0.0, 0.0)
@@ -180,7 +178,7 @@ class PR2_ARM_Configuration():
 
         if self.all_joints_in_range(qd):
             for i in range(0, 7):
-                if gen.equal(self.w[i], 0.0):
+                if genmath.equal(self.w[i], 0.0):
                     self.q[i] = qd[i]
                 else:
                     self.q[i] = trig.angle_standard_range(qd[i])
@@ -417,7 +415,7 @@ class PR2_ARM():
     #          (If False is returned, properties self.xd and self.RD will not chenge)
     def set_target(self, target_position, target_orientation):
 
-        assert gen.equal(np.linalg.det(target_orientation), 1.0)
+        assert genmath.equal(np.linalg.det(target_orientation), 1.0)
         self.xd = target_position
         self.Rd = target_orientation
 
@@ -612,7 +610,7 @@ class PR2_ARM():
 
             E = self.div_theta_err()
             F = self.div_phi_err()
-            if gen.equal(E[1,3],0.0) or gen.equal(E[2,2],0.0) or gen.equal(E[3,1],0.0) or gen.equal(E[4,5],0.0) or gen.equal(E[5,4],0.0) or gen.equal(E[6,6],0.0):
+            if genmath.equal(E[1,3],0.0) or genmath.equal(E[2,2],0.0) or genmath.equal(E[3,1],0.0) or genmath.equal(E[4,5],0.0) or genmath.equal(E[5,4],0.0) or genmath.equal(E[6,6],0.0):
                 return None
             else:
                 self.JRJ = np.zeros(7)
@@ -746,7 +744,7 @@ class PR2_ARM():
                 return self.restore_config(keep_q)
             P   = self.config.w*J    
             den = np.dot(P.T, P)
-            if gen.equal(den, 0.0):
+            if genmath.equal(den, 0.0):
                 if show:
                     print "Division by Zero! Optimum phi = ", self.config.q[0]
                 return self.restore_config(keep_q)
@@ -781,7 +779,7 @@ class PR2_ARM():
     #  @parameter max_speed A scalar float value specifying the maximum joint speed in Radians per second. The default is infinity
     #  @step_time A scalar float value specifying time to reach or step time. The default value is 0.1 sec.
     #  @return A boolean: True if successfuly reduced the cost function, False if not
-    def moveto_optimal(self, max_speed = gen.infinity, step_time = 0.1):
+    def moveto_optimal(self, max_speed = genmath.infinity, step_time = 0.1):
         if self.in_target():
             q0        = np.copy(self.config.q)
             err       = self.config.objective_function()
@@ -809,7 +807,7 @@ class PR2_ARM():
      #  If a solution is found, the config is set and a True is returned, 
      #  If all permission set is searched with no solution, False is returned and the object configuration will not change.
     def closest_feasible_phi(self, phi, PS, increment = math.pi/360.0):
-        (phi_l, phi_h) = gen.accommodating_interval(phi, PS)
+        (phi_l, phi_h) = genmath.accommodating_interval(phi, PS)
 
         assert (phi < phi_h) and (phi > phi_l)
 
@@ -929,7 +927,7 @@ class PR2_ARM():
             return False
         else:
             if not (phi in PS):
-                phi = gen.closest_border(phi, PS, k = 0.01)
+                phi = genmath.closest_border(phi, PS, k = 0.01)
                 if show:
                     print "Phi is not in PS"
                     print "Closest phi in PS:", phi
@@ -984,7 +982,7 @@ class PR2_ARM():
         v2 = v**2
         A  = self.d2 + v*self.d4
 
-        if gen.equal(v, 1.0):
+        if genmath.equal(v, 1.0):
             #"Singular Point"
             return []
             '''
@@ -1008,9 +1006,9 @@ class PR2_ARM():
                     R34 = T34[0:3,0:3]
 
                     w2 = (alpha*v2 + betta*v + gamma)/(1 - v2)
-                    if gen.equal(w2, 1.0):
+                    if genmath.equal(w2, 1.0):
                         w2 = 1.0
-                    elif gen.equal(w2, 0.0):
+                    elif genmath.equal(w2, 0.0):
                         w2 = 0.0
                     elif w2 < 0.0:
                         print "IK_config error: w^2 is negative, This should never happen! Something is wrong!"
@@ -1036,7 +1034,7 @@ class PR2_ARM():
                                     F      = B*c2
                                     R1     = math.sqrt(A**2 + F**2)
                                     sai1   = math.atan2(F,A)
-                                    R1_nul = gen.equal(R1, 0)
+                                    R1_nul = genmath.equal(R1, 0)
                                     if not R1_nul:
                                         z_R1 = self.xd[2]/R1    
                                         flg  = (z_R1 < 1.0) and (z_R1 > - 1.0)
@@ -1082,8 +1080,8 @@ class PR2_ARM():
                                                             if self.config.joint_in_range(5, theta5):
                                                                 s5     = math.sin(theta5)
                                                                 c5     = math.cos(theta5)
-                                                                if gen.equal(s5,0):
-                                                                    assert gen.equal(R47[2,0], 0)
+                                                                if genmath.equal(s5,0):
+                                                                    assert genmath.equal(R47[2,0], 0)
                                                                     # "Singular Point"
                                                                     return []
                                                                     '''
@@ -1098,10 +1096,10 @@ class PR2_ARM():
                                                                     theta6 = trig.arcsincos(s6, c6)
                                                                     theta4 = trig.arcsincos(s4, c4)
 
-                                                                    assert gen.equal(R47[1,0] ,  c4*s6 + c5*c6*s4)
-                                                                    assert gen.equal(R47[1,1] ,  c4*c6 - c5*s4*s6)
-                                                                    assert gen.equal(R47[0,0] ,  -s4*s6 + c4*c5*c6)
-                                                                    assert gen.equal(R47[0,1] ,  -c6*s4 - c4*c5*s6)
+                                                                    assert genmath.equal(R47[1,0] ,  c4*s6 + c5*c6*s4)
+                                                                    assert genmath.equal(R47[1,1] ,  c4*c6 - c5*s4*s6)
+                                                                    assert genmath.equal(R47[0,0] ,  -s4*s6 + c4*c5*c6)
+                                                                    assert genmath.equal(R47[0,1] ,  -c6*s4 - c4*c5*s6)
 
                                                                     assert self.config.joint_in_range(4, theta4)    
                                                                     assert self.config.joint_in_range(6, theta6)    
@@ -1182,7 +1180,7 @@ class PR2_ARM():
         ori_traj.add_point(phi - phi_start, self.wrist_orientation())
         return (pos_traj, ori_traj)
 
-    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 1.0, relative = True):
+    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 5.0, relative = True):
         '''
         projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
         The phase starts from phi_start and added by delta_phi in each step.
@@ -1190,17 +1188,17 @@ class PR2_ARM():
         '''
         keep_q = np.copy(self.config.q)
 
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
-
         if ori_traj == None:
             ori_traj = trajlib.Orientation_Path()
             ori_traj.add_point(0.0, self.wrist_orientation())
             ori_traj.add_point(pos_traj.phi_end, self.wrist_orientation())
             ori_traj.current_orientation = self.wrist_orientation()
 
-        if phi_end > pos_traj.phi_end:
-            phi_end = pos_traj.phi_end
+        if phi_end == None:
+            phi_end = min(pos_traj.phi_end, ori_traj.phi_end)
+
+        if (phi_end > pos_traj.phi_end) or (phi_end > ori_traj.phi_end):
+            phi_end = min(pos_traj.phi_end, ori_traj.phi_end)
 
         jt          = trajlib.Trajectory_Polynomial(dimension = 7)
         jt.capacity = 2
@@ -1209,10 +1207,11 @@ class PR2_ARM():
 
         phi   = phi_start
         pos_traj.set_phi(phi)
-        # ori_traj.set_phi(phi)
+        ori_traj.set_phi(phi)
         if relative:
             p0    = self.wrist_position() - pos_traj.current_position
-            R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation.T)  
+            # R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation['matrix'].T)  
+            R0    = np.eye(3)  
         else:
             p0    = np.zeros(3)
             R0    = np.eye(3)  
@@ -1221,15 +1220,16 @@ class PR2_ARM():
         stay      = True
 
         while stay:
-            if phi > phi_end:
+            if (phi > phi_end) or genmath.equal(phi, phi_end, epsilon = 0.1*delta_phi):
                 phi = phi_end
-            if phi == phi_end:
                 stay = False
+
             pos_traj.set_phi(phi)
-            # ori_traj.set_phi(phi)
+            ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation)
-            self.set_target(p, R)
+            # R = np.dot(R0, ori_traj.current_orientation['matrix'])
+            # self.set_target(p, R)
+            self.set_target(p, ori_traj.current_orientation.matrix())
             self.config.qm = np.copy(self.config.q)
             if self.move_towards_target(phi = self.config.q[0], optimize = True, max_speed = max_speed, step_time = delta_phi):
                 jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
@@ -1282,10 +1282,10 @@ class PR2_ARM():
         (betap_l, betap_h) = int_betap[0]
         (gamma_l, gamma_h) = int_gamma[0]
 
-        Vp_1l = gen.solve_quadratic_inequality(- alpha_l, - betap_l, -gamma_l)
-        Vp_1h = gen.solve_quadratic_inequality(  alpha_h,   betap_h,  gamma_h)
-        Vn_1l = gen.solve_quadratic_inequality(- alpha_l, - betap_h, -gamma_l)
-        Vn_1h = gen.solve_quadratic_inequality(  alpha_h,   betap_l,  gamma_h)
+        Vp_1l = genmath.solve_quadratic_inequality(- alpha_l, - betap_l, -gamma_l)
+        Vp_1h = genmath.solve_quadratic_inequality(  alpha_h,   betap_h,  gamma_h)
+        Vn_1l = genmath.solve_quadratic_inequality(- alpha_l, - betap_h, -gamma_l)
+        Vn_1h = genmath.solve_quadratic_inequality(  alpha_h,   betap_l,  gamma_h)
 
         V1 = (Vp_1l & Vp_1h & interval([0.0,1.0])) | (Vn_1l &  Vn_1h & interval([-1.0,0.0]))
 
@@ -1297,8 +1297,8 @@ class PR2_ARM():
 
         #Finding V2l, V2h
 
-        V2l = gen.solve_quadratic_inequality(alpha + wl, betta, gamma - wl) & interval([-1.0, 1.0])
-        V2h = gen.solve_quadratic_inequality(- alpha - wh, - betta, wh - gamma) & interval([-1.0, 1.0])
+        V2l = genmath.solve_quadratic_inequality(alpha + wl, betta, gamma - wl) & interval([-1.0, 1.0])
+        V2h = genmath.solve_quadratic_inequality(- alpha - wh, - betta, wh - gamma) & interval([-1.0, 1.0])
 
         #Finding V2
 
@@ -1337,7 +1337,7 @@ class PR2_ARM():
 
         Phi0 = interval([self.config.ql[0], self.config.qh[0]])
         
-        self.Phi = gen.connect_interval(Phi0 & Phi1_3)
+        self.Phi = genmath.connect_interval(Phi0 & Phi1_3)
 
         return self.Phi
 
@@ -1351,15 +1351,15 @@ class PR2_ARM():
             self.Delta  = self.permission_set_position() - interval(self.config.q[0])  # set initial Delta based on the position permission set for phi
 
             for i in range(0, 7):
-                if (not gen.equal(J[i], 0.0)) and (not gen.equal(self.config.w[i], 0.0)):  # if Ji and wi are not zero
+                if (not genmath.equal(J[i], 0.0)) and (not genmath.equal(self.config.w[i], 0.0)):  # if Ji and wi are not zero
                     d1  = (self.config.ql[i] - self.config.q[i])/J[i]    
                     d2  = (self.config.qh[i] - self.config.q[i])/J[i]    
-                    dli = gen.binary_choice(d1,d2,J[i])
-                    dhi = gen.binary_choice(d2,d1,J[i])
+                    dli = genmath.binary_choice(d1,d2,J[i])
+                    dhi = genmath.binary_choice(d2,d1,J[i])
 
-                    if gen.equal(dli, 0.0):
+                    if genmath.equal(dli, 0.0):
                         dli = 0.0
-                    if gen.equal(dhi, 0.0):
+                    if genmath.equal(dhi, 0.0):
                         dhi = 0.0
                     assert dli <= 0.0
                     assert dhi >= 0.0

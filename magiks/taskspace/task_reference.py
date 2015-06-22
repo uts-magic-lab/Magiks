@@ -13,11 +13,11 @@
 # 
 #  Last Revision:  	28 January 2015
 
-import numpy, math, general as genpy
+import numpy, math, general_python as genpy
 
 from magiks.jacobian import jacobian as jaclib
 from math_tools.algebra import vectors_and_matrices as vecmat
-from math_tools.geometry import metric, trajectory as trajlib, geometry as geo
+from math_tools.geometry import pose_metric, trajectory as trajlib, geometry as geo
 
 class Task_Reference(object):
 
@@ -32,7 +32,7 @@ class Task_Reference(object):
         self.err_jac = jaclib.Error_Jacobian(self.config_settings)
 
         # "error" is an instance of class "Position_Metric" which represents the error between the desired and actual positions of the reference point
-        self.error = metric.Metric()
+        self.error = pose_metric.Metric()
 
         self.clear()
 
@@ -73,7 +73,7 @@ class Task_Point(Task_Reference) :
 
         # "lp" is a list of link points. The position of reference position is defined by a linear combination of the listed link points.
         self.lp    = link_point_list
-        self.error = metric.Position_Metric()
+        self.error = pose_metric.Position_Metric()
 
     def __str__(self):
         s  =  "        Actual Position (mm):                   " +  vecmat.vector_to_str(1000*(self.ra)) + "\n"
@@ -115,7 +115,7 @@ class Task_Frame(Task_Reference) :
 
         self.ln     = link_number
 
-        self.error = metric.Orientation_Metric()
+        self.error = pose_metric.Orientation_Metric()
 
     def __str__(self):
         s  =  "        Actual Orientation :"  + "\n" + "\n"  + str(self.ra) + "\n"  

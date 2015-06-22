@@ -346,3 +346,12 @@ def collapse(v, max_norm):
     else:
         return v
 
+## Use this function to check if all elements of a given vector are positive
+def positive(v, non_zero = False):
+    permit = True
+    n      = len(v)
+    i      = 0
+    while permit and (i < n):
+        permit = permit and (v[i] >= 0) and (not (non_zero and gen.equal(v[i], 0.0)))
+        i += 1
+    return permit

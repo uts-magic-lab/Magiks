@@ -1,4 +1,4 @@
-#Manipulator General Inverse Kinematic System (Magiks)
+#Manipulator General Inverse Kinematic Solver (MAGIKS)
 
 ##Introduction
 
@@ -46,12 +46,11 @@ cgkit also requires custom installation. The source code can be downloaded from 
 
 For example if your numpy package is installed in: /usr/lib/python2.7/dist-packages/
 you will need to do:
-```
->>> import sys
->>> sys.path.append('/usr/lib/python2.7/dist-packages/')
+
+```>>> import sys
+'''>>> sys.path.append('/usr/lib/python2.7/dist-packages/')
 in your pyride script console so that you can import numpy:
->>> import numpy
-```
+```>>> import numpy
 
 You should do this for all the above packages that you installed.
 
@@ -61,13 +60,10 @@ To start working with S-PR2, you need to create a Skilled_PR2 object.
 
 First add S-PR2 path to the system paths. In the pyride python console write:
 
-```
->>> import sys
->>> sys.path.append('your_magiks_path' + 'magiks/projects/s_pr2')
->>> import initialize
->>> from magiks.specific_geometries.pr2 import skilled_pr2 as spr
+```>>> import sys```
+```>>> sys.path.append(<your_magiks_path> + 'magiks/projects/s_pr2')```
+```>>> import initialize```
+```>>> from magiks.specific_geometries.pr2 import skilled_pr2 as spr```
 
->>> import skilled_pr2 as spr
->>> pr2\_obj = spr.Skilled\_PR2()
-```
+```>>> obj = spr.Skilled\_PR2()```
 

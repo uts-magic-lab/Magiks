@@ -19,7 +19,7 @@
 
 import math, time, sys, copy, numpy as np
 
-from magiks.magiks_core import general as genpy
+import general_python as genpy
 
 from math_tools.geometry import geometry as geo, trajectory as trajlib
 from math_tools.algebra  import polynomials, vectors_and_matrices as vecmat
