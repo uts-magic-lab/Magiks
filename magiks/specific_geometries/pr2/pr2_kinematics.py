@@ -187,7 +187,7 @@ class PR2(object):
             q_full = self.q
         permit = type(q_full) in [numpy.ndarray, tuple, list]
         permit = permit and (len(q_full) == 18)
-        assert permit, pygen.err_str(__name__, self.__class__.__name__,'full_config', 'q_full must be a tuple, numpy vector or array of size 18')
+        assert permit, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'q_full must be a tuple, numpy vector or array of size 18')
 
         if q_partial == None:
             return None
@@ -195,7 +195,7 @@ class PR2(object):
         permit = type(q_partial) in [numpy.ndarray, tuple, list]
         nqp    = len(q_partial)
         permit = permit and (nqp in [7,11])
-        assert permit, pygen.err_str(__name__, self.__class__.__name__,'full_config', 'q_partial must be a tuple, numpy vector or array of size 7 or 11')
+        assert permit, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'q_partial must be a tuple, numpy vector or array of size 7 or 11')
 
         qf = copy.copy(q_full)
         if nqp == 7:
@@ -311,7 +311,7 @@ class PR2(object):
         relative_endeffector_position    = - self.p_BR_BO + numpy.dot(self.R_B.T,target_position - self.p_BO - numpy.dot(target_orientation,self.p_EFR_WR))
         print "rel_ef_pos[2]  = ", relative_endeffector_position[2]
         '''
-        assert self.control_mode in all_control_modes, pygen.err_str(__name__, self.__class__.__name__, 'set_target', self.control_mode + " is an invalid value for control mode")
+        assert self.control_mode in all_control_modes, pygen.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.control_mode + " is an invalid value for control mode")
         if self.control_mode == 'Fixed-Base':
             rel_end_position    = - p0 + target_position - numpy.dot(target_orientation, pe)
             rel_end_orientation = target_orientation
@@ -471,7 +471,7 @@ class PR2(object):
     def IK_config(self, phi):
         assert self.control_mode in all_control_modes
         if self.control_mode == 'Fixed-Base':
-            assert type(phi) is float, pygen.err_str(__name__, self.__class__.__name__,'IK_config', 'given redundant parameter must be a float in Fixed-Base mode')
+            assert type(phi) is float, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'given redundant parameter must be a float in Fixed-Base mode')
             arm   = self.reference_arm()
             q_arm = arm.IK_config(phi = phi)
             return self.full_config(q_arm, is_left_arm = self.larm_reference)
@@ -479,7 +479,7 @@ class PR2(object):
             permit = type(phi) in [numpy.ndarray, float, list]
             if permit:
                 permit = permit and len(phi) == 5
-            assert permit, pygen.err_str(__name__, self.__class__.__name__,'IK_config', 'given redundant parameter must be an array of size 5 in Free-Base mode')
+            assert permit, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'given redundant parameter must be an array of size 5 in Free-Base mode')
             solution_set = self.all_IK_solutions(phi)
             if len(solution_set) == 0:
                 print "IK_config error: No solution found within the feasible joint ranges for the given redundant parameters"

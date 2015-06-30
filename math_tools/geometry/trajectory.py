@@ -30,6 +30,8 @@ from math_tools import general_math as genmath
 from math_tools.algebra import polynomials as pl
 from math_tools.geometry import geometry as geo
 
+all_figures = ['position', 'velocity', 'acceleration', 'jerk']
+
 ## This class, introduces a structure for a key point in the multi-dimensional space. 
 #  Key points are used to generate a trajectory. 
 #  A key point contains a phase value specifying the point phase (time), 
@@ -270,6 +272,35 @@ class Path(object):
         plt.ylabel(s)
         plt.xlabel('phi')
         plt.show()
+
+    '''
+    def plot_all(self, axis = [0,1], n = 100, y_text = "", wtp = 'position', show_points = False):
+        if y_text == "":
+            s = wtp + " of Axis " + str(axis)
+        else:
+            s = wtp + " of " + y_text
+
+        x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        for m in axis:
+            y = []
+            for t in x:
+                self.set_phi(t)
+                y.append(self.current_value(field_name = wtp, axis = axis))
+            if show_points:
+                px = []
+                py = []
+                for pnt in self.point:
+                    px.append(pnt.phi)
+                    py.append(pnt.value(field_name = wtp, axis = axis))
+
+                plt.plot(x, y, px, py, 'o') 
+            else:
+                plt.plot(x, y) 
+
+            plt.ylabel(s)
+            plt.xlabel('phi')
+            plt.show()
+    '''
 
     def scatter_plot(self, wtp = 'position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
 
@@ -558,6 +589,61 @@ class Trajectory(object):
         plt.xlabel('phi')
         plt.show()
 
+    def csv_str(self, n = 100, wtp = 'position', header = True):
+        
+        x   = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        if header:
+            dic = {'position':'x', 'velocity':'v', 'acceleration':'a'}
+            s   = 'phi'
+            for i in range(self.dim):
+                s += ',' + dic[wtp] + str(i)     
+            s += '\n'
+        else:
+            s = ''
+        for t in x:
+            s += str(t)
+            self.set_phi(t)
+            for j in range(self.dim):
+                if wtp == 'position':
+                    s += ',' + str(self.current_position[j])
+                elif wtp == 'velocity':
+                    s += ',' + str(self.current_velocity[j])
+                elif wtp == 'acceleration':
+                    s += ',' + str(self.current_acceleration[j])
+            s += '\n'
+
+        return s
+
+    def write_csv(self, filename, n = 100, path = '', header = True):
+        FILE_HANDLE = open(filename, "w")
+        FILE_HANDLE.write(self.csv_str(n = n , header = header))
+
+    def matrix(self, n = 100, figures = ['position']):
+        # genpy.check_valid(figures, all_figures, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, figures)
+        T    = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        nfig = len(figures)
+        nrow = len(T)
+        M    = np.zeros((nrow, nfig*self.dim + 1))
+        i    = 0
+        # print len(T)
+        for t in T:
+            # print i, '-',
+            j   = 0
+            M[i, j] = t
+            j      += 1
+            self.set_phi(t)
+            if 'position' in figures:
+                M[i, j:(j + self.dim)] = self.current_position
+                j += self.dim
+            if 'velocity' in figures:
+                M[i, j:(j + self.dim)] = self.current_velocity
+                j += self.dim
+            if 'acceleration' in figures:
+                M[i, j:(j + self.dim)] = self.current_acceleration
+                j += self.dim
+            i += 1
+        return M
+
     def plot2d(self, wtp = 'position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
 
         t = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
@@ -631,7 +717,7 @@ class Trajectory_Polynomial(Trajectory):
         capacity = genpy.check_type(capacity, [int], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'capacity', default = self.capacity)
         nn   = np.array([None for j in range(self.dim)])
         lsi  = len(self.segment) - 1
-        assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'new_segment', 'Can not create a new segment. The last segment needs at least two points.')
+        assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'Can not create a new segment. The last segment needs at least two points.')
         seg  = Path_Polynomial(dimension = self.dim, capacity = capacity) 
         lslp = self.segment[lsi].point[len(self.segment[lsi].point) - 1] # last_seg_last_point
         seg.add_point(0.0, lslp.pos, nn, np.copy(nn))

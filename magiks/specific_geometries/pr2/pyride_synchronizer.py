@@ -942,6 +942,50 @@ class PyRide_PR2(pr2lib.PR2):
         
         self.sync_object()
 
+    ## Activates the Kinematic Control Service
+    def activate_kc(self): 
+        self.kc_service_cnt = 0
+        self.prev_time      = 0.0
+        self.kc_gain        = 1.0
+        PyPR2.registerRawTrajectoryInput( self.kc_service ) 
+        assert PyPR2.useJointVelocityControl(True)
+
+    ## Deactivates the Kinematic Control Service
+    def deactivate_kc(self):
+        self.kc_service_cnt = 0
+        PyPR2.registerRawTrajectoryInput( None )
+        assert PyPR2.useJointVelocityControl(False)
+
+    def kc_service(self, data):
+        if self.larm_reference:
+            pe = self.p_EFL_WL
+        else:
+            pe = self.p_EFR_WR
+        self.kc_service_cnt += 1
+        self.sync_object()
+        arm   = self.reference_arm()
+        pos   = numpy.array(data['position'])
+        ori   = geo.Orientation_3D(data['orientation'], representation = 'quaternion')
+        pos  -= numpy.dot(ori['matrix'], pe)
+        arm.set_target(pos, ori['matrix'])
+        if self.kc_service_cnt == 1:
+            self.t0 = time.time()
+            self.prev_err = arm.pose_metric()
+        else:        
+            if not data['in_progress']:
+                pint.send_arm_joint_speed(numpy.zeros(7), is_left_arm = self.larm_reference)
+                arm.config.qm = 0.5*(arm.config.ql + arm.config.qh)
+            else:
+                self.curr_time  = time.time() - self.t0
+                dt              = self.curr_time - self.prev_time
+                self.prev_time  = self.curr_time
+                q0 = numpy.copy(arm.config.q)
+                arm.config.qm = numpy.copy(arm.config.q)
+                arm.inverse_update(optimize = True)
+                jdir  = arm.config.q - q0
+                q_dot = vecmat.clamp(jdir/dt, self.kc_gain)
+                pint.send_arm_joint_speed(q_dot, is_left_arm = self.larm_reference)
+                
     def arm_track(self, k = 1.0, delay = 0.1, max_speed = 1.0, relative = True):
     
         ts        = time.time()

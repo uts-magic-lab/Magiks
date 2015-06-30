@@ -29,7 +29,7 @@ Changes from Version 1:
 import numpy as np
 import copy, math, rotation as rot, trajectory as trajlib
 
-from packages.nima.mathematics import general as gen
+from math_tools import general_math as gen
 
 
 

@@ -17,8 +17,65 @@ import math, numpy
 
 from math_tools import general as gen
 from math_tools.geometry import trigonometry as trig
+import matplotlib.pyplot as plt
 
+def colmax(M):
+    '''
+    returns the maximums of each column in a vector
+    '''
+    (m,n) = M.shape
+    cm    = []
+    
+    for j in range(n):
+        cm = []
+        cm.append(max(M[:,j]))
 
+    return cm    
+
+def colmin(M):
+    '''
+    returns the minimums of each column in a vector
+    '''
+    (m,n) = M.shape
+    cm    = []
+    
+    for j in range(n):
+        cm = []
+        cm.append(min(M[:,j]))
+
+    return cm    
+
+def plot_matrix(M, xlabel = None, ylabels = None, annotate = False, legend = True, annx = None, anny = None):
+    (m,n) = M.shape
+
+    if annotate and (annx == None):
+        max_x = max(M[:,0])
+        min_x = min(M[:,0])
+        hx    = max_x - min_x
+
+        max_y = max(colmax(M[:,1:n]))
+        min_y = min(colmin(M[:,1:n]))
+        hy    = max_y - min_y
+
+        annx = []
+        anny = []
+        for j in range (n-1):
+            i = (j+1)*m*9/(n*10)
+            annx.append(M[i,0])
+            anny.append(M[i,j+1])
+            print 'Annotate ', i, ylabels[j] , ' at: ', annx[j], anny[j]
+
+    for j in range(n - 1):
+        plt.plot(M[:,0], M[:,j+1]) 
+        if annotate:
+            plt.annotate(ylabels[j], xy=(annx[j], anny[j]), xytext=(annx[j]+0.1*hx, anny[j]+0.1*hy), arrowprops=dict(facecolor='black', shrink=0.2), )
+            plt.plot(annx, anny, 'x', color = 'black')
+        if legend:
+            '''
+            I should work on that ...
+            '''    
+            plt.legend()
+    plt.show()
 
 '''
 use mgv
@@ -335,7 +392,7 @@ def left_dls_inverse(M, k):
     Minv = numpy.dot(numpy.linalg.inv(A + k*k*numpy.eye(m)), M.T)
     return Minv
 
-def collapse(v, max_norm):
+def clamp(v, max_norm):
     '''
     if the magnitude(norm) of the given vector is smaller than max_norm, the given vctor is returned
     otherwise a vector parallel to v with norm max_norm is returned

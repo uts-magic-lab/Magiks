@@ -15,6 +15,8 @@
 #  Last Revision:  	03 January 2015 
 
 import math,numpy
+import general_python as genpy
+from math_tools import general_math as gen
 
 def dbl2str(n):
     d = abs(int(n));
@@ -154,14 +156,16 @@ def unit_quaternion(TRM):
     the first element of the output vector contains the scalar part of the unit quaternion and the last three elements represent the vectorial part
     
     '''
+    assert gen.equal(numpy.linalg.det(TRM[0:3,0:3]), 1.0), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given TRM is not a rotation matrix.")
 
     uqn = numpy.zeros((4))
     uqn[0] = 1.00
     [u,v,w] = permutation_uvw(TRM)
         
-    p = math.sqrt(1 + TRM[u,u] - TRM[v,v] - TRM[w,w])
+    p = 1.0 + TRM[u,u] - TRM[v,v] - TRM[w,w]
 
-    if (p > 0.000001):
+    if (p > gen.epsilon):
+        p        = math.sqrt(p)
         uqn[u+1] = p/2.0
         uqn[v+1] = (TRM[v,u] + TRM[u,v])/(2*p)
         uqn[w+1] = (TRM[w,u] + TRM[u,w])/(2*p)
@@ -170,7 +174,7 @@ def unit_quaternion(TRM):
     if uqn[0] < 0:
         uqn = - uqn
 
-    assert abs(numpy.linalg.norm(uqn) - 1) < 0.000001
+    assert gen.equal(numpy.linalg.norm(uqn), 1.0), "Impossible !"
     return uqn
 
 def unit_quaternion_velocity(TRM, TRMD):

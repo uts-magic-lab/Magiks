@@ -28,14 +28,19 @@ from interval import interval, inf, imath
 from sets import Set
 
 from math_tools import general_math as genmath
-from math_tools.geometry import trigonometry as trig, trajectory as trajlib
+from math_tools.geometry import trigonometry as trig, trajectory as trajlib, geometry as geo
 from math_tools.algebra import vectors_and_matrices as vecmat
 
 from magiks.magiks_core import general_magiks as genkin, inverse_kinematics as iklib, manipulator_library as manlib
 
 drc        = math.pi/180.00
-default_ql = drc*np.array([-130.0, 70.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
-default_qh = drc*np.array([  40.0, 170.0,   44.0, 130.0,  180.0, 130.0,  180.0])
+
+#default_ql = drc*np.array([-130.0, 70.0 , -180.0,   0.0, -180.0,   0.0, -180.0])
+#default_qh = drc*np.array([  40.0, 170.0,   44.0, 130.0,  180.0, 130.0,  180.0])
+
+default_ql = drc*np.array([-130.0, 70.0 , -180.0, - 131.0, -180.0, -130.0, -180.0])
+default_qh = drc*np.array([  30.0, 170.0,   44.0, -   8.6,  180.0, 0.00,  180.0])
+
 default_W  = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
 ## @brief Contains properties and methods regarding the PR2 arm joint-space.
@@ -757,20 +762,23 @@ class PR2_ARM():
                     print "No solution for the updated phi! Optimum phi = ", self.config.q[0]
                 return self.restore_config(keep_q)
 
+            q0 = np.copy(self.config.q)
             if not self.set_config(q):
                 if show:
-                    print "Solution found but not feasible! This should not happen. Optimum phi = ", self.config.q[0]
-                return self.restore_config(keep_q)
+                    print "Solution found but not feasible! This should not happen. Optimum phi = ", q0[0]
+                    self.restore_config(keep_q)
+                return q0
 
             if show:
-                print "A better phi is found : ", new_phi
+                print "A new phi is found : ", new_phi
 
             new_err = self.config.objective_function()
 
             if new_err > old_err - 0.01:
                 if show:
                     print "Error not reduced any more. Optimum phi: ", self.config.q[0]
-                return self.restore_config(keep_q)
+                    self.restore_config(keep_q)
+                return q0
 
             counter = counter + 1
             
@@ -881,8 +889,10 @@ class PR2_ARM():
                 if self.pose_metric() < err:
                     return True
                 else:
+                    self.set_config(q0)
                     print "Error is not reduced"
             else:
+                self.set_config(q0)
                 print "set config failed"
         else:
             return True
@@ -1158,41 +1168,38 @@ class PR2_ARM():
         if phi_end == None:
             phi_end = js_traj.phi_end
 
-        ori_traj = trajlib.Orientation_Trajectory_Segment()
-        ori_traj.capacity = 200
+        ori_traj = trajlib.Orientation_Trajectory_Polynomial()
         pos_traj = trajlib.Trajectory_Polynomial()
         if phi_end > js_traj.phi_end:
             phi_end = js_traj.phi_end
 
         phi = phi_start
-        js_traj.set_phi(phi)
         stay = True
-        while stay and (self.set_config(js_traj.current_position)):
-            if phi > phi_end:
+        while stay:
+            if (phi > phi_end) or genmath.equal(phi, phi_end, epsilon = 0.1*delta_phi):
                 phi = phi_end
                 stay = False
-            pos_traj.add_point(phi - phi_start, self.wrist_position())
-            ori_traj.add_point(phi - phi_start, self.wrist_orientation())
-            phi = phi + delta_phi
             js_traj.set_phi(phi)
-            
-        pos_traj.add_point(phi - phi_start, self.wrist_position())
-        ori_traj.add_point(phi - phi_start, self.wrist_orientation())
+            if self.set_config(js_traj.current_position):
+                pos_traj.add_point(phi - phi_start, self.wrist_position())
+                ori_traj.add_point(phi - phi_start, geo.Orientation_3D(self.wrist_orientation()))
+            phi = phi + delta_phi
+
         return (pos_traj, ori_traj)
 
-    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 5.0, relative = True):
+    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, max_speed = 1.0, relative = True, joint_traj_capacity = 2):
         '''
         projects the given taskspace pose trajectory into the jointspace using analytic inverse kinematics.
         The phase starts from phi_start and added by delta_phi in each step.
         at any time, if a solution is not found, the process stops
         '''
+        self.config.qm = 0.5*(self.config.ql + self.config.qh)
         keep_q = np.copy(self.config.q)
 
         if ori_traj == None:
             ori_traj = trajlib.Orientation_Path()
-            ori_traj.add_point(0.0, self.wrist_orientation())
-            ori_traj.add_point(pos_traj.phi_end, self.wrist_orientation())
-            ori_traj.current_orientation = self.wrist_orientation()
+            ori_traj.add_point(0.0, geo.Orientation_3D(self.wrist_orientation()))
+            ori_traj.add_point(pos_traj.phi_end, geo.Orientation_3D(self.wrist_orientation()))
 
         if phi_end == None:
             phi_end = min(pos_traj.phi_end, ori_traj.phi_end)
@@ -1200,23 +1207,16 @@ class PR2_ARM():
         if (phi_end > pos_traj.phi_end) or (phi_end > ori_traj.phi_end):
             phi_end = min(pos_traj.phi_end, ori_traj.phi_end)
 
-        jt          = trajlib.Trajectory_Polynomial(dimension = 7)
-        jt.capacity = 2
-
-        jt.add_point(phi = 0.0, pos = np.copy(self.config.q), vel = np.zeros(7))
+        jt          = trajlib.Trajectory_Polynomial(dimension = 7, capacity = joint_traj_capacity)
 
         phi   = phi_start
         pos_traj.set_phi(phi)
         ori_traj.set_phi(phi)
         if relative:
             p0    = self.wrist_position() - pos_traj.current_position
-            # R0    = np.dot(self.wrist_orientation(), ori_traj.current_orientation['matrix'].T)  
-            R0    = np.eye(3)  
         else:
             p0    = np.zeros(3)
-            R0    = np.eye(3)  
         
-        phi       = phi + delta_phi
         stay      = True
 
         while stay:
@@ -1227,10 +1227,10 @@ class PR2_ARM():
             pos_traj.set_phi(phi)
             ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
-            # R = np.dot(R0, ori_traj.current_orientation['matrix'])
-            # self.set_target(p, R)
             self.set_target(p, ori_traj.current_orientation.matrix())
+
             self.config.qm = np.copy(self.config.q)
+
             if self.move_towards_target(phi = self.config.q[0], optimize = True, max_speed = max_speed, step_time = delta_phi):
                 jt.add_point(phi = phi - phi_start, pos = np.copy(self.config.q))
             else:

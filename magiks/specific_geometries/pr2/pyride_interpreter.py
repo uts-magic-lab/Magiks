@@ -148,6 +148,8 @@ def on_trajectory_received( data ):
     rt_acceleration[1] = data['acceleration'][1]
     rt_acceleration[2] = data['acceleration'][2]
 
+    rt_orientation[0] = data['acceleration'][2]
+
 set_callback_functions()
 
 # Conversion Functions
@@ -773,3 +775,13 @@ def send_arm_joint_speed(q_dot, is_left_arm = False):
 
     PyPR2.moveArmWithJointVelocity(**g)
 
+'''
+
+The problem is here:
+>>> ps.pint.larm_joints(in_degrees = False)
+array([ 0.51655997,  1.7272608 ,  2.4242567 , -1.93160875, -1.00904676,
+       -1.99999936, -6.15865849])
+>>> b.larm.config.q
+array([ 0.51620768,  1.72741597,  2.42425919, -1.93156323, -1.00904459,
+       -2.26706906,  0.1245308 ])
+'''
