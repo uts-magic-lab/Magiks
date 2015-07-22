@@ -19,4 +19,5 @@ import sys
 sys.path.append("/home/nimasoft/Dropbox/software/python/magiks/projects/s_pr2/")
 import initialize
 from magiks.specific_geometries.pr2 import pyride_synchronizer as ps
+b = ps.PyRide_PR2()
 '''

@@ -20,9 +20,10 @@
 import numpy as np
 import time, math
 
+import skilled_pr2
 import pyride_interpreter as pint
 
-from math_tools import general as gen
+from math_tools import general_math as gen
 from math_tools.geometry import trajectory as traj, rotation as rot, shape_trajectories as tsh
 
 '''

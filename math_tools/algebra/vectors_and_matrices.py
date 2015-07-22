@@ -13,12 +13,70 @@
 #
 #  Last Revision:  	03 January 2015 
 
-import math, numpy
+import sys, math, numpy as np
 
-from math_tools import general as gen
+import general_python as genpy
+from math_tools import general_math as gen
 from math_tools.geometry import trigonometry as trig
+import matplotlib.pyplot as plt
 
+def colmax(M):
+    '''
+    returns the maximums of each column in a vector
+    '''
+    (m,n) = M.shape
+    cm    = []
+    
+    for j in range(n):
+        cm = []
+        cm.append(max(M[:,j]))
 
+    return cm    
+
+def colmin(M):
+    '''
+    returns the minimums of each column in a vector
+    '''
+    (m,n) = M.shape
+    cm    = []
+    
+    for j in range(n):
+        cm = []
+        cm.append(min(M[:,j]))
+
+    return cm    
+
+def plot_matrix(M, xlabel = None, ylabels = None, annotate = False, legend = True, annx = None, anny = None):
+    (m,n) = M.shape
+
+    if annotate and (annx == None):
+        max_x = max(M[:,0])
+        min_x = min(M[:,0])
+        hx    = max_x - min_x
+
+        max_y = max(colmax(M[:,1:n]))
+        min_y = min(colmin(M[:,1:n]))
+        hy    = max_y - min_y
+
+        annx = []
+        anny = []
+        for j in range (n-1):
+            i = (j+1)*m*9/(n*10)
+            annx.append(M[i,0])
+            anny.append(M[i,j+1])
+            print 'Annotate ', i, ylabels[j] , ' at: ', annx[j], anny[j]
+
+    for j in range(n - 1):
+        plt.plot(M[:,0], M[:,j+1]) 
+        if annotate:
+            plt.annotate(ylabels[j], xy=(annx[j], anny[j]), xytext=(annx[j]+0.1*hx, anny[j]+0.1*hy), arrowprops=dict(facecolor='black', shrink=0.2), )
+            plt.plot(annx, anny, 'x', color = 'black')
+        if legend:
+            '''
+            I should work on that ...
+            '''    
+            plt.legend()
+    plt.show()
 
 '''
 use mgv
@@ -32,7 +90,7 @@ def rep(a, n):
     '''
     returns a numpy vector of length n containing a (all elements of the vector will be a)
     '''
-    v = numpy.zeros(n)
+    v = np.zeros(n)
     for i in range(n):
         v[i] = a
     return v
@@ -43,7 +101,7 @@ def as_matrix(v):
     '''
     n_2 = len(v)
     n = int(math.sqrt(n_2))
-    R = numpy.zeros((n,n))
+    R = np.zeros((n,n))
     for i in range(n):
         for j in range(n):
             print "n*i + j = ", n*i + j
@@ -74,7 +132,7 @@ def vector_to_str( vector, format="%.3f" ) :
     parametrized usage of sprintf
     '''
     n = len(vector)
-    formatted = numpy.zeros((n))
+    formatted = np.zeros((n))
     
     for i in range(n):
         formatted[i] = format%vector[i]
@@ -86,7 +144,7 @@ def matrix_to_str( matrix, format="%.3f" ) :
     '''
     m = matrix.shape[0]
     n = matrix.shape[1]
-    formatted = numpy.zeros((m,n))
+    formatted = np.zeros((m,n))
     
     for i in range(m):
         for j in range(n):
@@ -130,17 +188,17 @@ def remove(v, positions):
 
 def matrix_column_multiply(A,v):
     '''
-    equivalent to numpy.dot( A, numpy.diag(v) ) 
+    equivalent to np.dot( A, np.diag(v) ) 
     
     multiplies each column of matrix A by the corresponding element in vector v. 
     This is equivalent to A*diag(v) but requires less calculations
 
-    return numpy.dot( A, numpy.diag(v) ) 
+    return np.dot( A, np.diag(v) ) 
     '''
     m = A.shape[0]
     n = A.shape[1]
     assert n == len(v)
-    Adiagv = numpy.zeros((m,n))
+    Adiagv = np.zeros((m,n))
     for i in range(0,m):
         for j in range(0,n):
             Adiagv[i,j] = A[i,j]*v[j]
@@ -150,7 +208,7 @@ def normalize(v):
     '''
     Returns the unit vector parallel to the given vector.
     '''
-    l = numpy.linalg.norm(v)
+    l = np.linalg.norm(v)
     if gen.equal(l, 0.0):
         return(v)
     else:
@@ -179,33 +237,33 @@ def inner_product(v1, v2):
     '''
     returns the inner product of the two vectors v1 and v2
     '''
-    return numpy.sum(v1*v2)
+    return np.sum(v1*v2)
    
 def as_vector(v):
     '''
     Returns a numpy array equal to v. Input argument v must be a normal array of numbers
     '''
-    return(numpy.array(v))
+    return(np.array(v))
 
-def vectors_angle(v1, v2, in_degrees = False, positive_direction = numpy.zeros(3)):
+def vectors_angle(v1, v2, in_degrees = False, positive_direction = np.zeros(3)):
     '''
     Returns the angle between two vectors. The positive direction, specifies which halfspace is used as positive vectors for the cross product of u and v
     if not specified, the returned angle will be always positive. 
     If specified, then if the sign of the returned angle is the same as the inner product of positive_direction and crossproduct(v1,v2)
     '''
         
-    l_v1 = numpy.linalg.norm(v1)
-    l_v2 = numpy.linalg.norm(v2)
+    l_v1 = np.linalg.norm(v1)
+    l_v2 = np.linalg.norm(v2)
     assert not general.equal(l_v1, 0.0)
     assert not general.equal(l_v2, 0.0)
 
     cos_theta = inner_product(v1, v2)/(l_v1*l_v2)
     
     theta = trigonometry.arccos(cos_theta)
-    if general.equal(numpy.linalg.norm(positive_direction), 0.0):
+    if general.equal(np.linalg.norm(positive_direction), 0.0):
         return(theta)
     else:
-        return math.copysign(theta, inner_product(numpy.cross(v1, v2), positive_direction))
+        return math.copysign(theta, inner_product(np.cross(v1, v2), positive_direction))
 
 def linear_map_inv(u,f,g):
     '''
@@ -220,8 +278,8 @@ def diag_old(v):
     '''
     return an square diagonal matrix whose diagonal elements are elements of vector v
     '''
-    # numpy.diag : Use k>0 for diagonals above the main diagonal, and k<0 for diagonals below the main diagonal.
-    return numpy.diag(v, k = 0 )
+    # np.diag : Use k>0 for diagonals above the main diagonal, and k<0 for diagonals below the main diagonal.
+    return np.diag(v, k = 0 )
     
 
 def vector_element_multiply_old(v1,v2):
@@ -243,7 +301,7 @@ def extend_vector(v3):
     '''
     get a three element vector and add one element to its end. Return a four element vector
     '''
-    v4 = numpy.zeros((4))
+    v4 = np.zeros((4))
     for i in range(0,3):
         v4[i] = v3[i]
     v4[3] = 1
@@ -253,7 +311,7 @@ def equal(v1,v2, epsilon = gen.epsilon):
     '''
     Returns 1 if two vectors or matrices are equal otherwise returns 0
     '''
-    return (numpy.linalg.norm(v1-v2) < epsilon)
+    return (np.linalg.norm(v1-v2) < epsilon)
 
 def uvect(TRM,m):
     '''
@@ -275,13 +333,13 @@ def cross_old(u,v):
     '''
     Return the cross product of two vectors u and v. u and v are (3 element) vectors
     '''
-    return numpy.cross(u,v)
+    return np.cross(u,v)
 
 def extended_matrix( R, p ):
     '''
     Convert a (3 X 3) rotation matrix into a (4 X 4) transformation matrix. The added elements will be zero
     '''
-    em = numpy.zeros((4,4))
+    em = np.zeros((4,4))
     for i in range(0,3):
         em[i,3] = p[i]
         em[3,i] = 0
@@ -293,10 +351,10 @@ def right_pseudo_inverse(J):
     '''
     Return the right pseudo-inverse of matrix J
     J^T*(J*J^T)^(-1)
-    --> take a look at ! numpy.linalg.pinv(a) !
+    --> take a look at ! np.linalg.pinv(a) !
     '''
-    A = numpy.dot(J,J.T);
-    Jinv = numpy.dot(J.T,numpy.linalg.inv(A))
+    A = np.dot(J,J.T);
+    Jinv = np.dot(J.T,np.linalg.inv(A))
     return Jinv
 
 def left_pseudo_inverse(J):
@@ -304,8 +362,8 @@ def left_pseudo_inverse(J):
     Return the left pseudo-inverse of matrix J
     (J^T*J)^(-1)*J^T
     '''
-    A = numpy.dot(J.T,J);
-    Jinv = numpy.dot(numpy.linalg.inv(A), J.T)
+    A = np.dot(J.T,J);
+    Jinv = np.dot(np.linalg.inv(A), J.T)
     return Jinv
 
 def right_dls_inverse(M, k):
@@ -316,9 +374,9 @@ def right_dls_inverse(M, k):
 
     '''
     m = M.shape[0]
-    A = numpy.dot(M, M.T);
+    A = np.dot(M, M.T);
     
-    Minv = numpy.dot(M.T, numpy.linalg.inv(A + k*k*numpy.eye(m)))
+    Minv = np.dot(M.T, np.linalg.inv(A + k*k*np.eye(m)))
     return Minv
 
 def left_dls_inverse(M, k):
@@ -327,20 +385,20 @@ def left_dls_inverse(M, k):
 
     [M^T*M + (k^2)*I]^(-1) * M^T
     
-    --> take a look at ! numpy.linalg.pinv(a, rcond=1.0000000000000001e-15) !
+    --> take a look at ! np.linalg.pinv(a, rcond=1.0000000000000001e-15) !
     '''
     m = M.shape[1]
-    A = numpy.dot(M.T, M);
+    A = np.dot(M.T, M);
     
-    Minv = numpy.dot(numpy.linalg.inv(A + k*k*numpy.eye(m)), M.T)
+    Minv = np.dot(np.linalg.inv(A + k*k*np.eye(m)), M.T)
     return Minv
 
-def collapse(v, max_norm):
+def clamp(v, max_norm):
     '''
     if the magnitude(norm) of the given vector is smaller than max_norm, the given vctor is returned
     otherwise a vector parallel to v with norm max_norm is returned
     '''
-    l = numpy.linalg.norm(v)
+    l = np.linalg.norm(v)
     if l > max_norm:
         return v*max_norm/l
     else:
@@ -355,3 +413,44 @@ def positive(v, non_zero = False):
         permit = permit and (v[i] >= 0) and (not (non_zero and gen.equal(v[i], 0.0)))
         i += 1
     return permit
+
+def feasible_stepsize(direction, x, x_min, x_max):
+    '''
+    when the correction of vector x is restricted by limits
+    If you want to change vector x in a desired direction, and there are lower and upper bounds for x, 
+    how much are you allowed to change?	
+    This function returns a feasible stepsize for the given direction. 
+    The direction of change must be multiplied by a scalar value lower or equal to this feasible stepsize 
+    so that the applied changes are feasible.
+    '''
+    valtyp    = [np.ndarray, list, tuple]
+    direction = genpy.check_type(direction, valtyp, __name__, function_name = sys._getframe().f_code.co_name, var_name = 'direction', shape_length = 1)
+    n = len(direction)
+    [x, x_min, x_max] = genpy.check_types(variables = [x,x_min,x_max], type_lists = [valtyp,valtyp,valtyp], 
+                     file_path = __name__, function_name = sys._getframe().f_code.co_name, 
+                     var_names = ['x', 'x_min', 'x_max'], shape_lengths = [1,1,1], array_lengths = [n,n,n])
+
+    etta = []
+    for i in range(n):
+        if not gen.equal(direction[i], 0.0, epsilon = 0.000000001):
+            if x_min[i] == None:
+                x_min[i] = - np.inf
+            if x_max[i] == None:
+                x_max[i] = np.inf
+
+            a = (x_min[i] - x[i])/direction[i]    
+            b = (x_max[i] - x[i])/direction[i]
+            etta.append(gen.sign_choice(b, a, direction[i]))
+        else:
+            etta.append(np.inf)
+        
+        if etta[len(etta)-1] < 0:
+            print 'x_min: ', x_min
+            print 'x_max: ', x_max
+            print 'x:     ', x
+            print 'dir:   ', direction
+
+    if etta == []:
+        return 0.0
+    else:
+        return min(etta)

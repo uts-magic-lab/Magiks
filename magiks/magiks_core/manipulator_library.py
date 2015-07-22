@@ -21,7 +21,7 @@
 import numpy, math
 
 import magiks.geometry.manipulator_geometry as geolib 
-import math_tools.general as genmath # A library of mathemathical global variables 
+import math_tools.general_math as genmath # A library of mathemathical global variables 
 import magiks.jointspace.manipulator_configuration as conflib 
 
 # Geometry of PUMA:

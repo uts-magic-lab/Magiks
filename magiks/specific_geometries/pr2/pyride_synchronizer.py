@@ -9,10 +9,10 @@
 #               	Phone No. : 04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	6.0
+#  @version     	7.0
 # 
 #  Start date:      09 April 2014
-#  Last Revision:  	14 May 2015
+#  Last Revision:  	20 July 2015
 
 '''
 Changes from ver 5.0:
@@ -22,9 +22,10 @@ Changes from ver 5.0:
 
 import pr2_kinematics as pr2lib
 import pyride_interpreter as pint
-import PyPR2, numpy, math, time, copy
+import PyPR2, math, time, copy, sys, numpy as np
+import general_python as genpy
 
-from math_tools import general as gen
+from math_tools import general_math as gen
 from math_tools.geometry import trigonometry as trig, rotation as rot, geometry as geo, trajectory as trajlib
 from math_tools.algebra  import vectors_and_matrices as vecmat
 from magiks.vision import laser_scan_support as lss
@@ -41,7 +42,7 @@ def read_raw_trajectory(duration = 10.0, delay = 0.5):
     
     while t - t0 < duration:
         print "I am adding this point: ", pint.rt_position ," at time: ", t-t0
-        rt.add_point(phi = t - t0, pos = numpy.copy(pint.rt_position))
+        rt.add_point(phi = t - t0, pos = np.copy(pint.rt_position))
         time.sleep(delay)
         t = time.time()
     
@@ -52,7 +53,7 @@ def calibrate_pr2_r_arm():
     '''
     Trying to compute DH parameters of the right arm according to the FK measured from the robot
     '''
-    q = numpy.zeros(10)    
+    q = np.zeros(10)    
 
     # Get the current right arm joint values:
     rajd = PyPR2.getArmJointPositions(False)   # gets the Right Arm Joint Dictionary
@@ -85,7 +86,7 @@ def calibrate_pr2_l_arm():
     '''
     Trying to compute DH parameters of the left arm according to the FK measured from the robot
     '''
-    q = numpy.zeros(10)    
+    q = np.zeros(10)    
 
     # Get the current right arm joint values:
     lajd = PyPR2.getArmJointPositions(True)   # gets the Left Arm Joint Dictionary
@@ -112,7 +113,7 @@ def calibrate_pr2_l_arm():
     return(q)
 
 def calibrate_pr2_torso():
-    q = numpy.zeros(7)
+    q = np.zeros(7)
 
     # Determining h_ts
     p = PyPR2.getRelativeTF('base_footprint', 'torso_lift_link')['position']
@@ -132,7 +133,7 @@ def calibrate_pr2_torso():
     # Determining tau:
     '''    
     o = PyPR2.getRobotPose()['orientation']
-    assert gen.equal(numpy.linalg.norm(o), 1.0)
+    assert gen.equal(np.linalg.norm(o), 1.0)
     # h = (o[3],o[0],o[1], o[2])
     R = rot.rotation_matrix(o)
     uvect_i = vecmat.as_vector([1.0, 0.0, 0.0])
@@ -173,7 +174,7 @@ class PyRide_PR2(pr2lib.PR2):
     ## Class Constructor    
     def __init__(self, run_magiks = False):
 
-        q_d = numpy.zeros(18)
+        q_d = np.zeros(18)
         self.r_arm_joint_names = r_arm_joint_names
         self.l_arm_joint_names = l_arm_joint_names
 
@@ -196,7 +197,7 @@ class PyRide_PR2(pr2lib.PR2):
         #pr2lib.PR2.__init__(self)
         super(PyRide_PR2, self).__init__(a0 = q_r[7], d2 = q_r[8], d4 = q_r[9], d7 = q_t[5], l0 = q_t[4], b0 = q_t[6], run_magiks = run_magiks)
 
-        q_d = numpy.concatenate((q_r[0:7], q_t[0:4], q_l[0:7]))    
+        q_d = np.concatenate((q_r[0:7], q_t[0:4], q_l[0:7]))    
         super(PyRide_PR2, self).set_config(q_d)
 
         self.set_target(self.end_position(), self.end_orientation())
@@ -209,6 +210,8 @@ class PyRide_PR2(pr2lib.PR2):
         self.arm_max_speed = 1.0
         self.base_laser_scan_range = range(400, 640)
         self.tilt_laser_scan_range = range(80, 300)
+
+        self.larm_reference = True
 
     def trunk_synced(self):
         '''
@@ -272,7 +275,7 @@ class PyRide_PR2(pr2lib.PR2):
         q_l = calibrate_pr2_l_arm()
         q_t = calibrate_pr2_torso()
 
-        q_d = numpy.concatenate((q_r[0:7], q_t[0:4], q_l[0:7]))    
+        q_d = np.concatenate((q_r[0:7], q_t[0:4], q_l[0:7]))    
 
         assert super(PyRide_PR2, self).set_config(q_d)
         
@@ -422,25 +425,24 @@ class PyRide_PR2(pr2lib.PR2):
         if phi == None:
             if self.rarm.inverse_update(optimize = True):
                 qr = self.rarm.config.q
+            elif self.rarm.inverse_update(optimize = False):
+                qr = self.rarm.config.q
             else:
-                print "Error from " + __name__ + func_name + ": Could not find an IK solution for given target. Make sure the target pose is in the workspace."
-                return False
+                assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Could not find an IK solution for given target. Make sure the target pose is in the workspace")
         else:
             C = self.rarm.permission_set_position()
             if phi in C:
                 qr = self.rarm.IK_config(phi)
             else:
-                print "Error from " + __name__ + func_name + ": Given phi is not in the permission set."
-                return False
+                assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Given phi is not in the permission set")
+
         if qr == None:
-            print "Error from " + __name__ + func_name + ": No IK solution found for the given redundant parameter phi! Change the value of the redundant parameter and try again."
-            return False
-        else:
-            if self.rarm.config.set_config(qr):
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "No IK solution found for the given redundant parameter phi! Change the value of the redundant parameter and try again")
+        elif self.rarm.config.set_config(qr):
                 self.q[0:7] = qr
-            else:
-                print "Error from PyRidePR2.rarm_target(): This should not happen! Check your code."
-                return False
+        else:
+            print "Error from PyRidePR2.rarm_target(): This should not happen! Check your code."
+            return False
         
         return self.sync_robot(ttr = ttr, wait = wait) or (not wait)
     
@@ -753,7 +755,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                      in case argument \b wait is True, the wrist finishes the trajectory successfully
     #                      \li False if for any reason the IK trajectory projection fails or in case parameter \b wait is True,
     #                      the robot wrist fails to finish the trajectory           
-    def arm_arc(self, center = numpy.array([0.0, -0.05, 0.0]), angle = math.pi, normal = numpy.array([1.0, 0.0, 0.0]), N = 100, wait = True):
+    def arm_arc(self, center = np.array([0.0, -0.05, 0.0]), angle = math.pi, normal = np.array([1.0, 0.0, 0.0]), N = 100, wait = True):
         '''
         '''
         # assert genmath.equal(vecmat.angle(center, normal), 0.0), "Error from PyRide_PR2(): center and normal must be perpendicular"
@@ -761,7 +763,7 @@ class PyRide_PR2(pr2lib.PR2):
         #tt = trajlib.Trajectory_Polynomial()
         #jt = trajlib.Trajectory_Polynomial(dimension = 7)
         d_theta = angle/N
-        r       = numpy.linalg.norm(center)
+        r       = np.linalg.norm(center)
         ttr     = r*d_theta/self.arm_speed
 
         arm  = self.reference_arm()
@@ -769,34 +771,34 @@ class PyRide_PR2(pr2lib.PR2):
         ori  = arm.wrist_orientation()    
         '''
         J    = [- vecmat.normalize(center)]
-        J    = numpy.append(J, [vecmat.normalize(normal)])
+        J    = np.append(J, [vecmat.normalize(normal)])
         Jdag = vecmat.right_pseudo_inverse(J)        
         '''    
         #tt.add_point(phi = 0.0, pos = p0)
         #jt.add_point(phi = 0.0, pos = arm.config.q)
         if self.larm_reference:
-            g   = pint.gen_larm_joint_posvel_dict(arm.config.q, numpy.zeros(7), 0.0)
+            g   = pint.gen_larm_joint_posvel_dict(arm.config.q, np.zeros(7), 0.0)
         else:
-            g   = pint.gen_rarm_joint_posvel_dict(arm.config.q, numpy.zeros(7), 0.0)
+            g   = pint.gen_rarm_joint_posvel_dict(arm.config.q, np.zeros(7), 0.0)
 
         config_list = [g]
         
         for i in range(N):
             theta = (i+1)*d_theta
             '''
-            b     = numpy.array([math.cos(theta), 0.0])
-            x     = numpy.dot(Jdag, b)
+            b     = np.array([math.cos(theta), 0.0])
+            x     = np.dot(Jdag, b)
             pos   = p0 + center + r*normalize(x)
             '''
-            q0   = numpy.copy(arm.config.q)
-            ax   = numpy.append(theta, vecmat.normalize(normal))
+            q0   = np.copy(arm.config.q)
+            ax   = np.append(theta, vecmat.normalize(normal))
             R    = rot.rotation_matrix(ax, parametrization = 'angle_axis')
-            pos  = p0 + center - numpy.dot(R, center)
+            pos  = p0 + center - np.dot(R, center)
             arm.set_target(pos, ori)
-            arm.config.qm = numpy.copy(arm.config.q)
+            arm.config.qm = np.copy(arm.config.q)
             if arm.move_towards_target(max_speed = self.arm_max_speed, ttr = d_theta):
                 if i == N - 1:
-                    vel = numpy.zeros(7)
+                    vel = np.zeros(7)
                 else:
                     vel = (arm.config.q - q0)/ttr
 
@@ -867,7 +869,7 @@ class PyRide_PR2(pr2lib.PR2):
 
         (a, b, r) = lss.front_line(dist = pint.tl_dist, position_range = self.tilt_laser_scan_range, angle_min = -0.829031407833, angle_step = 0.00436332309619)
 
-        return (a, b, numpy.linalg.norm(r) )
+        return (a, b, np.linalg.norm(r) )
 
     def front_line_base(self):
         '''
@@ -878,7 +880,7 @@ class PyRide_PR2(pr2lib.PR2):
 
         (a, b, r) = lss.front_line(dist = pint.bl_dist, position_range = self.base_laser_scan_range, angle_min = -2.26892805099, angle_step = 0.00436332309619)
 
-        return (a, b, numpy.linalg.norm(r) )
+        return (a, b, np.linalg.norm(r) )
 
     '''
     def front_plane(self):
@@ -899,7 +901,7 @@ class PyRide_PR2(pr2lib.PR2):
     #                  specifying the trajectory in the 3D taskspace to be tracked by the arm.
     #  @param ori_traj An instance of class packages.nima.robotics.kinematics.task_space.trajectory.Trajectory_Polynomial()
     #                  specifying the trajectory in the 3D taskspace to be tracked by the arm.
-    def arm_trajectory(self, pos_traj, ori_traj = None, resolution = 20, relative = True, wait = True):
+    def arm_trajectory(self, pos_traj, ori_traj = None, resolution = 50, relative = True, wait = True):
         '''
         First, projects the given taskspace pose trajectory into the jointspace 
         using both velocity-based and position-based inverse kinematics of the arm and
@@ -911,14 +913,12 @@ class PyRide_PR2(pr2lib.PR2):
         self.sync_object()
         arm     = self.reference_arm()
 
-        if ori_traj == None:
-            ori_traj = trajlib.Orientation_Trajectory()
-            ori_traj.current_orientation = arm.wrist_orientation()
-
         assert resolution > 4, "Error from PyRide_PR2.arm_trajectory(): Invalid Resolution"
 
-        arm = self.reference_arm()
-        jt  = arm.project_to_js(pos_traj, ori_traj, phi_start = 0.0, delta_phi = pos_traj.phi_end/resolution, max_speed = self.arm_max_speed, relative = relative)
+        keep_dt = arm.dt
+        arm.dt  = pos_traj.phi_end/resolution
+        jt  = arm.js_project(pos_traj, ori_traj, relative = relative, traj_type = 'polynomial')
+        arm.dt  = keep_dt
 
         jt.consistent_velocities()
         '''
@@ -942,6 +942,90 @@ class PyRide_PR2(pr2lib.PR2):
         
         self.sync_object()
 
+    ## Activates the Kinematic Control Service
+    def activate_kc(self): 
+        self.kc_service_cnt = 0
+        self.prev_qdot      = np.zeros(7)
+        self.kc_gain        = 1.0
+        PyPR2.registerRawTrajectoryInput( self.kc_service ) 
+        assert PyPR2.useJointVelocityControl(True)
+
+    ## Deactivates the Kinematic Control Service
+    def deactivate_kc(self):
+        self.kc_service_cnt = 0
+        PyPR2.registerRawTrajectoryInput( None )
+        assert PyPR2.useJointVelocityControl(False)
+
+    def kc_service(self, data):
+        if self.larm_reference:
+            pe = self.p_EFL_WL
+            actual_pos = pint.larm_wrist_position()
+            actual_ori = geo.Orientation_3D(pint.larm_wrist_orientation(), representation = 'quaternion')
+            actual_jnt = pint.larm_joints(in_degrees = False)
+        else:
+            pe = self.p_EFR_WR
+            actual_pos = pint.rarm_wrist_position()
+            actual_ori = geo.Orientation_3D(pint.rarm_wrist_orientation(), representation = 'quaternion')
+            actual_jnt = pint.rarm_joints(in_degrees = False)
+
+        self.kc_service_cnt += 1
+        self.sync_object()
+        arm   = self.reference_arm()
+        desired_pos   = np.array(data['position'])
+        desired_ori   = geo.Orientation_3D(data['orientation'], representation = 'quaternion')
+        desired_pos  -= np.dot(desired_ori['matrix'], pe)
+        arm.set_target(desired_pos, desired_ori['matrix'])
+        if self.kc_service_cnt == 1:
+            '''
+            self.kc_time   = data['timestamp']
+            self.t0        = data['timestamp']
+            '''
+            self.kc_time   = 0.0
+            self.t0        = time.time()
+            self.prev_err  = arm.pose_metric()
+            self.kc_ptd   = trajlib.Trajectory_Polynomial() 
+            self.kc_otd   = trajlib.Orientation_Trajectory_Polynomial() 
+            self.kc_pta   = trajlib.Trajectory_Polynomial() 
+            self.kc_ota   = trajlib.Orientation_Trajectory_Polynomial() 
+            self.kc_jtd   = trajlib.Trajectory(dimension = 7, capacity = 10) 
+            self.kc_jta   = trajlib.Trajectory(dimension = 7, capacity = 10) 
+            '''
+            arm.inverse_update(optimize = True)
+            '''
+            self.kc_jtd.add_point(phi = self.kc_time, pos = np.copy(arm.config.q), vel = np.zeros(7), acc = np.zeros(7))
+        else:        
+            '''
+            dt           = data['timestamp'] - self.kc_time
+            self.kc_time = data['timestamp']
+            '''
+            dt            = time.time() - self.t0 - self.kc_time
+            self.kc_time += dt
+            if data['in_progress']:
+                q0 = np.copy(arm.config.q)
+                arm.config.qm = np.copy(arm.config.q)
+                # arm.inverse_update(optimize = True)
+                arm.dt = dt    
+                if arm.moveto_target(optimize = True):
+                    jdir  = arm.config.q - q0
+                    q_dot = jdir/dt
+
+                    (jpos, vel, acc) = trajlib.feasible_position(Xd = np.copy(arm.config.q), X0 = q0, V0 = self.prev_qdot, X_min = arm.config.ql, X_max = arm.config.qh, v_max = arm.max_js, a_max = arm.max_ja, dt = dt, smooth = True)
+                    pint.send_arm_joint_speed(vel, is_left_arm = self.larm_reference)
+                    self.prev_qdot = np.copy(vel)
+
+                    self.kc_jtd.add_point(phi = self.kc_time, pos = jpos, vel = vel, acc = acc)
+            else:
+                self.kc_jtd.add_point(phi = self.kc_time, pos = np.copy(arm.config.q), vel = np.zeros(7), acc = np.zeros(7))
+                pint.send_arm_joint_speed(np.zeros(7), is_left_arm = self.larm_reference)
+                arm.config.qm = 0.5*(arm.config.ql + arm.config.qh)
+                self.deactivate_kc()
+
+        self.kc_ptd.add_point(phi = self.kc_time, pos = np.copy(desired_pos))
+        self.kc_otd.add_point(phi = self.kc_time, ori = copy.deepcopy(desired_ori))
+        self.kc_pta.add_point(phi = self.kc_time, pos = np.copy(actual_pos))
+        self.kc_ota.add_point(phi = self.kc_time, ori = copy.deepcopy(actual_ori))
+        self.kc_jta.add_point(phi = self.kc_time, pos = np.copy(actual_jnt))
+
     def arm_track(self, k = 1.0, delay = 0.1, max_speed = 1.0, relative = True):
     
         ts        = time.time()
@@ -957,16 +1041,16 @@ class PyRide_PR2(pr2lib.PR2):
         if pint.rt_orientation == None:
             H  = arm.ik.transfer_matrices()
             ra = arm.ik.task_frame[0].orientation(H)
-            pint.rt_orientation = numpy.copy(ra['matrix'])
+            pint.rt_orientation = np.copy(ra['matrix'])
 
         if relative:
             H     = arm.ik.transfer_matrices()
             p0    = arm.ik.task_point[0].position(H) - pint.rt_position
             ra    = arm.ik.task_frame[0].orientation(H)
-            R0    = numpy.dot(ra['matrix'], pint.rt_orientation.T)
+            R0    = np.dot(ra['matrix'], pint.rt_orientation.T)
         else:
-            p0    = numpy.zeros(3)
-            R0    = numpy.eye(3)  
+            p0    = np.zeros(3)
+            R0    = np.eye(3)  
         
         t     = time.time() - ts
         dt    = t - t0
@@ -974,15 +1058,15 @@ class PyRide_PR2(pr2lib.PR2):
 
         stay  = True
         cnt   = 0
-        q_dot = numpy.zeros(7)
+        q_dot = np.zeros(7)
 
         while stay:
             cnt  += 1
             p = p0 + pint.rt_position
             # p = p0 + pint.rt_position
-            R = numpy.dot(R0, pint.rt_orientation)
+            R = np.dot(R0, pint.rt_orientation)
             # arm.set_target(p, R)
-            arm.ik.set_target([p], [geo.Orientation_3D(R, numpy.zeros((3,3)))])
+            arm.ik.set_target([p], [geo.Orientation_3D(R, np.zeros((3,3)))])
             
             t     = time.time() - ts
             dt    = t - t0
@@ -1001,12 +1085,12 @@ class PyRide_PR2(pr2lib.PR2):
             Je  = arm.ik.error_jacobian()
 
             if arm.ik.ik_settings.algorithm == "JPI":
-                Je_dag = numpy.linalg.pinv(Je)
+                Je_dag = np.linalg.pinv(Je)
             else:
                 assert False
 
-            # q_dot = - numpy.dot(Je_dag, numpy.append(pint.rt_velocity, numpy.zeros(3)) + k*err)
-            # q_dot = - numpy.dot(Je_dag, k*numpy.append(pint.rt_velocity, numpy.zeros(3)))
+            # q_dot = - np.dot(Je_dag, np.append(pint.rt_velocity, np.zeros(3)) + k*err)
+            # q_dot = - np.dot(Je_dag, k*np.append(pint.rt_velocity, np.zeros(3)))
             q_dot   = k*arm.ik.ik_direction()
             # q_dot = arm.ik_direction()
             
@@ -1032,7 +1116,7 @@ class PyRide_PR2(pr2lib.PR2):
                 print "Actual:  ", ik.task_point[0].position(ik.transfer_matrices())
                 print "Desired: ", ik.task_point[0].rd
                 print "Pose err:", ik.pose_error_norm()   
-                print "Qd Norm: ", numpy.linalg.norm(q_dot)
+                print "Qd Norm: ", np.linalg.norm(q_dot)
             '''
             t     = time.time() - ts
             t0    = t
@@ -1046,6 +1130,6 @@ class PyRide_PR2(pr2lib.PR2):
             stay  = (t < 100.0)
         
         print "Time Out!"
-        pint.send_arm_joint_speed(numpy.zeros(7), is_left_arm = self.larm_reference)
+        pint.send_arm_joint_speed(np.zeros(7), is_left_arm = self.larm_reference)
         pint.deactivate_trajectory_input()
         # self.sync_object()

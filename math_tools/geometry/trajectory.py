@@ -13,11 +13,18 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	6.0
+#  @version     	7.0
 #
-#  Last Revision:  	03 January 2015
+#  Last Revision:  	02 July 2015
 
 # BODY
+
+'''
+Changes from previous version:
+    1- jerk added
+    2- smoothed add_point feature added based on finite difference coefficients
+    3- add_point respecs limits for position, velocity, acceleration and jerk  
+'''
 
 import copy, math, sys, numpy as np
 
@@ -26,10 +33,464 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 import general_python as genpy
-from math_tools import general_math as genmath
-from math_tools.algebra import polynomials as pl
-from math_tools.geometry import geometry as geo
+from math_tools import general_math as gen
+from math_tools.algebra import polynomials as pl, vectors_and_matrices as vm
+from math_tools.geometry import geometry as geo, trigonometry as trig, geometry_2d as geo2d
 
+all_figures = ['position', 'velocity', 'acceleration', 'jerk']
+
+# Backward Finite Difference Coefficients for Velocity
+FDC_v = {1:[1.0,      - 1.0], 
+         2:[1.5,      - 2.0, 0.5],
+         3:[11.0/6,   - 3.0, 1.5, - 1.0/3],
+         4:[25.0/12,  - 4.0, 3.0, - 4.0/3,  0.25 ],
+         5:[137.0/60, - 5.0, 5.0, - 10.0/3, 1.25, - 0.2 ],
+         6:[49.0/20,  - 6.0, 7.5, - 20.0/3, 3.75, - 1.2, 1.0/6 ]}
+
+FDC_a = {1:[1.0,      - 2.0,    1.0], 
+         2:[2.0,      - 5.0,    4.0,      - 1.0 ],
+         3:[35.0/12,  - 26.0/3, 9.5,      - 14.0/3,   11.0/12],
+         4:[15.0/4,   - 77.0/6, 107.0/6,  - 13.0,     61.0/12, - 5.0/6  ],
+         5:[203.0/45, - 87.0/5, 117.0/4,  - 254.0/9,  33.0/2,  - 27.0/5 , 137.0/180],
+         6:[469.0/90, - 22.3,   879.0/20, - 949.0/18, 41.0,    - 20.1,    1019.0/180.0, -0.7]}
+
+def va_mean(vectarray):
+    n = len(vectarray)    
+    s = vectarray[0]
+    for i in range(n - 1):
+        s += vectarray[i + 1]
+    return s/n    
+
+def va_shiftappend(vectarray, v_new):
+    n = len(vectarray)    
+    for i in range(n - 1):
+        vectarray[i] = vectarray[i+1]
+    vectarray[n - 1] = v_new
+    return vectarray
+
+def feasible_position(Xd, X0, V0, X_min, X_max, v_max, a_max, dt, smooth = False):
+    dim   = len(Xd)
+    
+    v_max = v_max*math.sqrt(dim)
+    a_max = a_max*math.sqrt(dim)
+
+    r     = a_max*dt
+    v0    = np.linalg.norm(V0)
+    assert v0 < v_max + r , "Inconsistent "
+    V     = (Xd - X0)/dt
+    sgn   = 1.0
+    if smooth:
+        V     = 0.5*(V + V0)
+    v     = np.linalg.norm(V)
+    if v > v_max:
+        V = V*v_max/v
+        v = v_max
+
+    vv0 = np.dot(V,V0)
+
+    if v0*v0 + v*v - 2*vv0 > r*r:  # end of vector V is not inside the circle: desired velocity is not feasible
+        theta  = trig.arccos(vv0/(v*v0))
+        O      = geo2d.Point_2D([- v0, 0.0])
+        cir    = geo2d.Circle_2D(R = r)        
+        line_V = geo2d.Line_2D(O, theta, representation = 'point-angle')
+        sol    = cir.intersection(line_V)
+        if sol == []:
+            A  = (V - V0)/dt
+            a  = np.linalg.norm(A)  
+            while (v > v_max) or (a > a_max):   
+                if a > a_max :
+                    A = A*a_max/a
+                    a = a_max
+                    V = A*dt + V0
+                    v = np.linalg.norm(V)
+                if v > v_max :
+                    V = V*v_max/v
+                    v = v_max
+                    A = (V - V0)/dt
+                    a  = np.linalg.norm(A)  
+            X = X0 + V*dt
+            
+            assert np.linalg.norm(A) < a_max + 0.001
+            assert np.linalg.norm(V) < v_max + 0.001
+            return (X, V, A)
+            
+            '''
+            CH = cir.center.perpend_to(line_V)
+            H  = line_V.intersection(CH)
+            v_opt = O.dist(H)
+            sgn = gen.sign(vv0)
+            '''
+        elif len(sol) == 1:
+            v_opt = O.dist(sol[0])
+            sgn   = gen.sign(vv0)
+        else:
+            o1 = O.dist(sol[0])
+            o2 = O.dist(sol[1])    
+            if v0 > r:
+                if vv0 > 0:
+                    d1    = abs(o1 - v)
+                    d2    = abs(o2 - v)
+                    sgn   = 1.0
+                else:
+                    d1    = o1
+                    d2    = o2
+                    sgn   = - 1.0
+
+                if d1 < d2:
+                    v_opt = o1
+                else:
+                    v_opt = o2
+            else:
+                sgn   = 1.0
+                if gen.equal(o1*o1 + v0*v0 - 2*o1*v0*math.cos(theta) - r*r, 0.0):
+                    v_opt = o1
+                else:
+                    v_opt = o2
+
+        V     = V*sgn*v_opt/v
+        # v     = np.linalg.norm(V)
+    
+    V = V*min(1.0, vm.feasible_stepsize(direction = V*dt, x = X0, x_min = X_min, x_max = X_max))            
+    
+    X = X0 + V*dt
+
+    A = (V - V0)/dt
+    '''
+    assert sum(X > X_max) == 0
+    assert sum(X < X_min) == 0
+    
+    assert np.linalg.norm(A) < a_max + 0.001
+    assert np.linalg.norm(V) < v_max + 0.001
+    '''
+    return (X, V, A)
+
+'''
+
+def feasible_position(Xd, X0, V0, X_min, X_max, v_max, a_max, dt):
+    r     = a_max*dt
+    v0    = np.linalg.norm(V0)
+    assert v0 < v_max + r , "Inconsistent "
+    V     = (Xd - X0)/dt
+    sgn   = 1.0
+    # V     = 0.5*(V + V0)
+    v     = np.linalg.norm(V)
+    if v > v_max:
+        V = V*v_max/v
+        v = v_max
+
+    vv0 = np.dot(V,V0)
+
+    if v0*v0 + v*v - 2*vv0 > r*r:  # end of vector V is not inside the circle: desired velocity is not feasible
+        print "****************"
+        print "Not inside: "
+        theta  = trig.arccos(vv0/(v*v0))
+        O      = geo2d.Point_2D([- v0, 0.0])
+        cir    = geo2d.Circle_2D(R = r)        
+        line_V = geo2d.Line_2D(O, theta, representation = 'point-angle')
+        sol    = cir.intersection(line_V)
+        if sol == []:
+            print "No Intersection: "
+            CH = cir.center.perpend_to(line_V)
+            H  = line_V.intersection(CH)
+            sgn = gen.sign(vv0)
+        elif len(sol) == 1:
+            print "Tangent: "
+            H = sol[0]
+            sgn   = gen.sign(vv0)
+        else:
+            print "Two Intersections: "
+            if O.dist(cir.center) > r:
+                print "O outside circle"
+                if vv0 > 0:
+                    print "same direction"
+                    d1    = abs(O.dist(sol[0]) - v)
+                    d2    = abs(O.dist(sol[1]) - v)
+                    sgn   = 1.0
+                    print 'O.dist(sol[0]) = ', O.dist(sol[0])
+                    print 'O.dist(sol[1]) = ', O.dist(sol[1])
+                else:
+                    print "opposite direction"
+                    d1    = O.dist(sol[0])
+                    d2    = O.dist(sol[1])
+                    sgn   = - 1.0
+                    print "I must be zero: ", d1*d1 + v0*v0 + 2*d1*v0*math.cos(theta) - r*r
+                    print "I must be zero: ", d2*d2 + v0*v0 + 2*d2*v0*math.cos(theta) - r*r
+
+                if d1 < d2:
+                    H = sol[0]
+                    print "d1 selected"
+                else:
+                    H = sol[1]
+                    print "d2 selected"
+
+            else:
+                print "O inside circle"
+                sgn   = 1.0
+                d1    = O.dist(sol[0])
+                d2    = O.dist(sol[1])
+                if gen.equal(d1*d1 + v0*v0 - 2*d1*v0*math.cos(theta) - r*r, 0.0):
+                    H = sol[0]
+                    print "d1 selected"
+                    print "I must be zero: ", d2*d2 + v0*v0 + 2*d2*v0*math.cos(theta) - r*r
+                    print "I must be amax: ", np.linalg.norm( (V*d1/v - V0) /dt)
+                else:
+                    H = sol[1]
+                    print "d2 selected"
+                    print "I must be zero: ", d1*d1 + v0*v0 + 2*d1*v0*math.cos(theta) - r*r
+                    print "I must be amax: ", np.linalg.norm( (V*d2/v - V0) /dt)
+
+                if vv0 > 0:
+                    print "same direction"
+                else:
+                    print "opposite direction"
+
+            assert cir.possess(sol[0])
+            assert cir.possess(sol[1])
+
+            print "d1 = : ", d1
+            print "d2 = : ", d2
+    
+
+        print
+        A = (V - V0)/dt
+        a = np.linalg.norm(A)
+        print "v_0   = ", v0
+        print "v_d   = ", v
+        print "a_d   = ", a
+        v_opt = O.dist(H)
+        V     = V*sgn*v_opt/v
+        v     = np.linalg.norm(V)
+
+        print "v_opt = ", v
+        print "v_max = ", v_max
+        A = (V - V0)/dt
+        a = np.linalg.norm(A)
+        print
+        print "a     = ", a
+        print "a_max = ", a_max
+    
+    # kh   = min(1.0, vm.feasible_stepsize(direction = Xd - X0, x = X0, x_min = X_min, x_max = X_max))            
+
+    # V = kh*V
+    
+    X = X0 + V*dt
+
+    A = (V - V0)/dt
+
+    if np.dot(V, Xd - X0) > 0.0:
+        print "Belakhare hamjahat shodand: sgn = ", sgn
+    else:
+        print "Akharesh hamjahat nashodand dadash: sgn = ", sgn
+
+    return (X, V, A)
+
+def feasible_position(xd, x0, v0, x_min, x_max, v_max, a_max, dt):
+    d    = xd - x0
+    Ld   = np.linalg.norm(d)
+    if gen.equal(Ld, 0.0):
+        return (xd, d, - v0/dt)
+
+    ss   = Ld/dt
+    u    = d/Ld
+    kh   = min(ss, vm.feasible_stepsize(direction = u, x = x0, x_min = x_min, x_max = x_max))
+
+    vh   =   v_max
+    vl   = - v_max
+    
+    betta = sum(u*v0)
+    gamma = sum(v0*v0)
+    delta = betta*betta + a_max*a_max*dt*dt - gamma
+    if delta < 0:
+        al = betta
+        ah = betta
+    else:
+        sqrt_delta = math.sqrt(delta)
+        al = betta - sqrt_delta 
+        ah = betta + sqrt_delta 
+
+    sh = min(ah, vh, kh)
+    sl = max(al, vl)
+
+    if sl > sh:
+        sh = min(vh, kh)
+        """
+        if ah < vl:
+            sh = vl
+        """
+    if ss > sh:
+        ss = sh
+
+    v = u*ss
+    x = v*dt + x0
+    a = (v - v0)/dt
+
+    La = np.linalg.norm(a)
+    Lv = np.linalg.norm(v)
+
+    if La > a_max + 0.0001:
+        print La, a_max, 'al: ', al, 'ah: ', ah,'sl: ', sl,'sh: ', sh, 'vh: ', vh, 'delta: ', delta
+    if Lv > v_max + 0.0001:
+        print Lv, v_max
+
+    assert Lv <= v_max + 0.0001
+    return (x,v,a)     
+
+def feasible_position(xd, x0, v0, x_min, x_max, v_max, a_max, dt):
+    dr = xd - x0
+    vh =   dt*a_max + v0
+    vl = - dt*a_max + v0
+    xh =   vh*dt + x0
+    xl =   vl*dt + x0
+    xh = np.minimum(x_max, xh)
+    xl = np.maximum(x_min, xl)
+
+
+
+    if sum(xl > xh) != 0:
+        print "THIS SHOULD NOT HAPPEN *************************************************************************"
+        print xl
+        print xh
+
+    kh   = min(1.0, vm.feasible_stepsize(direction = dr, x = x0, x_min = xl, x_max = xh))
+
+    x    = x0 + kh*dr
+    v    = (x - x0)/dt
+    a    = (v - v0)/dt
+
+    if kh < 1.0:
+        print
+        print "kh = ", kh
+        print "xl = ", xl
+        print "xh = ", xh
+        print
+        print "xd = ", xd
+        print "x  = ", x
+
+    return (x,v,a)     
+'''
+
+def jerkbound_position_estimate(xd, x0, v0, a0, j_max, dt):
+    x = xd
+    v = (xd - x0)/dt
+    a = (v - v0)/dt
+    j = (a - a0)/dt
+
+    Lj = np.linalg.norm(j)
+    if Lj > j_max:
+        # print
+        # print "Lj = ", Lj
+        j  = j*j_max*(1.0 + math.log(Lj/j_max))/Lj
+        a  = j*dt + a0
+        v  = a*dt + v0
+        x  = v*dt + x0
+        # print "Lj = ", np.linalg.norm(j)
+        # print "La = ", np.linalg.norm(a)
+        # print "Lv = ", np.linalg.norm(v)
+
+    return (x, v, a)
+        
+def accbound_position_estimate(xd, x0, v0, a_max, dt):
+    x = xd
+    v = (xd - x0)/dt
+    a = (v - v0)/dt
+
+    Lv = np.linalg.norm(v)
+    La = np.linalg.norm(a)
+    if La > a_max:
+        a  = a*a_max*(1.0 + math.log(La/a_max))/La
+        v  = a*dt + v0
+        x  = v*dt + x0
+        # print "La = ", np.linalg.norm(a)
+        # print "Lv = ", np.linalg.norm(v)
+
+    return (x, v, a)
+        
+def velbound_position_estimate(xd, x0, v0, v_max, dt):
+    x = xd
+    v = (xd - x0)/dt
+
+    Lv = np.linalg.norm(v)
+    if Lv > v_max:
+        # print
+        # print "Lv = ", Lv
+        v  = v*v_max*(1.0 + math.log(Lv/v_max))/Lv
+        # print "Lv = ", np.linalg.norm(v)
+        x  = v*dt + x0
+
+    a  = (v - v0)/dt
+    # print "La = ", np.linalg.norm(a)
+
+    return (x, v, a)
+
+def finite_difference_estimate(x, x_min, x_max, v_max, a_max, dt):
+
+    genpy.check_type(x, [np.ndarray, list, tuple], __name__, '', sys._getframe().f_code.co_name, 'x', array_length = [2,3,4,5,6,7,8], shape_length = 2)
+    if a_max == None:
+        a_max = np.inf
+    if v_max == None:
+        v_max = np.inf
+
+    n    = len(x)
+    x_t  = np.copy(x[0])
+    x_changed = False
+    if n == 2:
+        cv  = FDC_v[n - 1]
+        ca  = cv
+        v0  = 0.0
+    else:
+        cv  = FDC_v[n - 1]
+        ca  = FDC_a[n - 2]
+        v0  = np.dot(FDC_v[n - 2], x[1:n])/dt
+
+    dt2  = dt*dt
+    gain = (1.0/math.sqrt(x.shape[1]))
+    
+    # If smooth is activated, find the smoothed value of x[0] here
+
+    a_t  = np.dot(ca, x)/dt2
+    v_t  = np.dot(cv, x)/dt
+    kh   = min(1.0, vm.feasible_stepsize(direction = x[0] - x[1], x = x[1], x_min = x_min, x_max = x_max))
+    
+    La   = np.linalg.norm(a_t)*gain
+    Lv   = np.linalg.norm(v_t)*gain
+    sa   = - np.dot(ca[1:n], x[1:n]) 
+    sv   = - np.dot(cv[1:n], x[1:n]) 
+    
+    # while (La > a_max) or (Lv > v_max) or (kh < 1.0):
+    if La > a_max:  # clamping the vector if higher than maximum
+        a_t  = a_t*a_max*(1.0 + math.log(La/a_max))/La
+        x[0] = (sa + dt2*a_t)/ca[0]
+        v_t  = np.dot(cv, x)/dt
+        Lv   = np.linalg.norm(v_t)*gain
+        La   = np.linalg.norm(a_t)*gain
+        kh   = min(1.0, vm.feasible_stepsize(direction = x[0] - x[1], x = x[1], x_min = x_min, x_max = x_max))
+        print "acc changed: ", La, Lv, kh
+
+    '''        
+    if Lv > v_max:  # clamping the vector if higher than maximum
+        v_t  = v_t*v_max*(1.0 + math.log(Lv/v_max))/Lv
+        x[0] = (sv + dt*v_t)/cv[0]
+        a_t  = np.dot(ca, x)/dt2
+        La   = np.linalg.norm(a_t)*gain
+        Lv   = np.linalg.norm(v_t)*gain
+        kh   = min(1.0, vm.feasible_stepsize(direction = x[0] - x[1], x = x[1], x_min = x_min, x_max = x_max))
+        print
+        print "vel changed: ", La, Lv, kh
+    '''
+    if kh < 1.0:
+        x[0] = x[1] + kh*(x[0] - x[1])
+        v_t  = np.dot(cv, x)/dt
+        a_t  = np.dot(ca, x)/dt2
+        La   = np.linalg.norm(a_t)*gain
+        Lv   = v_max
+        kh   = 1.0
+        # print "pos changed: ", La, Lv, kh
+
+    for j in range(x.shape[1]):
+        assert (x_t[j] < x_max[j]  + 0.0001) and (x_t[j] > x_min[j]  - 0.0001), "j = " + str(j)
+
+    return (x_t, v_t, a_t)
+    
 ## This class, introduces a structure for a key point in the multi-dimensional space. 
 #  Key points are used to generate a trajectory. 
 #  A key point contains a phase value specifying the point phase (time), 
@@ -104,8 +565,12 @@ class Path(object):
         # You should add points to it to make your trajectory
 
         self.current_phi            = 0.0
+        ## A float indicating the phase of the last key point (Maximum value for phi)
         self.phi_end                = 0.0
-        self.capacity               = capacity # determines how many key points it can hold
+        ## An integer indicating the number of points
+        self.npoint                 = 0
+        ## An integer indicating how many key points the path can hold
+        self.capacity               = capacity 
 
         self.dim                    = dimension
         self.current_position       = np.zeros(self.dim)
@@ -146,6 +611,7 @@ class Path(object):
 
         self.point.append(Key_Point(phi, pos, vel, acc))
         self.phi_end     = phi
+        self.npoint     += 1
 
     ## Computes the euclidean distances of each key point from the next and return the result in a vector.
     #  The segment must have at least two key points, otherwise an error is printed and None is returned. 
@@ -170,6 +636,47 @@ class Path(object):
             i  += 1
         return i
 
+    def get_keypoint(self, point_number):
+        assert point_number < self.npoint, "Argument point_number must be smaller than self.npoint"
+        return self.point[point_number]
+
+    ## Sets the current phase value
+    #  @param phi A float specifying the desired phase value. The given value must not exceed the phase of the last key point.
+    #  @return None
+    def set_phase(self, phi):
+        assert phi <= self.phi_end, genpy.err_str(__name__, __class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
+        assert len(self.point) > 1, genpy.err_str(__name__, __class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
+        self.current_phi      = phi
+        i                     = self.closest_keypoint_number()
+        k                     = (self.current_phi - self.point[i-1].phi)/(self.point[i].phi - self.point[i-1].phi)
+        for j in range(self.dim):
+            if (self.point[i].pos[j] != None) and (self.point[i-1].pos[j] != None):
+                self.current_position[j] = self.point[i-1].pos[j] + k*(self.point[i].pos[j] - self.point[i-1].pos[j])
+            else:
+                self.current_position[j] = None
+
+            if (self.point[i].vel[j] != None) and (self.point[i-1].vel[j] != None):
+                self.current_velocity[j] = self.point[i-1].vel[j] + k*(self.point[i].vel[j] - self.point[i-1].vel[j])
+            else:
+                if (self.point[i].pos[j] != None) and (self.point[i-1].pos[j] != None):
+                    self.current_velocity[j] = (self.point[i].pos[j] - self.point[i-1].pos[j])/(self.point[i].phi - self.point[i-1].phi)
+                else:
+                    self.current_velocity[j] = None
+    
+            if (self.point[i].acc[j] != None) and (self.point[i-1].acc[j] != None):
+                self.current_acceleration[j] = self.point[i-1].acc[j] + k*(self.point[i].acc[j] - self.point[i-1].acc[j])
+            else:
+                if (self.point[i].vel[j] != None) and (self.point[i-1].vel[j] != None):
+                    self.current_acceleration[j] = (self.point[i].vel[j] - self.point[i-1].vel[j])/(self.point[i].vel[j] - self.point[i-1].vel[j])
+                else:
+                    self.current_acceleration[j] = None
+        return self.current_position
+
+    def __getitem__(self, phi):
+        genpy.check_range(phi, 0.0, self.phi_end, __name__, __class__.__name__, sys._getframe().f_code.co_name, 'phi')
+        self.set_phase(phi)
+        return self.current_position
+
     ## Sets the current phase value
     #  @param phi A float specifying the desired phase value. The given value must not exceed the phase of the last key point.
     #  @return None
@@ -178,33 +685,7 @@ class Path(object):
         check phi to be valid. Many changes must be delivered. 
             1- current_position must be a function returning property pos
         '''
-        if not genmath.equal(phi, self.current_phi):
-            assert phi <= self.phi_end, genpy.err_str(__name__, __class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
-            assert len(self.point) > 1, genpy.err_str(__name__, __class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
-            self.current_phi      = phi
-            i                     = self.closest_keypoint_number()
-            k                     = (self.current_phi - self.point[i-1].phi)/(self.point[i].phi - self.point[i-1].phi)
-            for j in range(self.dim):
-                if (self.point[i].pos[j] != None) and (self.point[i-1].pos[j] != None):
-                    self.current_position[j] = self.point[i-1].pos[j] + k*(self.point[i].pos[j] - self.point[i-1].pos[j])
-                else:
-                    self.current_position[j] = None
-
-                if (self.point[i].vel[j] != None) and (self.point[i-1].vel[j] != None):
-                    self.current_velocity[j] = self.point[i-1].vel[j] + k*(self.point[i].vel[j] - self.point[i-1].vel[j])
-                else:
-                    if (self.point[i].pos[j] != None) and (self.point[i-1].pos[j] != None):
-                        self.current_velocity[j] = (self.point[i].pos[j] - self.point[i-1].pos[j])/(self.point[i].phi - self.point[i-1].phi)
-                    else:
-                        self.current_velocity[j] = None
-        
-                if (self.point[i].acc[j] != None) and (self.point[i-1].acc[j] != None):
-                    self.current_acceleration[j] = self.point[i-1].acc[j] + k*(self.point[i].acc[j] - self.point[i-1].acc[j])
-                else:
-                    if (self.point[i].vel[j] != None) and (self.point[i-1].vel[j] != None):
-                        self.current_acceleration[j] = (self.point[i].vel[j] - self.point[i-1].vel[j])/(self.point[i].vel[j] - self.point[i-1].vel[j])
-                    else:
-                        self.current_acceleration[j] = None
+        self.set_phase(phi)
 
     def map_phi(self, phi_start = 0, phi_end = 1.0):
         '''
@@ -232,7 +713,6 @@ class Path(object):
         
         self.phi_start = phi_start    
         self.phi_end   = phi_end
-        self.interpolate()
 
     def current_value(self, field_name= 'position', axis = 0):
 
@@ -270,6 +750,35 @@ class Path(object):
         plt.ylabel(s)
         plt.xlabel('phi')
         plt.show()
+
+    '''
+    def plot_all(self, axis = [0,1], n = 100, y_text = "", wtp = 'position', show_points = False):
+        if y_text == "":
+            s = wtp + " of Axis " + str(axis)
+        else:
+            s = wtp + " of " + y_text
+
+        x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        for m in axis:
+            y = []
+            for t in x:
+                self.set_phi(t)
+                y.append(self.current_value(field_name = wtp, axis = axis))
+            if show_points:
+                px = []
+                py = []
+                for pnt in self.point:
+                    px.append(pnt.phi)
+                    py.append(pnt.value(field_name = wtp, axis = axis))
+
+                plt.plot(x, y, px, py, 'o') 
+            else:
+                plt.plot(x, y) 
+
+            plt.ylabel(s)
+            plt.xlabel('phi')
+            plt.show()
+    '''
 
     def scatter_plot(self, wtp = 'position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
 
@@ -315,7 +824,6 @@ class Path_Polynomial(Path):
             for i in range(n):
                 for j in range(self.dim):
                     pnt[j].append(pl.Point(t = self.point[i].phi, x = self.point[i].pos[j], v = self.point[i].vel[j], a = self.point[i].acc[j]))
-
             for j in range(self.dim):
                 self.traj[j].interpolate_smart(pnt[j])
 
@@ -325,6 +833,10 @@ class Path_Polynomial(Path):
             print "Error from Path_Polynomial.interpolate(): No key points defined !"
             return False 
 
+    def map_phi(self, phi_start = 0, phi_end = 1.0):
+        super(Path_Polynomial, self).map_phi(phi_start = phi_start, phi_end = phi_end)     
+        self.interpolate()
+
     ## Sets the current phase value
     #  @param phi A float specifying the desired phase value. The given value must not exceed the phase of the last key point.
     #  @return None
@@ -333,7 +845,7 @@ class Path_Polynomial(Path):
         check phi to be valid. Many changes must be delivered. 
             1- current_position must be a function returning property pos
         '''
-        # if not genmath.equal(phi, self.current_phi):
+        # if not gen.equal(phi, self.current_phi):
         assert phi <= self.phi_end, genpy.err_str(__name__, self.__class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
         assert len(self.point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
         self.current_phi      = phi
@@ -383,18 +895,46 @@ class Trajectory(object):
         self.current_acceleration   = np.zeros(self.dim)
 
         self.segment        = []
-        self.segment_start  = []
+        self.seg_start      = []
+        self.seg_start_pntn = []  # Segment start point number
         self.phi_end        = 0.0
+        self.npoints        = 0
         self.current_phi    = 0.0
+
+        self.accuracy_level = 5
+        self.pos_min        = vm.rep(- np.inf, self.dim)
+        self.pos_max        = vm.rep(  np.inf, self.dim)
+        self.vel_max        = np.inf
+        self.acc_max        = np.inf
+        self.jrk_max        = np.inf
 
     def __str__( self ):
         s  = "Trajectory Phase Length : " + str(self.phi_end) + '\n' 
         s += "Number of Segments      : " + str(len(self.segment)) + '\n'
         for i in range(len(self.segment)):
-            s += "Segment Number " + str(i) + " starting at phi = " + str(self.segment_start[i]) + ': \n'
+            s += "Segment Number " + str(i) + " starting at phi = " + str(self.seg_start[i]) + ': \n'
             s += str(self.segment[i])
             s += "****************************************** \n" 
         return s
+
+    def locate_point(self, point_number):
+        assert point_number < self.npoints, "point number must be smaller than total number of points"
+        i    = 1
+        nseg = len(self.segment)
+        while (self.seg_start_pntn[i] <= point_number) and (i < nseg - 1):
+            i    += 1
+
+        if i == nseg - 1:
+            sn = i
+        else:
+            sn = i - 1
+        pn = point_number - self.seg_start_pntn[sn]
+        # if pn = 0, then the point is a boundary point
+        return (sn, pn)
+
+    def get_keypoint(self, point_number):
+        (sn, pn) = self.locate_point(point_number)
+        return self.segment[sn].point[pn]
 
     def current_value(self, field_name= 'position', axis = 0):
 
@@ -409,20 +949,29 @@ class Trajectory(object):
 
     def add_segment(self, new_seg):
 
+        assert len(new_seg.point) > 0
+        if len(self.segment) == 0:  # First segment
+            self.npoints = len(new_seg.point)
+        else:
+            self.npoints += len(new_seg.point) - 1
+            # If not the first segment, check to make sure the first point of new segment is identical to the last point of previous segment
+
         self.segment.append(new_seg)
-        self.segment_start.append(self.phi_end)
-        self.phi_end = self.phi_end + new_seg.phi_end
+        self.seg_start.append(self.phi_end)
+        self.phi_end += new_seg.phi_end
+        
+        self.seg_start_pntn.append(self.npoints - 1)
 
     def new_segment(self, capacity = None):
-        capacity = genpy.check_type(capacity, self.capacity, [int], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'capacity')
-        nn   = np.array([None for j in range(self.dim)])
+        capacity = genpy.check_type(capacity, [int], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'capacity', default = self.capacity)
+        # nn   = np.array([None for j in range(self.dim)])
         lsi  = len(self.segment) - 1
         seg  = Path(dimension = self.dim, capacity = capacity) 
         assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'Can not create a new segment. The last segment needs at least two points.')
         lslp = self.segment[lsi].point[len(self.segment[lsi].point) - 1] # last_seg_last_point
-        seg.add_point(0.0, lslp.pos, nn, np.copy(nn))
+        seg.add_point(0.0, lslp.pos, lslp.vel, lslp.acc)
         self.add_segment(seg)
-
+    
     def points_dist(self):
         dist = np.array([])
         for seg in self.segment:
@@ -431,20 +980,18 @@ class Trajectory(object):
 
     def adjust_phase_by_distance(self, gain = 1.0):
         n_seg = len(self.segment)
-        self.segment_start[0] = 0.0
+        self.seg_start[0] = 0.0
         self.phi_start        = 0.0
         for i in range(n_seg - 1):
             d = gain*sum(self.segment[i].points_dist())
             self.segment[i].map_phi(phi_end = d)
-            self.segment_start[i + 1] = self.segment_start[i] + self.segment[i].phi_end
+            self.seg_start[i + 1] = self.seg_start[i] + self.segment[i].phi_end
 
         d = gain*sum(self.segment[n_seg - 1].points_dist())        
         self.segment[n_seg - 1].map_phi(phi_end = d)                
-        self.phi_end   = self.segment_start[n_seg - 1] + self.segment[n_seg - 1].phi_end
-        self.interpolate()
+        self.phi_end   = self.seg_start[n_seg - 1] + self.segment[n_seg - 1].phi_end
 
-    def set_phi(self, phi):
-
+    def closest_segment_number(self, phi):
         if phi > self.phi_end:
             phi = self.phi_end
 
@@ -453,14 +1000,105 @@ class Trajectory(object):
         lsi     = len(self.segment)  - 1 # last segment index
 
         i = 0
-        while (phi > self.segment_start[i] + self.segment[i].phi_end) and (i <= lsi):
+        while (phi > self.seg_start[i] + self.segment[i].phi_end) and (i <= lsi):
             i += 1
         
-        self.segment[i].set_phi(phi - self.segment_start[i])
+        return i
+
+    def set_phi(self, phi):
+        i = self.closest_segment_number(phi)
+        self.segment[i].set_phi(phi - self.seg_start[i])
         self.current_position = self.segment[i].current_position
         self.current_velocity = self.segment[i].current_velocity
         self.current_acceleration = self.segment[i].current_acceleration
- 
+
+    def set_phase(self, phi):
+        i = self.closest_segment_number(phi)
+        self.segment[i].set_phase(phi - self.seg_start[i])
+        self.current_position = self.segment[i].current_position
+        self.current_velocity = self.segment[i].current_velocity
+        self.current_acceleration = self.segment[i].current_acceleration
+
+    def position(self, phi):
+        genpy.check_range(phi, 0.0, self.phi_end, __name__, __class__.__name__, sys._getframe().f_code.co_name, 'phi')
+        self.set_phase(phi)
+        return self.current_position
+
+    def positions(self, phi, n, d_phi ):
+        P = np.zeros((n, self.dim))
+        for i in range(n):
+            self.set_phase(phi + i*d_phi)
+            P[n - i - 1] = np.copy(self.current_position)
+        return P            
+
+    def add_position(self, phi, pos, smooth = False):
+        if gen.equal(self.phi_end, 0.0):
+            self.add_point(phi, pos, vel = np.zeros(self.dim), acc = np.zeros(self.dim))
+            return None
+                
+        assert phi > self.phi_end
+        
+        lsi = len(self.segment) - 1
+        lpi = len(self.segment[lsi].point) - 1
+        p0  = self.segment[lsi].point[lpi].pos
+        v0  = self.segment[lsi].point[lpi].vel
+        a0  = self.segment[lsi].point[lpi].acc
+        dt  = phi - self.phi_end
+    
+        (P, V, A) = feasible_position(pos, p0, v0, self.pos_min, self.pos_max, self.vel_max, self.acc_max, dt, smooth = smooth)
+
+        self.add_point(phi, pos = P, vel = V, acc = A)
+
+    def add_velocity(self, phi, vel):
+        assert not self.npoints == 0, "An initial position must exist"
+                
+        assert phi > self.phi_end
+        
+        lsi = len(self.segment) - 1
+        lpi = len(self.segment[lsi].point) - 1
+        p0  = self.segment[lsi].point[lpi].pos
+        v0  = self.segment[lsi].point[lpi].vel
+        a0  = self.segment[lsi].point[lpi].acc
+        dt  = phi - self.phi_end
+    
+        (P, V, A) = feasible_position(v0 + vel*dt, p0, v0, self.pos_min, self.pos_max, self.vel_max, self.acc_max, dt)
+
+        self.add_point(phi, pos = P, vel = V, acc = A)
+
+    def last_position(self):
+        lsi = len(self.segment) - 1
+        assert lsi >= 0, "Empty Trajectory!"
+        lpi = len(self.segment[lsi].point) - 1
+        return self.segment[lsi].point[lpi].pos
+
+    def last_velocity(self):
+        lsi = len(self.segment) - 1
+        assert lsi >= 0, "Empty Trajectory!"
+        lpi = len(self.segment[lsi].point) - 1
+        return self.segment[lsi].point[lpi].vel
+        
+    '''
+    def add_position(self, phi, pos):
+        if gen.equal(self.phi_end, 0.0):
+            self.add_point(phi, pos, vel = np.zeros(self.dim), acc = np.zeros(self.dim))
+            return None
+
+        assert phi > self.phi_end
+        dt = phi - self.phi_end
+        al = self.accuracy_level
+        # if accuracy_level is m we need m+1 position points to compute velocity, m+2 points to compute acceleration
+
+        j = 0
+        while (j < al) and (self.phi_end < (al - j)*dt):
+            j = j + 1 
+
+        al = al - j
+
+        x = self.positions(phi = self.phi_end - al*dt, n = al + 1, d_phi = dt)
+        x = np.append([pos], x, axis = 0)     
+        (P, V, A) = finite_difference_estimate(x, self.pos_min, self.pos_max, self.vel_max, self.acc_max, dt)
+        self.add_point(phi, pos = P, vel = V, acc = A)
+    '''
     ## Use this function to append a key point to the end of the trajectory with desired position, velocity and acceleration
     #  The given point will be added to the end of the last segment of the trajectory, unless the segment capacity if full
     #  (number of segment points equals the capacity of that segment). 
@@ -478,21 +1116,35 @@ class Trajectory(object):
         lsi = len(self.segment) - 1
 
         if lsi < 0:
-            assert genmath.equal(phi, 0.0), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be zero for the first point")
-            seg = Path_Polynomial(dimension = self.dim) 
+            assert gen.equal(phi, 0.0), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be zero for the first point")
+            seg = Path(dimension = self.dim) 
             seg.add_point(0.0, pos, vel, acc)
             self.add_segment(seg)
         else:
-            assert (phi > self.phi_end) and (not genmath.equal(phi, self.phi_end)), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be greater than the last point's phase " + str(self.phi_end))
+            assert (phi > self.phi_end) and (not gen.equal(phi, self.phi_end)), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be greater than the last point's phase " + str(self.phi_end))
             if len(self.segment[lsi].point) < self.segment[lsi].capacity:
-                phi0 = self.segment_start[lsi]
+                phi0 = self.seg_start[lsi]
                 self.segment[lsi].add_point(phi - phi0, pos, vel, acc)
+                self.npoints += 1
             else:
                 self.new_segment()
                 self.segment[lsi+1].add_point(phi-self.phi_end, pos, vel, acc)
+                self.npoints += 1
 
         lsi = len(self.segment) - 1
-        self.phi_end = self.segment_start[lsi] + self.segment[lsi].phi_end
+        self.phi_end = self.seg_start[lsi] + self.segment[lsi].phi_end
+
+    def clear_velocities(self):
+        nn = np.array([None for i in range(self.dim)])
+        for seg in self.segment:
+            for pnt in seg.point:
+                pnt.vel = np.copy(nn)
+
+    def clear_accelerations(self):
+        nn = np.array([None for i in range(self.dim)])
+        for seg in self.segment:
+            for pnt in seg.point:
+                pnt.acc = np.copy(nn)
 
     ## private
     def add_vector(self, delta_phi, delta_pos, vel = None, acc = None):
@@ -511,16 +1163,16 @@ class Trajectory(object):
         All the segments will be interpolated after that
         Also the current_phi will be changed to the mapped value
         '''
-        self.phi_start = self.segment_start[0]
+        self.phi_start = self.seg_start[0]
         n_seg     = len(self.segment)
         delta_phi = self.phi_end - self.phi_start
         delta_the = phi_end - phi_start
         r         = delta_the/delta_phi
         for i in range(n_seg):
-            x       = (self.segment_start[i] - self.phi_start)/delta_phi # x must be between 0 and 1
+            x       = (self.seg_start[i] - self.phi_start)/delta_phi # x must be between 0 and 1
             the     = phi_start + x*delta_the
             self.segment[i].map_phi(0.0, self.segment[i].phi_end*r)
-            self.segment_start[i] = the
+            self.seg_start[i] = the
 
         x       = (self.current_phi - self.phi_start)/delta_phi # x must be between 0 and 1
         self.current_phi = phi_start + x*delta_the
@@ -528,35 +1180,79 @@ class Trajectory(object):
         self.phi_start = phi_start    
         self.phi_end   = phi_end
       
-    def plot(self, axis = 0, n = 100, y_text = "", wtp = 'position', show_points = False):
+    def plot(self, axis = 0, y_text = "", wtp = 'position'):
         if y_text == "":
             s = wtp + " of Axis " + str(axis)
         else:
             s = wtp + " of: " + y_text
 
-        x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
-        y = []
-        for t in x:
-            self.set_phi(t)
-            y.append(self.current_value(field_name = wtp, axis = axis))
-            
+        px = []
+        py = []
+        for i in range(len(self.segment)):
+            for pnt in self.segment[i].point:
+                px.append(self.seg_start[i] + pnt.phi)
+                py.append(pnt.value(field_name = wtp, axis = axis))
 
-        if show_points:
-            px = []
-            py = []
-            for i in range(len(self.segment)):
-                for pnt in self.segment[i].point:
-                    px.append(self.segment_start[i] + pnt.phi)
-                    py.append(pnt.value(field_name = wtp, axis = axis))
-                    
-
-            plt.plot(x, y, px, py, 'o') 
-        else:
-            plt.plot(x, y) 
+        plt.plot(px, py) 
 
         plt.ylabel(s)
         plt.xlabel('phi')
         plt.show()
+
+    def csv_str(self, n = 100, wtp = 'position', header = True):
+        
+        x   = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        if header:
+            dic = {'position':'x', 'velocity':'v', 'acceleration':'a'}
+            s   = 'phi'
+            for i in range(self.dim):
+                s += ',' + dic[wtp] + str(i)     
+            s += '\n'
+        else:
+            s = ''
+        for t in x:
+            s += str(t)
+            self.set_phi(t)
+            for j in range(self.dim):
+                if wtp == 'position':
+                    s += ',' + str(self.current_position[j])
+                elif wtp == 'velocity':
+                    s += ',' + str(self.current_velocity[j])
+                elif wtp == 'acceleration':
+                    s += ',' + str(self.current_acceleration[j])
+            s += '\n'
+
+        return s
+
+    def write_csv(self, filename, n = 100, path = '', header = True):
+        FILE_HANDLE = open(filename, "w")
+        FILE_HANDLE.write(self.csv_str(n = n , header = header))
+
+    def matrix(self, n = 100, figures = ['position']):
+        # genpy.check_valid(figures, all_figures, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, figures)
+        T    = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        nfig = len(figures)
+        nrow = len(T)
+        M    = np.zeros((nrow, nfig*self.dim + 1))
+        i    = 0
+        # print len(T)
+        for t in T:
+            # print i, '-',
+            j   = 0
+            M[i, j] = t
+            j      += 1
+            self.set_phi(t)
+            if 'position' in figures:
+                M[i, j:(j + self.dim)] = self.current_position
+                j += self.dim
+            if 'velocity' in figures:
+                M[i, j:(j + self.dim)] = self.current_velocity
+                j += self.dim
+            if 'acceleration' in figures:
+                M[i, j:(j + self.dim)] = self.current_acceleration
+                j += self.dim
+            i += 1
+        return M
 
     def plot2d(self, wtp = 'position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
 
@@ -629,20 +1325,72 @@ class Trajectory_Polynomial(Trajectory):
 
     def new_segment(self, capacity = None):
         capacity = genpy.check_type(capacity, [int], __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'capacity', default = self.capacity)
-        nn   = np.array([None for j in range(self.dim)])
+        # nn   = np.array([None for j in range(self.dim)])
         lsi  = len(self.segment) - 1
-        assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'new_segment', 'Can not create a new segment. The last segment needs at least two points.')
+        assert len(self.segment[lsi].point) > 1, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'Can not create a new segment. The last segment needs at least two points.')
         seg  = Path_Polynomial(dimension = self.dim, capacity = capacity) 
         lslp = self.segment[lsi].point[len(self.segment[lsi].point) - 1] # last_seg_last_point
-        seg.add_point(0.0, lslp.pos, nn, np.copy(nn))
+        seg.add_point(0.0, lslp.pos, lslp.vel, lslp.acc)
         self.add_segment(seg)
 
     def interpolate(self):
         for seg in self.segment:
             seg.interpolate()
 
+    def add_point(self, phi, pos, vel = None, acc = None):
+        genpy.check_type(phi, [float, np.float64], __name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'phi', default = None)
+        
+        lsi = len(self.segment) - 1
+
+        if lsi < 0:
+            assert gen.equal(phi, 0.0), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be zero for the first point")
+            seg = Path_Polynomial(dimension = self.dim) 
+            seg.add_point(0.0, pos, vel, acc)
+            self.add_segment(seg)
+        else:
+            assert (phi > self.phi_end) and (not gen.equal(phi, self.phi_end)), genpy.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, "Given phi is " + str(phi) + " which should be greater than the last point's phase " + str(self.phi_end))
+            if len(self.segment[lsi].point) < self.segment[lsi].capacity:
+                phi0 = self.seg_start[lsi]
+                self.segment[lsi].add_point(phi - phi0, pos, vel, acc)
+                self.npoints += 1
+            else:
+                self.new_segment()
+                self.segment[lsi+1].add_point(phi-self.phi_end, pos, vel, acc)
+                self.npoints += 1
+
+        lsi = len(self.segment) - 1
+        self.phi_end = self.seg_start[lsi] + self.segment[lsi].phi_end
+
+    def plot(self, axis = 0, n = 100, y_text = "", wtp = 'position', show_points = False):
+        if y_text == "":
+            s = wtp + " of Axis " + str(axis)
+        else:
+            s = wtp + " of: " + y_text
+
+        x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
+        y = []
+        for t in x:
+            self.set_phi(t)
+            y.append(self.current_value(field_name = wtp, axis = axis))
+            
+        if show_points:
+            px = []
+            py = []
+            for i in range(len(self.segment)):
+                for pnt in self.segment[i].point:
+                    px.append(self.seg_start[i] + pnt.phi)
+                    py.append(pnt.value(field_name = wtp, axis = axis))
+                    
+
+            plt.plot(x, y, px, py, 'o') 
+        else:
+            plt.plot(x, y) 
+
+        plt.ylabel(s)
+        plt.xlabel('phi')
+        plt.show()
+
     def consistent_velocities(self):
-        self.interpolate()
         lsi = len(self.segment) - 1
 
         for i in range(lsi + 1):
@@ -662,7 +1410,7 @@ class Trajectory_Polynomial(Trajectory):
                         lp.vel[j] = self.segment[ip1].point[0].vel[j]
                 elif self.segment[ip1].point[0].vel[j] == None:
                     self.segment[ip1].point[0].vel[j] = lp.vel[j]
-                elif not genmath.equal(lp.vel[j], self.segment[ip1].point[0].vel[j]):
+                elif not gen.equal(lp.vel[j], self.segment[ip1].point[0].vel[j]):
                     v = 0.5*(lp.vel[j] + self.segment[ip1].point[0].vel[j])
                     lp.vel[j] = v
                     self.segment[ip1].point[0].vel[j] = v
@@ -673,7 +1421,6 @@ class Trajectory_Polynomial(Trajectory):
         self.interpolate()         
 
     def consistent_accelerations(self):
-        self.interpolate()
         lsi = len(self.segment) - 1
         self.segment[0].point[0].acc = np.zeros(self.dim)
         for i in range(lsi + 1):
@@ -693,7 +1440,7 @@ class Trajectory_Polynomial(Trajectory):
                         lp.acc[j] = self.segment[ip1].point[0].acc[j]
                 elif self.segment[ip1].point[0].acc[j] == None:
                     self.segment[ip1].point[0].acc[j] = lp.acc[j]
-                elif not genmath.equal(lp.acc[j], self.segment[ip1].point[0].acc[j]):
+                elif not gen.equal(lp.acc[j], self.segment[ip1].point[0].acc[j]):
                     a = 0.5*(lp.acc[j] + self.segment[ip1].point[0].acc[j])
                     lp.acc[j] = a
                     self.segment[ip1].point[0].acc[j] = a

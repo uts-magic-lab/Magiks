@@ -1,6 +1,6 @@
 ## @file        	geometry.py
 #  @brief     		This module contains a comprehensive data structure with relevant method and properties
-#                   for a rotation or orinetation in 3D space.
+#                   for identities in three-dimensional geometry like a point, a rotation or orinetation in 3D space, an ellipsoid and etc.
 #  @author      	Nima Ramezani Taghiabadi 
 #
 #               	PhD Researcher 

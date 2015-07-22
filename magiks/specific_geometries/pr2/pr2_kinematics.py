@@ -27,7 +27,7 @@ Changes from version 4.0:
 
 '''
 
-import copy, numpy, math, sys
+import copy, math, sys, numpy as np
 import general_python as pygen
 import pr2_arm_kinematics
 
@@ -40,8 +40,8 @@ from magiks.magiks_core import general_magiks as genkin
 
 drc        = math.pi/180.00
 
-default_ql = drc*numpy.array([-130.0, 70.0 , -180.0, - 131.0, -180.0, -130.0, -180.0, 0.8/drc, -1000.0, -1000.0, -180.0,  -40.0,  60.0, - 44.0, -131.0, -180.0, -130.0, -180.0])
-default_qh = drc*numpy.array([  30.0, 170.0,   44.0, -   8.6,  180.0, 0.00,  180.0, 1.14/drc,  1000.0,  1000.0,  180.0,  130.0, 170.0,  180.0, -  8.6,  180.0, 0.00,  180.0])
+default_ql = drc*np.array([-130.0, 69.0 , -180.0, - 131.0, -180.0, -130.0, -180.0, 0.8/drc, -1000.0, -1000.0, -180.0,  -40.0,  60.0, - 44.0, -131.0, -180.0, -130.0, -180.0])
+default_qh = drc*np.array([  30.0, 170.0,   44.0, -   8.5,  180.0, 0.00,  180.0, 1.14/drc,  1000.0,  1000.0,  180.0,  130.0, 170.0,  180.0, -  8.5,  180.0, 0.00,  180.0])
 all_control_modes = ['Fixed-Base', 'Free-Base']
 
 ## @brief Contains properties and methods managing the kinematics of the PR2 robot.
@@ -103,7 +103,7 @@ class PR2(object):
         #  0: distance from current configuration
         self.ofuncode = 1
         
-        self.W = numpy.zeros(11)
+        self.W = np.zeros(11)
         for i in [0, 1, 2, 3, 5, 7]:
             self.W[i] = 1.0/((qh[i] - ql[i])**2)
 
@@ -118,8 +118,8 @@ class PR2(object):
         self.d7 = d7
         self.b0 = b0
         self.l0 = l0
-        self.p_EFR_WR = numpy.array([0.0, 0.0, self.d7])
-        self.p_EFL_WL = numpy.array([0.0, 0.0, self.d7])
+        self.p_EFR_WR = np.array([0.0, 0.0, self.d7])
+        self.p_EFL_WL = np.array([0.0, 0.0, self.d7])
 
         # sets all angles to midrange by default
         self.set_config(self.qm)
@@ -185,17 +185,17 @@ class PR2(object):
     def full_config(self, q_partial, q_full = None , is_left_arm = False):
         if q_full == None:
             q_full = self.q
-        permit = type(q_full) in [numpy.ndarray, tuple, list]
+        permit = type(q_full) in [np.ndarray, tuple, list]
         permit = permit and (len(q_full) == 18)
-        assert permit, pygen.err_str(__name__, self.__class__.__name__,'full_config', 'q_full must be a tuple, numpy vector or array of size 18')
+        assert permit, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'q_full must be a tuple, numpy vector or array of size 18')
 
         if q_partial == None:
             return None
     
-        permit = type(q_partial) in [numpy.ndarray, tuple, list]
+        permit = type(q_partial) in [np.ndarray, tuple, list]
         nqp    = len(q_partial)
         permit = permit and (nqp in [7,11])
-        assert permit, pygen.err_str(__name__, self.__class__.__name__,'full_config', 'q_partial must be a tuple, numpy vector or array of size 7 or 11')
+        assert permit, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'q_partial must be a tuple, numpy vector or array of size 7 or 11')
 
         qf = copy.copy(q_full)
         if nqp == 7:
@@ -250,11 +250,11 @@ class PR2(object):
             self.C = math.cos(self.q[10])
             self.S = math.sin(self.q[10])
 
-            self.p_BO    = numpy.array([qd[8]   ,  qd[9],0.0])
-            self.p_BL_BO = numpy.array([self.b0     ,  self.l0, qd[7]])        
-            self.p_BR_BO = numpy.array([self.b0     ,- self.l0, qd[7]])     
+            self.p_BO    = np.array([qd[8]   ,  qd[9],0.0])
+            self.p_BL_BO = np.array([self.b0     ,  self.l0, qd[7]])        
+            self.p_BR_BO = np.array([self.b0     ,- self.l0, qd[7]])     
 
-            self.R_B     = numpy.array([[  self.C, - self.S, 0.0 ], 
+            self.R_B     = np.array([[  self.C, - self.S, 0.0 ], 
                                         [  self.S,   self.C, 0.0 ],
                                         [  0.0          ,  0.0         , 1.0]]) 
 
@@ -274,9 +274,11 @@ class PR2(object):
             return True
         else:
             print "Error from PR2().set_config(): Given joints are not in their feasible range"
-            print "Lower Limit  :", self.ql
-            print "Upper Limit  :", self.qh
-            print "Desired Value:", qd
+            for i in range(18):
+                if qd[i] > self.qh[i]:
+                    print "Joint No. ", i , " is ", qd[i], " greater than maximum: ", self.qh[i]
+                if qd[i] < self.ql[i]:
+                    print "Joint No. ", i , " is ", qd[i], " lower than minimum: ", self.ql[i]
             return False
 
 	## Sets the endeffector target to a desired position and orientation. The target must be specified for the end of gripper of the reference arm.
@@ -291,8 +293,8 @@ class PR2(object):
         sets the endeffector target to the given position and orientation
         variables self.xd and self.Rd should not be manipulated by the user. Always use this function
         '''    
-        self.xd = numpy.copy(target_position)
-        self.Rd = numpy.copy(target_orientation)
+        self.xd = np.copy(target_position)
+        self.Rd = np.copy(target_orientation)
 
         arm = self.reference_arm()
         if self.larm_reference:
@@ -308,20 +310,40 @@ class PR2(object):
 
         print "rel_ef_pos[2]  = ", -self.p_BR_BO[2] + target_position[2] - target_orientation[2,2]*self.d7
 
-        relative_endeffector_position    = - self.p_BR_BO + numpy.dot(self.R_B.T,target_position - self.p_BO - numpy.dot(target_orientation,self.p_EFR_WR))
+        relative_endeffector_position    = - self.p_BR_BO + np.dot(self.R_B.T,target_position - self.p_BO - np.dot(target_orientation,self.p_EFR_WR))
         print "rel_ef_pos[2]  = ", relative_endeffector_position[2]
         '''
-        assert self.control_mode in all_control_modes, pygen.err_str(__name__, self.__class__.__name__, 'set_target', self.control_mode + " is an invalid value for control mode")
+        assert self.control_mode in all_control_modes, pygen.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.control_mode + " is an invalid value for control mode")
         if self.control_mode == 'Fixed-Base':
-            rel_end_position    = - p0 + target_position - numpy.dot(target_orientation, pe)
+            rel_end_position    = - p0 + target_position - np.dot(target_orientation, pe)
             rel_end_orientation = target_orientation
         else:
-            rel_end_position    = - p0 + numpy.dot(self.R_B.T,target_position - self.p_BO - numpy.dot(target_orientation, pe))
-            rel_end_orientation = numpy.dot(self.R_B.T, target_orientation)
+            rel_end_position    = - p0 + np.dot(self.R_B.T,target_position - self.p_BO - np.dot(target_orientation, pe))
+            rel_end_orientation = np.dot(self.R_B.T, target_orientation)
 
         #set the relative pose target for the arm
         arm.set_target(rel_end_position, rel_end_orientation)
 
+    def set_posture(self, posture):
+        if posture == 'praying':
+            qr = np.array([ -6.85916588e-06,   1.59104071e+00,   1.04472774e-03, -2.49505670e-01,  -3.26593628e-03,  -3.35053472e-01, -1.65636744e-03])        
+            ql = np.array([ -3.57102700e-04,   1.59100714e+00,  -5.27852219e-04, -2.48833571e-01,   3.85286996e-03,  -3.36172240e-01,  1.43031683e-03])
+            qd = np.copy(self.q)
+            qd[0:7]   = ql
+            qd[11:18] = qr
+            self.set_config(qd)
+        elif posture == 'writing':
+            qd = np.array([ -1.26299826e-01,   1.77046412e+00,  -1.02862191e+00, -1.36864905e+00,  -2.31195189e+00,  -1.29253137e+00,
+                          1.71195615e-01,   8.02176174e-01,  -2.12167293e-03,  2.32811863e-04,   7.05358701e-03,   4.01010384e-01,
+                          2.44565260e+00,   7.10476515e-01,  -1.30808585e+00,  1.15357810e+00,  -4.49485156e-01,  -2.46943329e+00])    
+            self.set_config(qd)
+        elif posture == 'catch_the_board_with_right_hand':
+            qr = np.array([ 0.08842831,  2.34773988,  0.07718497, -1.32087472, -0.71994221, -1.02121596, -1.56155048])
+            qd = np.copy(self.q)
+            qd[11:18] = qr
+            self.set_config(qd)
+        else:
+            assert False, "Error from PR2.set_posture(): Unknown Posture"
 
     ##  Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector \f$ \phi \f$.
     #   @param phi Is a numpy vector of five elements containing the values of five redundant parameters in free-base mode.
@@ -382,14 +404,14 @@ class PR2(object):
         px = r*math.sin(psi)
         py = r*math.cos(psi)
 
-        p_W_B = numpy.array([px, py, pz])
+        p_W_B = np.array([px, py, pz])
 
 
         # Calculate the relative endeffector orientation:
         R_B     = rotlib.rot_z(tau)  # orientation of robot base
         R_W     = self.Rd
         p_EF    = self.xd   
-        R_W_B  = numpy.dot(R_B.T, R_W)
+        R_W_B  = np.dot(R_B.T, R_W)
 
         #set the new target for the arm associated with the given phi
         
@@ -409,16 +431,16 @@ class PR2(object):
 
             #calculate the base position:
 
-            p_B_BO = numpy.array([self.b0 , l0, h_ts])     
+            p_B_BO = np.array([self.b0 , l0, h_ts])     
 
-            p_BO    = p_EF - numpy.dot(R_B,(p_B_BO + p_W_B)) - numpy.dot(R_W, p_EF_W)
+            p_BO    = p_EF - np.dot(R_B,(p_B_BO + p_W_B)) - np.dot(R_W, p_EF_W)
 
             assert gen.equal(p_BO[2], 0.0) # z coordinate of the base must be zero
 
             # Now we have all the joints(all 11 degrees of freedom) insert extra DOFs to the arm solution set
 
             for arm_solution in arm_solution_set:
-                solution = numpy.zeros(11)
+                solution = np.zeros(11)
                 solution[0:7] = arm_solution
                 solution[7]   = h_ts     # append q[7] = h_ts
                 solution[8]   = p_BO[0]  # append q[8] = X_BO
@@ -446,15 +468,15 @@ class PR2(object):
             qc = self.q[0:11]
             qm = self.qm[0:11]
         else:
-            qc = numpy.append(self.q[11:18] , self.q[7:11])
-            qm = numpy.append(self.qm[11:18], self.qm[7:11])
+            qc = np.append(self.q[11:18] , self.q[7:11])
+            qm = np.append(self.qm[11:18], self.qm[7:11])
 
         if self.ofuncode == 0:
             delta = trig.angles_standard_range(q - qc)
-            ofun = numpy.dot(delta.T, self.W*delta)
+            ofun = np.dot(delta.T, self.W*delta)
         elif self.ofuncode == 1:
             delta = trig.angles_standard_range(q - qm)
-            ofun = numpy.dot(delta.T, self.W*delta)
+            ofun = np.dot(delta.T, self.W*delta)
         else:
             assert False, "Error from "+__name__ + func_name + ": Value "+str(self.ofuncode)+" for argument ofuncode is not supported"
         return ofun
@@ -471,15 +493,15 @@ class PR2(object):
     def IK_config(self, phi):
         assert self.control_mode in all_control_modes
         if self.control_mode == 'Fixed-Base':
-            assert type(phi) is float, pygen.err_str(__name__, self.__class__.__name__,'IK_config', 'given redundant parameter must be a float in Fixed-Base mode')
+            assert type(phi) is float, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'given redundant parameter must be a float in Fixed-Base mode')
             arm   = self.reference_arm()
             q_arm = arm.IK_config(phi = phi)
             return self.full_config(q_arm, is_left_arm = self.larm_reference)
         else:
-            permit = type(phi) in [numpy.ndarray, float, list]
+            permit = type(phi) in [np.ndarray, float, list]
             if permit:
                 permit = permit and len(phi) == 5
-            assert permit, pygen.err_str(__name__, self.__class__.__name__,'IK_config', 'given redundant parameter must be an array of size 5 in Free-Base mode')
+            assert permit, pygen.err_str(__name__, self.__class__.__name__,sys._getframe().f_code.co_name, 'given redundant parameter must be an array of size 5 in Free-Base mode')
             solution_set = self.all_IK_solutions(phi)
             if len(solution_set) == 0:
                 print "IK_config error: No solution found within the feasible joint ranges for the given redundant parameters"
@@ -502,7 +524,7 @@ class PR2(object):
     def pos_rarm_grip_wrt_tor_shpan(self):
         R_WR_B   = self.rarm.wrist_orientation()
         p_WR_BR  = self.rarm.wrist_position()
-        p_EFR_BR = p_WR_BR + numpy.dot(R_WR_B, self.p_EFR_WR)
+        p_EFR_BR = p_WR_BR + np.dot(R_WR_B, self.p_EFR_WR)
         return(p_EFR_BR)
 
     ## Use this function to get the current position of the left gripper (Arm Endeffector) w.r.t the arm base.
@@ -512,7 +534,7 @@ class PR2(object):
     def pos_larm_grip_wrt_tor_shpan(self):
         R_WL_B   = self.larm.wrist_orientation()
         p_WL_BL  = self.larm.wrist_position()
-        p_EFL_BL = p_WL_BL + numpy.dot(R_WL_B, self.p_EFL_WL)
+        p_EFL_BL = p_WL_BL + np.dot(R_WL_B, self.p_EFL_WL)
         return(p_EFL_BL)
 
     ## Use this function to get the current position of the left gripper (Arm Endeffector) w.r.t the torso.
@@ -565,7 +587,7 @@ class PR2(object):
             if self.p_EFR == None:
                 self.R_WR    = self.rarm_end_orientation(relative = False)
                 self.p_WR_BR = self.rarm.wrist_position()
-                self.p_EFR   = self.p_BO + numpy.dot(self.R_B,(self.p_BR_BO + self.p_WR_BR)) + numpy.dot(self.R_WR, self.p_EFR_WR)
+                self.p_EFR   = self.p_BO + np.dot(self.R_B,(self.p_BR_BO + self.p_WR_BR)) + np.dot(self.R_WR, self.p_EFR_WR)
             return copy.copy(self.p_EFR)
                    
     ## Returns the current position of the endeffector or gripper end for the left arm.
@@ -582,7 +604,7 @@ class PR2(object):
             if self.p_EFL == None:
                 self.R_WL    = self.larm_end_orientation(relative = False)
                 self.p_WL_BL = self.larm.wrist_position()
-                self.p_EFL   = self.p_BO + numpy.dot(self.R_B,(self.p_BL_BO + self.p_WL_BL)) + numpy.dot(self.R_WL, self.p_EFL_WL)
+                self.p_EFL   = self.p_BO + np.dot(self.R_B,(self.p_BL_BO + self.p_WL_BL)) + np.dot(self.R_WL, self.p_EFL_WL)
             return copy.copy(self.p_EFL)
 
     ## Returns the current position of the endeffector or gripper end for the reference arm.
@@ -607,7 +629,7 @@ class PR2(object):
         else:
             if self.R_WR == None:
                 self.R_WR_B  = self.rarm.wrist_orientation()
-                self.R_WR    = numpy.dot(self.R_B, self.R_WR_B)
+                self.R_WR    = np.dot(self.R_B, self.R_WR_B)
             return copy.copy(self.R_WR)
 
     def larm_end_orientation(self, relative = None):        
@@ -621,7 +643,7 @@ class PR2(object):
         else:
             if self.R_WL == None:
                 self.R_WL_B  = self.larm.wrist_orientation()
-                self.R_WL    = numpy.dot(self.R_B, self.R_WL_B)
+                self.R_WL    = np.dot(self.R_B, self.R_WL_B)
             return copy.copy(self.R_WL)
 
     def end_orientation(self, relative = True):
@@ -645,10 +667,10 @@ class PR2(object):
 
         if not self.div_theta_err_updated:
 
-            self.E = numpy.zeros((9,9))
-            self.F = numpy.zeros((9,5))
+            self.E = np.zeros((9,9))
+            self.F = np.zeros((9,5))
 
-            phi = numpy.zeros(5)                
+            phi = np.zeros(5)                
 
             [s0, s1, s2, s3, s4, s5, s6] = arm.config.s
             [c0, c1, c2, c3, c4, c5, c6] = arm.config.c
@@ -780,7 +802,7 @@ class PR2(object):
         if not self.redundant_parameters_updated:
             p = arm.wrist_position()
             r2 = p[0]**2 + p[1]**2
-            self.phi = numpy.zeros(5)
+            self.phi = np.zeros(5)
             self.phi[0] = arm.config.q[0]
             self.phi[1] = math.sqrt(r2)
             self.phi[2] = p[2] 
@@ -833,7 +855,7 @@ class PR2(object):
             C4 = math.cos(self.q[10])
             S4 = math.sin(self.q[10])
 
-            RJ = numpy.zeros((9,5))        
+            RJ = np.zeros((9,5))        
 
             E = self.div_theta_err()
             F = self.div_phi_err()
@@ -901,7 +923,7 @@ class PR2(object):
         These rows are corresponding to the first and last joints (shoulder pan joint and base rotation angle).
         '''    
         if not self.redun_jacob_ext_updated:
-            self.ERJ = numpy.zeros((11,5))
+            self.ERJ = np.zeros((11,5))
             RJ  = self.redundancy_jacobian()
             for i in range(9):
                 self.ERJ[i+1,:] = RJ[i,:]
@@ -916,7 +938,7 @@ class PR2(object):
         argument "ofun" specifies the code of the objective function which is set to 0 by default 
         '''        
         if not self.div_theta_ofun_updated:
-            self.DTG = numpy.zeros(11)
+            self.DTG = np.zeros(11)
             for i in range(11):
                 self.DTG[i] = 2*self.W[i]*(self.q[i] - self.qm[i])    
             self.div_theta_ofun_updated = True
@@ -930,7 +952,7 @@ class PR2(object):
         '''
         if not self.div_phi_ofun_updated:
             J = self.redundancy_jacobian_extended()
-            self.DFG = numpy.dot(J.T, self.div_theta_ofun())
+            self.DFG = np.dot(J.T, self.div_theta_ofun())
             self.div_phi_ofun_updated = True
         return copy.copy(self.DFG)
 
@@ -967,11 +989,11 @@ class PR2(object):
             qc = self.q[0:11]
             qm = self.qm[0:11]
         else:
-            qc = numpy.append(self.q[11:18] , self.q[7:11])
-            qm = numpy.append(self.qm[11:18], self.qm[7:11])
+            qc = np.append(self.q[11:18] , self.q[7:11])
+            qm = np.append(self.qm[11:18], self.qm[7:11])
 
-        den = numpy.dot(direction.T, self.W * direction)
-        num = numpy.dot(direction.T, self.W * (qc - qm))
+        den = np.dot(direction.T, self.W * direction)
+        num = np.dot(direction.T, self.W * (qc - qm))
 
         if not gen.equal(num, 0.0):
             eta = - num/den
@@ -995,7 +1017,7 @@ class PR2(object):
         Finds the steepest descent direction of the objective function for redundancy vector "phi"
         '''
         steepest_descent_redundancy_direction = - self.div_phi_ofun()
-        steepest_descent_joint_direction      = numpy.dot(self.redundancy_jacobian_extended(), steepest_descent_redundancy_direction)
+        steepest_descent_joint_direction      = np.dot(self.redundancy_jacobian_extended(), steepest_descent_redundancy_direction)
 
         eta = self.optimum_joint_stepsize(steepest_descent_joint_direction)
 
@@ -1044,7 +1066,7 @@ class PR2(object):
                     fail = True
                 else:
                     # Objective Function Reduced: Try to set the solution config
-                    qd          = numpy.copy(self.q)
+                    qd          = np.copy(self.q)
                     qd[0:11]    = solution
                     if not self.set_config(qd):
                         fail = True
@@ -1058,7 +1080,7 @@ class PR2(object):
                 k = 1.0   
     
     def extended_config(self, q):
-        qq = numpy.copy(self.q)
+        qq = np.copy(self.q)
         if not self.larm_reference:
             qq[0:11]  = q
         else:
@@ -1112,17 +1134,17 @@ class PR2(object):
 
         jt          = trajlib.Polynomial_Trajectory(dimension = 18)
         jt.capacity = 5
-        jt.add_point(phi = 0.0, pos = numpy.copy(self.q), vel = numpy.zeros(18))
+        jt.add_point(phi = 0.0, pos = np.copy(self.q), vel = np.zeros(18))
 
         phi   = phi_start
         pos_traj.set_phi(phi)
         ori_traj.set_phi(phi)
         if relative:
             p0    = self.end_position() - pos_traj.current_position
-            R0    = numpy.dot(self.end_orientation(), ori_traj.current_orientation.T)  
+            R0    = np.dot(self.end_orientation(), ori_traj.current_orientation.T)  
         else:
-            p0    = numpy.zeros(3)
-            R0    = numpy.eye(3)  
+            p0    = np.zeros(3)
+            R0    = np.eye(3)  
         
         phi       = phi + delta_phi
         stay      = True
@@ -1133,10 +1155,10 @@ class PR2(object):
             pos_traj.set_phi(phi)
             ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
-            R = numpy.dot(R0, ori_traj.current_orientation)
+            R = np.dot(R0, ori_traj.current_orientation)
             self.set_target(p, R)
             if self.inverse_update():
-                jt.add_point(phi = phi - phi_start, pos = numpy.copy(self.q))
+                jt.add_point(phi = phi - phi_start, pos = np.copy(self.q))
                 phi = phi + delta_phi
                 if phi > phi_end:
                     phi = phi_end

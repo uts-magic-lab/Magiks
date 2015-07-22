@@ -19,5 +19,5 @@ def set_file_path( verbose=False ):
     sys.path.append(  super_path )
     
     # super package : 
-    import special_geometries
-    return special_geometries.set_file_path( verbose=verbose ) 
+    import specific_geometries
+    return specific_geometries.set_file_path( verbose=verbose ) 
