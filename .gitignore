@@ -59,12 +59,11 @@ target/
 # zip files
 *.tar.gz
 
-# images
-*.jpg
+# pics and images:
 *.png
-
-#matlab workspaces:
-*.mat
+*.jpg
+*.bmp
+*.gif
 
 # MAGIKS TEST FILES
 *.log

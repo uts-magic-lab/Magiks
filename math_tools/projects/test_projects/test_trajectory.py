@@ -15,6 +15,7 @@ import __init__
 __init__.set_file_path( False )
 
 import matplotlib.pyplot as plt
+import scipy.io   # Required for reading Matlab workspace file
 import numpy as np
 import math
     
@@ -115,7 +116,6 @@ def test_orientation_path_polynomial():
     ot.interpolate()
     # And see the plot
     ot.plot()
-    
 
 def test_add_vector():
     p0 = np.zeros(3)
@@ -139,6 +139,45 @@ def test_circle():
     print c.R
     c.scatter_plot()    
 
+def test_read_trajectory():
+    '''
+    This test uses function add_position to add points read from a given trajectory in a matlab workspace .mat file
+    '''
+    data_file = "pr2_trajectory_data.mat"
+    workspace = scipy.io.loadmat(data_file)
+    p       = workspace['p']         
+    q       = workspace['q']
+    N       = len(p)
+    assert N == len(q)
+
+    ## Create a position and orientation trajectory from given data:
+
+    pt = tj.Trajectory(capacity = 5)
+
+    pt.vel_max = 0.1
+    pt.acc_max = 0.1
+    pt.accuracy_level = 1
+
+    t  = 0.0
+    dt = 0.005
+
+    for i in range(N):
+        pos = p[i, :]
+        pt.add_position(t, pos = pos)
+        t   = t + dt
+
+    #pt.clear_accelerations()
+    #pt.clear_velocities()
+    #pt.interpolate()
+    pt.plot(axis = 0, n = 10000, show_points = True)
+    #pt.plot(axis = 1, n = 10000, show_points = True)
+    #pt.plot(axis = 2, n = 10000, show_points = True)
+    pt.plot(axis = 0, n = 10000, wtp = 'velocity', show_points = True)
+    #pt.plot(axis = 1, n = 10000, wtp = 'velocity', show_points = True)
+    #pt.plot(axis = 2, n = 10000, wtp = 'velocity', show_points = True)
+    pt.plot(axis = 0, n = 10000, wtp = 'acceleration', show_points = True)
+    #pt.plot(axis = 1, n = 10000, wtp = 'acceleration', show_points = True)
+    #pt.plot(axis = 2, n = 10000, wtp = 'acceleration', show_points = True)
 
 if __name__ == "__main__" :
     # test_1()
@@ -148,4 +187,5 @@ if __name__ == "__main__" :
     # test_path()
 
     # test_trajectory_polynomial()
-    test_orientation_path_polynomial()
+    # test_orientation_path_polynomial()
+    test_read_trajectory()

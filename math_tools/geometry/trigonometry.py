@@ -16,7 +16,7 @@
 
 import math,numpy
 
-from math_tools import general as gen
+from math_tools import general_math as gen
 from interval   import interval
 
 def in_domain_sin(x):

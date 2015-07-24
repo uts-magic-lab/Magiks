@@ -20,7 +20,7 @@ import time
 import pyride_synchronizer
 import pyride_interpreter as pint
 
-from math_tools import general as gen
+from math_tools import general_math as gen
 from math_tools.geometry import trajectory as traj, rotation as rot
 
 '''
@@ -279,13 +279,15 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
         arm = self.reference_arm()
         ot = traj.Orientation_Trajectory()
         ot.current_orientation = arm.wrist_orientation()
-        jt = arm.project_to_js(shape_trajectory, ot, phi_end = shape_trajectory.phi_end, delta_phi = shape_trajectory.phi_end/100, relative = False)
+        keep_dt = arm.dt
+        arm.dt  = shape_trajectory.phi_end/100
+        jt      = arm.project_to_js(shape_trajectory, ot, relative = False, traj_type = 'polynomial')
+        arm.dt  = keep_dt
         # jt.fix_points()
         jt.consistent_velocities()
         # jt.plot()
         if not gen.equal(jt.phi_end, shape_trajectory.phi_end):
             print "Warning from PyRide_PR2.draw_shape(): All the shape is not in the workspace. Part of it will be drawn !"
-        
         
         L = sum(shape_trajectory.points_dist())
         '''

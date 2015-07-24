@@ -64,13 +64,21 @@ def project_trajectory(pt, ot):
     pt.set_phi(0.0)
     ot.set_phi(0.0)
     arm.set_target(pt.current_position, ot.current_orientation.matrix())
-    arm.inverse_update(optimize = True)
+    arm.inverse_update(optimize = True, show = False)
     # Project the trajectory into the joint-space:
-    jt  = arm.project_to_js(pos_traj = pt, ori_traj = ot, delta_phi = 0.004, relative = False, max_speed = 2.0, joint_traj_capacity = 5)
+    arm.max_js = 1.0
+    arm.max_ja = 100.0
+    arm.max_jj = 3000.0
+    jt  = arm.js_project(pos_traj = pt, ori_traj = ot, relative = False, traj_capacity = 20)
     # Match velocities at segment borders and interpolate:
-    jt.consistent_velocities()
+    # jt.consistent_velocities()
     # Your trajectory is now ready to be issued :-)
     return jt
+
+def regen_task_traj(jt):
+    arm = armlib.PR2_ARM()
+    (pt, ot) = arm.ts_project(jt)
+    return (pt, ot)
 
 def write_trajectory(csv_file_name, tr):
     path = 'home/Dropbox/software/python/magiks/projects/s_pr2/'

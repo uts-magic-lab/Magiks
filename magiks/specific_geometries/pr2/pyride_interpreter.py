@@ -22,7 +22,7 @@ Changes from ver 4.0:
 import PyPR2, numpy, math, time
 from math_tools.algebra  import vectors_and_matrices as vecmat
 from math_tools.geometry import geometry as geo
-from math_tools import general as gen
+from math_tools import general_math as gen
 
 # from cgkit.cgtypes import quat, mat3
 
@@ -290,7 +290,7 @@ def larm_joints(in_degrees = True):
 
 def larm_wrist_position():
     '''
-    returns the wrist position of the right arm comparable to function wrist_position() in the arm object
+    returns the wrist position of the left arm comparable to function wrist_position() in the arm object
     '''    
     p0 = PyPR2.getRelativeTF('torso_lift_link' , 'l_shoulder_pan_link')['position']
     p  = PyPR2.getRelativeTF('torso_lift_link' , 'l_wrist_flex_link')['position']
@@ -299,6 +299,20 @@ def larm_wrist_position():
     z = p[2] - p0[2]
     pos = numpy.array([x,y,z])
     return(pos)    
+
+def larm_wrist_orientation():
+    '''
+    returns the wrist orientation of the left arm (the same orientation returned by function wrist_orientation() in the arm object but in quaternions)
+    '''    
+    q  = PyPR2.getRelativeTF('torso_lift_link' , 'l_wrist_flex_link')['orientation']
+    return(q)    
+
+def rarm_wrist_orientation():
+    '''
+    returns the wrist orientation of the right arm (the same orientation returned by function wrist_orientation() in the arm object but in quaternions)
+    '''    
+    q  = PyPR2.getRelativeTF('torso_lift_link' , 'r_wrist_flex_link')['orientation']
+    return(q)    
 
 """
 def rarm_gripper_position():
