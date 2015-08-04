@@ -277,11 +277,9 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
     
     def draw_shape(self, shape_trajectory):# add wait argument later
         arm = self.reference_arm()
-        ot = traj.Orientation_Trajectory()
-        ot.current_orientation = arm.wrist_orientation()
         keep_dt = arm.dt
         arm.dt  = shape_trajectory.phi_end/100
-        jt      = arm.js_project(shape_trajectory, ot, relative = False, traj_type = 'polynomial')
+        jt      = arm.js_project(shape_trajectory, relative = False, traj_type = 'polynomial')
         arm.dt  = keep_dt
         # jt.fix_points()
         jt.consistent_velocities()
@@ -435,11 +433,11 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                 self.larm_reference = True
                 # self.arm_trajectory(pl, relative = False, delta_phi = 0.5, wait = False)
                 nseg = len(pl.segment)
-                print "len(pl.segment)", nseg
-                print "num.points.last.seg:", len(pl.segment[nseg-1].point)
-                print pl.segment[nseg-1].point[0]
-                print pl.segment[nseg-1].point[1]
-                print pl.segment[nseg-1].points_dist()
+                # print "len(pl.segment)", nseg
+                # print "num.points.last.seg:", len(pl.segment[nseg-1].point)
+                #print pl.segment[nseg-1].point[0]
+                #print pl.segment[nseg-1].point[1]
+                #print pl.segment[nseg-1].points_dist()
 
                 self.draw_shape(pl)
                 step_l += 1    
