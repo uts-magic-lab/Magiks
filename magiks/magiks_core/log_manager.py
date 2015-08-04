@@ -18,8 +18,8 @@
 # BODY
 import math, pickle
 
-from packages.nima.mathematics.algebra import vectors_and_matrices as vecmat
-from packages.nima.mathematics.statistics import statistics
+from math_tools.algebra import vectors_and_matrices as vecmat
+from math_tools.statistics import statistics
 
 
 key_dic = {

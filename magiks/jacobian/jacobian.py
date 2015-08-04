@@ -194,8 +194,8 @@ class Error_Jacobian(object):
         rpn  = tskfrm.error.settings.representation
         pwr  = tskfrm.error.settings.power
         if rpn == 'vector':
-            tskfrm.ra.set_generating_function( tskfrm.error.settings.generating_function )
-            tskfrm.rd.set_generating_function( tskfrm.error.settings.generating_function )
+            tskfrm.ra.set_parametrization( tskfrm.error.settings.parametrization )
+            tskfrm.rd.set_parametrization( tskfrm.error.settings.parametrization )
         if tskfrm.error.settings.metric_type == 'relative':
             p = len(pwr)
             j  = 0

@@ -15,7 +15,7 @@
 # 
 #  Last Revision:  	11 January 2015
 
-import numpy, math, rotation, general_python as genpy
+import copy,numpy, math, rotation, general_python as genpy
 
 from math_tools.algebra import vectors_and_matrices as vecmat, quaternions as quat
 
@@ -56,7 +56,7 @@ class Metric_Settings():
 
         self.representation = representation
         
-        self.generating_function = 'phi/m'
+        self.parametrization = 'identity'
     
         '''
         Property "power" determines the power of elements of basis error in the final vector of errors:
@@ -164,7 +164,7 @@ class Metric:
     def __init__(self, settings = Metric_Settings()):
         '''    
         '''
-        self.settings = settings
+        self.settings = copy.copy(settings)
         self.clear()
 
     def clear(self):
@@ -192,9 +192,9 @@ class Position_Metric(Metric):
     def __init__(self, settings = Metric_Settings()):
         '''
         '''
-        Metric.__init__(self, settings = settings)
+        Metric.__init__(self, settings = copy.copy(settings))
         #set "Cartesian Coordinates" as default representation for position        
-        self.settings = settings
+        self.settings = copy.copy(settings)
 
     def basis_error(self, current, target) :
         func_name = ".basis_error()"    
@@ -284,7 +284,8 @@ class Orientation_Metric(Metric):
     '''
     
     def __init__(self, settings = Metric_Settings(representation = 'AxInPr', metric_type = 'special')):
-        Metric.__init__(self, settings = settings)
+        Metric.__init__(self, settings = copy.copy(settings))
+        self.settings = copy.copy(settings)
         #set "Axis Inner Product" as default basis error function for orientation error        
         '''
         set "precision" or termination criteria by default as: 2.0 degrees. It means actual and desired orientations are considered "identical" 
@@ -298,8 +299,8 @@ class Orientation_Metric(Metric):
         # def basis_orientation_error(self, current, target):
         rpn =  self.settings.representation
         if rpn in ['vector', 'ReRoAn + ReOrVe']:
-            current.set_generating_function( self.settings.generating_function )
-            target.set_generating_function( self.settings.generating_function )
+            current.set_parametrization( self.settings.parametrization )
+            target.set_parametrization( self.settings.parametrization )
         '''
         '''
         if self.settings.metric_type == 'relative':
@@ -366,7 +367,7 @@ class Orientation_Metric(Metric):
                 assert False
             return f        
         else:
-            assert False, gen.err_str(__name__, "basis_error", self.settings.metric_type + " is an invalid metric type")
+            assert False, genpy.err_str(__name__, self.__class__.__name__, "basis_error", self.settings.metric_type + " is an invalid metric type")
         if self.settings.representation == 'matrix':
             e = e.flatten()
 

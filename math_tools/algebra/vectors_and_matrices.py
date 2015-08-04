@@ -454,3 +454,18 @@ def feasible_stepsize(direction, x, x_min, x_max):
         return 0.0
     else:
         return min(etta)
+
+def va_mean(vectarray):
+    n = len(vectarray)    
+    s = vectarray[0]
+    for i in range(n - 1):
+        s += vectarray[i + 1]
+    return s/n    
+
+def va_shiftappend(vectarray, v_new):
+    n = len(vectarray)    
+    for i in range(n - 1):
+        vectarray[i] = vectarray[i+1]
+    vectarray[n - 1] = v_new
+    return vectarray
+

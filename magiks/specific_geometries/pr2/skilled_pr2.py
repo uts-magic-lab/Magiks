@@ -281,7 +281,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
         ot.current_orientation = arm.wrist_orientation()
         keep_dt = arm.dt
         arm.dt  = shape_trajectory.phi_end/100
-        jt      = arm.project_to_js(shape_trajectory, ot, relative = False, traj_type = 'polynomial')
+        jt      = arm.js_project(shape_trajectory, ot, relative = False, traj_type = 'polynomial')
         arm.dt  = keep_dt
         # jt.fix_points()
         jt.consistent_velocities()

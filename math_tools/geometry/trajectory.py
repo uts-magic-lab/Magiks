@@ -54,20 +54,6 @@ FDC_a = {1:[1.0,      - 2.0,    1.0],
          5:[203.0/45, - 87.0/5, 117.0/4,  - 254.0/9,  33.0/2,  - 27.0/5 , 137.0/180],
          6:[469.0/90, - 22.3,   879.0/20, - 949.0/18, 41.0,    - 20.1,    1019.0/180.0, -0.7]}
 
-def va_mean(vectarray):
-    n = len(vectarray)    
-    s = vectarray[0]
-    for i in range(n - 1):
-        s += vectarray[i + 1]
-    return s/n    
-
-def va_shiftappend(vectarray, v_new):
-    n = len(vectarray)    
-    for i in range(n - 1):
-        vectarray[i] = vectarray[i+1]
-    vectarray[n - 1] = v_new
-    return vectarray
-
 def feasible_position(Xd, X0, V0, X_min, X_max, v_max, a_max, dt, smooth = False):
     dim   = len(Xd)
     

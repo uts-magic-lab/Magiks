@@ -18,20 +18,13 @@
 # BODY
 
 import numpy, math, time, copy, pickle
+import general_python as genpy
+import magiks.jointspace.manipulator_configuration as conflib 
+import magiks.geometry.manipulator_geometry as geolib 
 
-import packages.nima.general as genpy
-from packages.nima.mathematics.geometry import rotation
-
-import packages.nima.robotics.kinematics.magiks_core.inverse_kinematics as iklib 
-import packages.nima.robotics.kinematics.taskspace.endeffector as endlib 
-import packages.nima.robotics.kinematics.taskspace.workspace as wslib 
-import packages.nima.robotics.kinematics.jointspace.manipulator_configuration as conflib 
-import packages.nima.robotics.kinematics.magiks_core.log_manager as loglib 
-
-import packages.nima.mathematics.geometry.metric as metriclib 
-
-import packages.nima.robotics.kinematics.geometry.manipulator_geometry as geolib 
-import packages.nima.robotics.kinematics.magiks_core.manipulator_library as manlib
+from math_tools.geometry import rotation, pose_metric as metriclib
+from magiks.magiks_core import inverse_kinematics as iklib, log_manager as loglib, manipulator_library as manlib
+from magiks.taskspace import endeffector as endlib, workspace as wslib
 
 """
 def generate_my_default_kin_manager() : 
@@ -136,7 +129,7 @@ key_dic = {
     'Precision for Orientation (deg)'   : 'PO', 
     'Position Metric'                   : 'PM', 
     'Orientation Metric'                : 'OM', 
-    'Joinr Mapping'                     : 'JM', 
+    'Join Mapping'                      : 'JM', 
     'Damping Factor'                    : 'DF',
     'Damping Factor Gain'               : 'DFG'
 }
@@ -144,8 +137,8 @@ key_dic = {
 
 nkc_dic = {'DiCaCo(xyz)':3,'DiCaCo(xy)':2,'DiCaCo(xz)':2,'DiCaCo(yz)':2, 'DiCaCo(x)':1, 'DiCaCo(y)':1,'DiCaCo(z)':1,
            'AxInPr(ijk)':3,'AxInPr(ij)':3,'AxInPr(ik)':3,'AxInPr(jk)':3, 'AxInPr(i)':2, 'AxInPr(j)':2,'AxInPr(k)':2}
-param_dic = {'ReOrVe(IDTY)':'phi/m', 'ReOrVe(LIN)':'m*sin(phi/m)', 'ReOrVe(CaGiRo)' : 'm*tan(phi/m)', 'ReOrVe(EXP)' : 'exp(phi)-1', 'ReOrVe(BaTr)' : '(6*(phi - sin(phi)))**(1.0/3.0)',
-             'DiOrVe(IDTY)':'phi/m', 'DiOrVe(LIN)':'m*sin(phi/m)', 'DiOrVe(CaGiRo)' : 'm*tan(phi/m)', 'DiOrVe(EXP)' : 'exp(phi)-1', 'DiOrVe(BaTr)' : '(6*(phi - sin(phi)))**(1.0/3.0)'}
+param_dic = {'ReOrVe(IDTY)':'identity', 'ReOrVe(LIN)':'linear', 'ReOrVe(CaGiRo)' : 'cayley-gibbs-rodrigues', 'ReOrVe(EXP)' : 'exponential', 'ReOrVe(BaTr)' : 'bauchau-trainelli',
+             'DiOrVe(IDTY)':'identity', 'DiOrVe(LIN)':'linear', 'DiOrVe(CaGiRo)' : 'cayley-gibbs-rodrigues', 'DiOrVe(EXP)' : 'exponential', 'DiOrVe(BaTr)' : 'bauchau-trainelli'}
 def generate_orientation_metric_settings(orientation_constraint):
     func_name = "kinematic.manager.generate_orientation_error_function_package()"
     
@@ -210,11 +203,11 @@ def generate_orientation_metric_settings(orientation_constraint):
 
     elif orientation_constraint in ['ReOrVe(IDTY)', 'ReOrVe(LIN)', 'ReOrVe(CaGiRo)', 'ReOrVe(EXP)', 'ReOrVe(BaTr)']:
         ms = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'vector')
-        ms.generating_function = param_dic[orientation_constraint]
+        ms.parametrization = param_dic[orientation_constraint]
 
     elif orientation_constraint in ['DiOrVe(IDTY)', 'DiOrVe(LIN)', 'DiOrVe(CaGiRo)', 'DiOrVe(EXP)', 'DiOrVe(BaTr)']:
         ms = metriclib.Metric_Settings(metric_type = 'differential', representation  = 'vector')
-        ms.generating_function = param_dic[orientation_constraint]
+        ms.parametrization = param_dic[orientation_constraint]
 
     elif orientation_constraint == 'DiNoQu':
         ms        = metriclib.Metric_Settings(metric_type = 'special', representation  = 'DiNoQu')
@@ -270,7 +263,7 @@ def generate_orientation_metric_settings(orientation_constraint):
         ms.weight = numpy.eye(4)
         ms.power  = numpy.ones(4)
         ms.offset = numpy.zeros(4)
-        ms.generating_function = 'm*sin(phi/m)'
+        ms.parametrization = 'linear'
     else:
         assert False, func_name + ": " + orientation_constraint + " is an unknown value for orientation_constraint"
     
@@ -345,13 +338,14 @@ class Kinematic_Manager_Settings(object):
         The value of this property has no influence in the model and is designed to be shown in the test key and the table of test specifications
         '''
         #Number of endeffectors (orientation references)
+        self.num_position_ref       = 1
         self.num_orientation_ref    = 1
 
         self.application_scenario   = 'PPS' # Pose Projection Scenario
         self.solution_class         = 'Numeric'
 
         self.orientation_constraint = 'AxInPr(jk)' 
-        self.position_constraint    = 'ICC(xyz)'  #Identical Cartesian Coordinates (x,y,z)
+        self.position_constraint    = 'DiCaCo(xyz)'  #Identical Cartesian Coordinates (x,y,z)
         
         # Representation of Orientation Error
         #self.err_func_orient        = 'Axis Inner Product'

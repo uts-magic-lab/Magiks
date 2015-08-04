@@ -21,6 +21,7 @@ import math, time, sys, copy, numpy as np
 
 import general_python as genpy
 
+from math_tools import general_math as genmath
 from math_tools.geometry import geometry as geo, trajectory as trajlib
 from math_tools.algebra  import polynomials, vectors_and_matrices as vecmat
 from math_tools.discrete import discrete
@@ -66,7 +67,9 @@ class Inverse_Kinematics_Settings():
         self.number_of_steps        = num_steps
         self.initial_damping_factor = 1.0
         self.real_time              = False
-        self.time_step              = 0.020
+        self.time_step              = 0.020 # (sec)
+        self.max_js                 = 1.0   # (Rad/sec)
+        self.max_ja                 = 100.0 # (Rad/sec^2)
 
         self.representation_of_orientation_for_binary_run = 'vectorial_identity'
         self.include_current_config = True
@@ -108,9 +111,9 @@ class Inverse_Kinematics( eflib.Endeffector ):
         ### def __init__( self, geometry ) : # njoint):
         '''
         '''
-        super(Inverse_Kinematics, self).__init__(config_settings, geo_settings, end_settings)    
+        super(Inverse_Kinematics, self).__init__(copy.copy(config_settings), copy.copy(geo_settings), copy.copy(end_settings))
 
-        self.ik_settings               = ik_settings 
+        self.ik_settings               = copy.copy(ik_settings)
         
         ## fklib.Forward_Kinematics.__init__(self, DEEPCOPY(??geometry??) ) # njoint)
         
@@ -465,14 +468,14 @@ class Inverse_Kinematics( eflib.Endeffector ):
  
             self.start_node += 1
 
-    def move_towards_target(self, max_speed, ttr, show = False):
+    def moveto_target(self, show = False, optimize = False):
         q0        = self.free_config(self.q)
         err       = self.pose_error_norm()
         
         jdir      = self.ik_direction()
 
         if np.linalg.norm(jdir) > 0.00001:
-            (el, eh)  = self.joint_stepsize_interval(direction = jdir, max_speed = max_speed, delta_t = ttr) 
+            (el, eh)  = self.joint_stepsize_interval(direction = jdir, max_speed = self.ik_settings.max_js, delta_t = self.ik_settings.time_step) 
             # assert el < 0.0
             max_eta = self.optimum_stepsize(jdir)
             if eh > max_eta: 
@@ -519,94 +522,78 @@ class Inverse_Kinematics( eflib.Endeffector ):
         assert self.set_config(q0)
         return False
 
-    def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, phi_dot = 0.5, max_speed = 1.0, relative = True):
+    def js_project(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, relative = True, traj_capacity = 2, traj_type = 'regular'):
         '''
-        projects the given taskspace pose trajectory into the jointspace using numeric inverse kinematics.
-        The phase starts from phi_start and added by delta_phi in each step.
-        at any time, if a solution is not found, the process stops
+        projects the given taskspace pose trajectory into the jointspace using the numeric inverse kinematics.
+        The phase starts from phi_start and added by self.ik_settings.time_step in each step.
+        at any time, if a solution is not found, the target is ignored and no configuration is added to the trajectory
         '''
-        ts        = time.time()
-        t0        = 0.0
-
-        keep_q = self.free_config(self.q)
-
-        if phi_end == None:
-            phi_end = pos_traj.phi_end
+        keep_q = np.copy(self.q)
+        H      = self.transfer_matrices()
 
         if ori_traj == None:
-            H  = self.transfer_matrices()
-            ra = self.task_frame[0].orientation(H)
             ori_traj = trajlib.Orientation_Path()
-            ori_traj.add_point(0.0, ra)
-            ori_traj.add_point(pos_traj.phi_end, ra)
+            ori_traj.add_point(0.0, self.task_frame[0].orientation(H))
+            ori_traj.add_point(pos_traj.phi_end, self.task_frame[0].orientation(H))
 
-        if phi_end > pos_traj.phi_end:
-            phi_end = pos_traj.phi_end
+        if phi_end == None:
+            phi_end = min(pos_traj.phi_end, ori_traj.phi_end)
 
-        jt          = trajlib.Trajectory_Polynomial(dimension = self.config_settings.DOF)
-        jt.capacity = 2
+        if (phi_end > pos_traj.phi_end) or (phi_end > ori_traj.phi_end):
+            phi_end = min(pos_traj.phi_end, ori_traj.phi_end)
 
-        jt.add_point(phi = 0.0, pos = self.free_config(self.q), vel = np.zeros(self.config_settings.DOF))
+        if traj_type == 'regular':
+            jt = trajlib.Trajectory(dimension = self.config_settings.DOF, capacity = traj_capacity)
+        elif traj_type == 'polynomial':
+            jt = trajlib.Trajectory_Polynomial(dimension = self.config_settings.DOF, capacity = traj_capacity)
+        else:
+            assert False, "\n Unknown Trajectory Type \n"
+
+        jt.vel_max  = self.ik_settings.max_js
+        jt.acc_max  = self.ik_settings.max_ja
+        jt.pos_max  = self.config_settings.qh
+        jt.pos_min  = self.config_settings.ql
 
         phi   = phi_start
         pos_traj.set_phi(phi)
         ori_traj.set_phi(phi)
         if relative:
-            H     = self.transfer_matrices()
             p0    = self.task_point[0].position(H) - pos_traj.current_position
-            ra    = self.task_frame[0].orientation(H)
-            R0    = np.dot(ra['matrix'], ori_traj.current_orientation['matrix'].T)  
         else:
             p0    = np.zeros(3)
-            R0    = np.eye(3)  
-        
-        t     = time.time() - ts
-        if self.ik_settings.real_time:
-            dt    = t - t0
-            t0    = t
-        else:
-            dt    = self.ik_settings.time_step
-        phi      += phi_dot*dt
+            self.set_target([pos_traj.current_position], [ori_traj.current_orientation])
+            self.inverse_update()
 
+        jt.add_position(0.0, pos = np.copy(self.q))
+        
         stay      = True
-        cnt       = 0
+
         while stay:
-            
-            cnt  += 1
-            if phi > phi_end:
+            phi = phi + self.ik_settings.time_step
+
+            if (phi > phi_end) or genmath.equal(phi, phi_end, epsilon = 0.1*self.ik_settings.time_step):
                 phi = phi_end
-            if phi == phi_end:
                 stay = False
+
             pos_traj.set_phi(phi)
             ori_traj.set_phi(phi)
             p = p0 + pos_traj.current_position
-            R = np.dot(R0, ori_traj.current_orientation['matrix'])
-            self.set_target([p], [geo.Orientation_3D(R, np.zeros((3,3)))])
-            if self.move_towards_target(max_speed = max_speed, ttr = dt):
-                jt.add_point(phi = phi - phi_start, pos = self.free_config(self.q))
-                # print cnt, "- phi = ", phi, ": Error is reduced. Point is Added. :-)", self.pose_error_norm()
-                if self.ik_settings.algorithm == "DLS(ADF)":
-                    self.ik_settings.damping_factor = self.ik_settings.damping_factor / 2.0
-            else:
-                # print cnt, "- phi = ", phi, ": Error is not reduced. Point is not Added. :-("
-                print "."
-                if self.ik_settings.algorithm == "DLS(ADF)":
-                    self.ik_settings.damping_factor = 2*self.ik_settings.damping_factor
+            self.set_target([p], [ori_traj.current_orientation])
 
-            t     = time.time() - ts
-            if self.ik_settings.real_time:
-                dt    = t - t0
-                t0    = t
+            err_reduced = self.moveto_target(optimize = False)
+            if err_reduced:
+                jt.add_position(phi = phi - phi_start, pos = np.copy(self.q))
             else:
-                dt    = self.ik_settings.time_step
-            phi      += phi_dot*dt
+                print ":",
 
-        jt.interpolate()
+        if traj_type == 'polynomial':
+            jt.interpolate()
+
         self.set_config(keep_q)
 
         return jt
- 
-    def project_to_ts(self,  js_traj, phi_start = 0.0, phi_end = None, delta_phi = 0.1):
+
+    def ts_project(self,  js_traj, phi_start = 0.0, phi_end = None, delta_phi = 0.1):
         '''
         projects the given jointspace trajectory into the taskspace
         The phase starts from phi_start and added by delta_phi in each step.

@@ -52,8 +52,8 @@ class Endeffector(mangeolib.Manipulator_Geometry):
     Method "update" calculates and update all these properties according to the given joint configuration.
     '''
     def __init__(self, config_settings, geo_settings, end_settings):
-        super(Endeffector, self).__init__(config_settings, geo_settings)
-        self.end_settings = end_settings
+        super(Endeffector, self).__init__(copy.deepcopy(config_settings), copy.copy(geo_settings))
+        self.end_settings = copy.copy(end_settings)
         # Property "task_points" : is a list of instances of class task_point
         # Each instance is a "task point" and determines a position reference for the endeffector
         '''
@@ -388,7 +388,7 @@ class Endeffector(mangeolib.Manipulator_Geometry):
                 if actual:
                     tf.ra['matrix'] = r
                 else:
-                    tf.set_target(geolib.Orientation_3D(r, numpy.zeros((3,3)), representation = 'matrix'))
+                    tf.set_target(geolib.Orientation_3D(r, ori_velocity = numpy.zeros((3,3))))
 
             else:
             
@@ -425,7 +425,7 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             cnt += 1
         cnt = 0
         for o in orientation:
-            o.set_velocity(numpy.zeros((3,3)))
+            o.set_velocity(numpy.zeros((3,3)), representation = 'matrix')
             self.task_frame[cnt].set_target(o)
             cnt += 1
 

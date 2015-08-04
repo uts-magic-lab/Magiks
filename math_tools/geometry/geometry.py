@@ -804,7 +804,7 @@ class Orientation_3D(object):
             o = Orientation_3D(r)
         else:
             r_dot = np.dot(r1_dot, r2.T) + np.dot(r1, r2_dot.T)
-            o = Orientation_3D(r, r_dot)
+            o = Orientation_3D(r, ori_velocity = r_dot)
 
         if o1.parametrization == o2.parametrization:
             o.set_parametrization(o1.parametrization)
@@ -823,7 +823,7 @@ class Orientation_3D(object):
             o = Orientation_3D(r)
         else:
             r_dot = np.dot(r1_dot, r2) + np.dot(r1, r2_dot)
-            o = Orientation_3D(r, r_dot)
+            o = Orientation_3D(r, ori_velocity = r_dot)
             
         if o1.parametrization == o2.parametrization:
             o.set_parametrization(o1.parametrization)

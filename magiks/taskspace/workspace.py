@@ -17,9 +17,9 @@
 
 import  numpy,copy, pickle
 
-import  packages.nima.general as genpy
-import  packages.nima.robotics.kinematics.taskspace.endeffector as endlib
-from    packages.nima.mathematics.geometry import rotation
+import  general_python as genpy
+import  magiks.taskspace.endeffector as endlib
+from    math_tools.geometry import rotation
 from    packages.matej.artificial_intelligence.data_mining.kdtree import kdtree
 
 ## Use this function to load the workspace from a file. 
@@ -30,6 +30,7 @@ def read_from_file(path_and_file_name):
     work_space = pickle.load(FILE_DATA)
     return work_space
 
+'''
 key_dic = {
     'NA'            : 'Not Applicable',
 
@@ -46,7 +47,7 @@ key_dic = {
     'Nearest to Target Pose'            : 'NTP',
     'Nearest to Current Configuration'  : 'NCC',
 }
-
+'''
 
 ## This class contains all the required settings of a workspace. 
 class Workspace_Settings():
@@ -54,7 +55,7 @@ class Workspace_Settings():
     '''
     all_search_criteria                 = ['Nearest to Target Pose', 'Nearest to Current Configuration', 'List Order']
 
-    def __init__( self, creation_method = 'Joint Space Grid', grid_resolution = 2, representation_of_orientation = 'angular_spherical', number_of_search_items = 1, number_of_configs = 10, search_criteria = 'Nearest to Target Pose'):
+    def __init__( self, creation_method = 'JSG', grid_resolution = 2, representation_of_orientation = 'angular_spherical', number_of_search_items = 1, number_of_configs = 10, search_criteria = 'Nearest to Target Pose'):
 
         '''
         creation_method: Configuration Generation Method

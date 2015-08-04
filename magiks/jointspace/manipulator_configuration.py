@@ -161,7 +161,6 @@ class Manipulator_Configuration(object):
         map from limited to unlimited jointspace. Get main joint values in the limited jointspace (property: q) and updates the joint values in the unlimited space (property: qstar)
         '''
         qf = self.free_config(self.q)
-        assert self.joints_in_range(qf)
 
         self.qstar = np.zeros((self.config_settings.DOF))
          
@@ -169,6 +168,7 @@ class Manipulator_Configuration(object):
             if (not self.config_settings.limited) or (self.config_settings.joint_handling[i] == 'NM'):
                 self.qstar[i] = qf[i]
             elif self.config_settings.joint_handling[i] == 'LM':
+                assert self.joint_in_range(i, qf[i]), "Joint " + str(i) + " = " + str(qf[i]) + " is not in feasible range: (" + str(self.config_settings.ql[i]) + ',' + str(self.config_settings.qh[i]) + ')'
                 self.qstar[i] = self.jmc_a[i] * qf[i] + self.jmc_b[i] 
             elif self.config_settings.joint_handling[i] == 'TM':
                 '''
@@ -176,8 +176,10 @@ class Manipulator_Configuration(object):
                 qh = self.config_settings.qh[i]
                 print "i: ", i, "ql: ", ql," q: ", qf[i],"qh: ", qh, " g: ", self.jmc_g[i], " f: ", self.jmc_f[i], " c: ", (qf[i] - self.jmc_g[i]) / self.jmc_f[i]
                 '''
+                assert self.joint_in_range(i, qf[i]), "Joint " + str(i) + " = " + str(qf[i]) + " is not in feasible range: (" + str(self.config_settings.ql[i]) + ',' + str(self.config_settings.qh[i]) + ')'
                 self.qstar[i] = trig.arccos((qf[i] - self.jmc_g[i]) / self.jmc_f[i])
             elif self.config_settings.joint_handling[i] == 'TGM':
+                assert self.joint_in_range(i, qf[i]), "Joint " + str(i) + " = " + str(qf[i]) + " is not in feasible range: (" + str(self.config_settings.ql[i]) + ',' + str(self.config_settings.qh[i]) + ')'
                 self.qstar[i] = trig.arccos((math.tan(0.5*qf[i]) - self.jmc_g[i]) / self.jmc_f[i])
             else:
                 print 'Wrong Joint Handling (Free Joint ' + str(i) + '): ' + self.config_settings.joint_handling[i]

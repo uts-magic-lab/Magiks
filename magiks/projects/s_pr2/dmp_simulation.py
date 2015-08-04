@@ -20,11 +20,11 @@
 
 # Load required libraries from S-PR2:
 import scipy.io   # Required for reading Matlab workspace file
-import numpy as np
+import numpy as np, copy
 
 from magiks.specific_geometries.pr2 import pr2_arm_kinematics as armlib
 from math_tools.geometry import geometry as geo, trajectory as traj
-
+from magiks.magiks_core import kinematic_manager as kmlib
 
 def read_trajectory():
 # Read Matlab Workspace File:
@@ -59,17 +59,18 @@ def read_trajectory():
 def project_trajectory(pt, ot):
 
     ## First create an instance of PR2 Arm:
-    arm = armlib.PR2_ARM()
+    arm = armlib.PR2_ARM(run_magiks = True)
+
+    arm.ik.config_settings.joint_limits_respected = False
+    arm.ik.ik_settings.time_step = 0.01
+    arm.ik.ik_settings.max_js    = 5.0
+    arm.ik.ik_settings.max_ja    = 50.0
+
+    ms = kmlib.generate_orientation_metric_settings('ReRoAn')
+    arm.ik.task_frame[0].error.settings = copy.copy(ms)
+
     # Take the manipulator to the start point of the trajectory:
-    pt.set_phi(0.0)
-    ot.set_phi(0.0)
-    arm.set_target(pt.current_position, ot.current_orientation.matrix())
-    arm.inverse_update(optimize = True, show = False)
-    # Project the trajectory into the joint-space:
-    arm.max_js = 1.0
-    arm.max_ja = 100.0
-    arm.max_jj = 3000.0
-    jt  = arm.js_project(pos_traj = pt, ori_traj = ot, relative = False, traj_capacity = 20)
+    jt  = arm.ik.js_project(pos_traj = pt, ori_traj = ot, relative = False, traj_capacity = 20)
     # Match velocities at segment borders and interpolate:
     # jt.consistent_velocities()
     # Your trajectory is now ready to be issued :-)
@@ -85,7 +86,21 @@ def write_trajectory(csv_file_name, tr):
     tr.write_csv(filename = csv_file_name, path = path, n = 10000)
 
 '''
-(pt, ot) = read_trajectory()
-jt       = project_trajectory(pt, ot)
+import initialize
+import dmp_simulation as ds
+(pt, ot) = ds.read_trajectory()
+jt       = ds.project_trajectory(pt, ot)
 write_trajectory('joint_traj.csv',jt)
+
+
+arm = ds.armlib.PR2_ARM(run_magiks = True)
+arm.ik.config_settings.joint_limits_respected = False
+arm.ik.task_frame[0].error.settings.representation = 'vector'
+arm.ik.task_frame[0].error.settings.metric_type    = 'relative'
+pt.set_phi(0.0)
+ot.set_phi(0.0)
+arm.ik.set_target([pt.current_position], [ot.current_orientation])
+arm.ik.inverse_update()
+
+
 '''

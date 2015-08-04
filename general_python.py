@@ -92,7 +92,7 @@ def check_types(variables, type_lists, file_path='', class_name='', function_nam
     return varlist
 
 def check_valid(var, valid_list, file_path, class_name, function_name, var_name):
-    assert var in valid_list, genpy.err_str(file_path, class_name, function_name, str(var) + " is an invalid value for " + var_name)
+    assert var in valid_list, err_str(file_path, class_name, function_name, str(var) + " is an invalid value for " + var_name)
 
 def check_range(var, lower_bound = None, higher_bound = None, file_path='', class_name='', function_name='', var_name='', equality_valid = True):
     if lower_bound != None:
