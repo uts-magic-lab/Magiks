@@ -466,25 +466,22 @@ class PyRide_PR2(pr2lib.PR2):
         and takes the right arm endeffector to the target specified by self.larm.xd and self.larm.Rd
         if phi = None, then the optimum phi will be selected.
         '''
-        func_name = ".larm_target()"
         
         self.larm.set_target(self.larm.xd, self.larm.Rd)  # make sure the target parameters are set
         if phi == None:
             if self.larm.inverse_update(optimize = True):
                 ql = self.larm.config.q
             else:
-                print "Error from PyRidePR2.larm_target(): Could not find an IK solution for given target"
-                return False
+                assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Could not find an IK solution for given target. Make sure the target pose is in the workspace")
+
         else:
             C = self.larm.permission_set_position()
             if phi in C:
                 ql = self.larm.IK_config(phi)
             else:
-                print "Error from PyRidePR2.larm_target(): Given phi is not in the permission set"
-                return False
+                assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Given phi is not in the permission set")
         if ql == None:
-            print "Error from PyRidePR2.larm_target(): No IK solution for the given redundant parameter phi."
-            return False
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "No IK solution found for the given redundant parameter phi! Change the value of the redundant parameter and try again")
         else:
             if self.larm.config.set_config(ql):
                 self.q[11:18] = ql
