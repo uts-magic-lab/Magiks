@@ -38,8 +38,8 @@ array([ -1.26299826e-01,   1.77046412e+00,  -1.02862191e+00,
          1.15357810e+00,  -4.49485156e-01,  -2.46943329e+00])
 '''
 class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
-    def __init__(self):
-        super(Skilled_PR2, self).__init__()
+    def __init__(self, run_magiks = False):
+        super(Skilled_PR2, self).__init__(run_magiks = run_magiks)
         self.height = 0.05
         self.width  = 0.05
         self.depth  = 0.02    
@@ -168,17 +168,6 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
             self.larm_endpoint_height  = np.copy(self.larm.wrist_position())
         else:
             self.rarm_endpoint_height = np.copy(self.rarm.wrist_position())
-
-    def praying_posture(self):
-        '''
-        The robot takes arms to the reference posture. Reference posture is the configuration when you launch PR2 in Gazebo.
-        '''
-        qr = np.array([ -6.85916588e-06,   1.59104071e+00,   1.04472774e-03, -2.49505670e-01,  -3.26593628e-03,  -3.35053472e-01, -1.65636744e-03])        
-        ql = np.array([ -3.57102700e-04,   1.59100714e+00,  -5.27852219e-04, -2.48833571e-01,   3.85286996e-03,  -3.36172240e-01,  1.43031683e-03])
-        pint.take_rarm_to(qr, time_to_reach = 3.0)
-        pint.take_larm_to(ql, time_to_reach = 3.0)
-        pint.wait_until_finished()
-        self.sync_object()
 
     def get_ready(self, only_orientation = True, reverse = False):
         self.sync_object()

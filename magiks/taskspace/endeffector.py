@@ -15,9 +15,10 @@
 #  Last Revision:  	11 January 2015
 
 import numpy, math, copy
-import link_point as lplib, task_reference as trlib
+import link_point as lplib, task_reference as trlib, cost_function as cflib
 
 from magiks.geometry import manipulator_geometry as mangeolib 
+from magiks.magiks_core import function_library as flib
 from math_tools.geometry import rotation as rot, geometry as geolib
 from math_tools.algebra import vectors_and_matrices as vecmat
 
@@ -62,6 +63,7 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         '''
         self.task_point = []
         self.task_frame = []
+        self.task_cost  = []
 
         last_link_number    = geo_settings.nlink - 1
         last_link_origin    = lplib.Link_Point(last_link_number,1,[0,0,0])
@@ -78,12 +80,18 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         endeffector_orientation_reference_by_default = trlib.Task_Frame(self.config_settings, last_link_number)
         self.add_taskframe(endeffector_orientation_reference_by_default)
 
+        self.task_cost.append(cflib.Cost_Function(input_ref = 'Joint Values'))
+        self.task_cost[0].function = flib.Zghal_Function(xl = numpy.copy(self.ql), xh = numpy.copy(self.qh))
+        self.task_cost[0].abs_grad = numpy.zeros(self.config_settings.DOF)
+
+        self.der = numpy.zeros(self.config_settings.DOF)
+
         # mp -- number of position coordinates (3 by default)
         # mo -- number of orientation coordinates (3 by default) 
 
         self.mp = 3
         self.mo = 3
-                       
+        
         # Property "self.all_task_points_in_target" is True if all of the task_points are in their desired positions
         self.all_task_points_in_target   = None
         # Property "self.all_reference_orientations_in_target" is True if all of the reference_orientations are identical to their desired orientations
@@ -175,6 +183,20 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         s +=  str(self.pose_error_norm()) + "\n"
         return s
     
+    def joint_damping_weights(self):
+
+        W = numpy.ones(self.config_settings.DOF)
+        for cf in self.task_cost:
+            if cf.purpose == 'Joint Damping':
+                abs_grad  = abs(cf.gradient(self))
+                delta     = abs_grad - cf.abs_grad
+                for i in range(self.config_settings.DOF):
+                    if delta[i] >= 0.0:
+                        W[i]      += cf.weight*abs_grad[i]
+                    cf.abs_grad[i] = abs_grad[i]
+                
+        return numpy.diag(1.0/W)
+    
     def pose(self):
         if self.current_pose == None:
             '''
@@ -260,9 +282,9 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             '''
             #Create the geometric jacobian matrix
             cnt = 0
-            np = 3*len(self.task_point)
-            no = 3*len(self.task_frame)
-            self.geo_jac = numpy.zeros((np + no, self.config_settings.DOF))
+            npos = 3*len(self.task_point)
+            nori = 3*len(self.task_frame)
+            self.geo_jac = numpy.zeros((npos + nori, self.config_settings.DOF))
             #For task_points
             for i in range(0,len(self.task_point)):
                 tp = self.task_point[i]
@@ -280,7 +302,7 @@ class Endeffector(mangeolib.Manipulator_Geometry):
                 #Arranging geometric jacobian for orientation
                 for k in range(0,3):
                     for j in range(0, self.config_settings.DOF):
-                        self.geo_jac[np + 3*i + k,j] = tf.geometric_jacobian.value[k,j]
+                        self.geo_jac[npos + 3*i + k,j] = tf.geometric_jacobian.value[k,j]
 
         return self.geo_jac
 
@@ -403,12 +425,14 @@ class Endeffector(mangeolib.Manipulator_Geometry):
                     tf.rd = rotation.rotation_matrix(ov, parametrization)
 
         self.clear_error()    
-    '''
-    def set_qstar(self, qs):
-        super(Endeffector, self).set_qstar(qd):
-        self.clear_pose()
-        self.q = None
-    '''    
+
+    def set_config_virtual(self, qvrd):
+        if super(Endeffector, self).set_config_virtual(qvrd):
+            self.clear_pose()
+            return True
+        else:
+            return False
+
     def set_config(self, qd):
         if super(Endeffector, self).set_config(qd):
             self.clear_pose()

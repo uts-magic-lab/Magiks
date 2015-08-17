@@ -20,7 +20,7 @@
 
 # Load required libraries from S-PR2:
 import scipy.io   # Required for reading Matlab workspace file
-import numpy as np, copy
+import numpy as np, copy, math
 
 from magiks.specific_geometries.pr2 import pr2_arm_kinematics as armlib
 from math_tools.geometry import geometry as geo, trajectory as traj
@@ -61,12 +61,15 @@ def project_trajectory(pt, ot):
     ## First create an instance of PR2 Arm:
     arm = armlib.PR2_ARM(run_magiks = True)
 
-    arm.ik.config_settings.joint_limits_respected = False
-    arm.ik.ik_settings.time_step = 0.01
-    arm.ik.ik_settings.max_js    = 5.0
-    arm.ik.ik_settings.max_ja    = 50.0
+    
+    arm.ik.config_settings.joint_limits_respected = True
+    arm.ik.ik_settings.initial_damping_factor     = 0.3
+    arm.ik.ik_settings.algorithm                  = "DLS(CDF)"
+    arm.ik.ik_settings.time_step                  = 0.01
+    arm.ik.ik_settings.max_js                     = np.inf
+    arm.ik.ik_settings.max_ja                     = np.inf
 
-    ms = kmlib.generate_orientation_metric_settings('ReRoAn')
+    ms = kmlib.generate_orientation_metric_settings('ReOrVe(IDTY)')
     arm.ik.task_frame[0].error.settings = copy.copy(ms)
 
     # Take the manipulator to the start point of the trajectory:
@@ -86,6 +89,9 @@ def write_trajectory(csv_file_name, tr):
     tr.write_csv(filename = csv_file_name, path = path, n = 10000)
 
 '''
+import sys
+sys.path.append('/home/nimasoft/Dropbox/software/python/magiks/projects/s_pr2')
+
 import initialize
 import dmp_simulation as ds
 (pt, ot) = ds.read_trajectory()

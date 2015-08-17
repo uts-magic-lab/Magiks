@@ -15,19 +15,19 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    2.0
-Last Revision:  24 December 2014
+@version:	    3.0
+Last Revision:  11 August 2015
 '''
 '''
 Major change from previous version:
-   All properties that can be changed by the user are in settings now. 
-   So, one should not change any property of class Configuration. property q must be changed using method set_config()
-   Name: :Joint_Configuration_Settings" changed to "Configuration Settings"
-   Name: :Joint_Configuration" changed to "Configuration"
+    1- methods set_joint_bounds() added to class Manipulator_Configuration()
+    2- functions q_to_qstar() and qstar_to_q() renamed to mapto_virtual() and mapfrom_virtual() respectively
+    3- property qstar renamed to qvr
+    
 '''
 
 # BODY
-import numpy as np, math, random, general_python as genpy
+import numpy as np, math, random, general_python as genpy, copy
 
 from math_tools import general_math as gen
 from math_tools.algebra import vectors_and_matrices as vecmat
@@ -78,8 +78,8 @@ class Manipulator_Configuration(object):
         # q    - A list of real numbers representing the joint configuration of the manipulator in the jointspace
         self.q     = 0.5*(settings.qh + settings.ql)        
 
-        # qstar - A list of real numbers representing the joint configuration of the manipulator in the mapped jointspace
-        self.qstar   = None
+        # qvr - A list of real numbers representing the joint configuration of the manipulator in the mapped jointspace
+        self.qvr   = None
 
         self.initialize()
         '''
@@ -87,8 +87,13 @@ class Manipulator_Configuration(object):
         you should not call this method in class A, so I created a function set_configuration() which is called by set_config()
         '''
 
-        self.q_to_qstar()
-        self.update_joint_limit_jacobian_multipliers()
+        self.mapto_virtual()
+        self.update_virtual_jacobian_multipliers()
+    
+    def set_joint_bounds(self, ql, qh):
+        self.config_settings.ql = copy.copy(ql)
+        self.config_settings.qh = copy.copy(qh)
+        self.initialize()
 
     def config_str(self):
         s = "q = "
@@ -131,9 +136,9 @@ class Manipulator_Configuration(object):
                 flag = flag and self.joint_in_range(i, qd[i])
         return flag
 
-    def qstar_to_q(self, qs):
+    def mapfrom_virtual(self, qs):
         '''
-        map from unlimited to limited jointspace. Get mapped values in the unlimited jointspace (property: qstar) and return the main joint configuration vector
+        map from unlimited to limited jointspace. Get mapped values in the unlimited jointspace (property: qvr) and return the main joint configuration vector
         '''
         qq = np.zeros((self.config_settings.DOF))
         for i in range(self.config_settings.DOF):
@@ -148,28 +153,28 @@ class Manipulator_Configuration(object):
                 elif self.config_settings.joint_handling[i] == 'TGM':
                     qq[i] = 2*math.atan(self.jmc_f[i] * math.cos(qs[i]) + self.jmc_g[i]) 
                 else:
-                    assert False, genpy.err_str(__name__, self.__class__.__name__, 'qstar_to_q', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
+                    assert False, genpy.err_str(__name__, self.__class__.__name__, 'mapfrom_virtual', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
             else:
                 qq[i] = qs[i]
                 
         # return self.free_config_inv(qq)
         return qq
 
-    def q_to_qstar(self):
+    def mapto_virtual(self):
         '''
-        or sync_qstar  or sync_vjs vjs: Virtual Joint Space
-        map from limited to unlimited jointspace. Get main joint values in the limited jointspace (property: q) and updates the joint values in the unlimited space (property: qstar)
+        or sync_qvr  or sync_vjs vjs: Virtual Joint Space
+        map from limited to unlimited jointspace. Get main joint values in the limited jointspace (property: q) and updates the joint values in the unlimited space (property: qvr)
         '''
         qf = self.free_config(self.q)
 
-        self.qstar = np.zeros((self.config_settings.DOF))
+        self.qvr = np.zeros((self.config_settings.DOF))
          
         for i in range(self.config_settings.DOF):
             if (not self.config_settings.limited) or (self.config_settings.joint_handling[i] == 'NM'):
-                self.qstar[i] = qf[i]
+                self.qvr[i] = qf[i]
             elif self.config_settings.joint_handling[i] == 'LM':
                 assert self.joint_in_range(i, qf[i]), "Joint " + str(i) + " = " + str(qf[i]) + " is not in feasible range: (" + str(self.config_settings.ql[i]) + ',' + str(self.config_settings.qh[i]) + ')'
-                self.qstar[i] = self.jmc_a[i] * qf[i] + self.jmc_b[i] 
+                self.qvr[i] = self.jmc_a[i] * qf[i] + self.jmc_b[i] 
             elif self.config_settings.joint_handling[i] == 'TM':
                 '''
                 ql = self.config_settings.ql[i]
@@ -177,16 +182,16 @@ class Manipulator_Configuration(object):
                 print "i: ", i, "ql: ", ql," q: ", qf[i],"qh: ", qh, " g: ", self.jmc_g[i], " f: ", self.jmc_f[i], " c: ", (qf[i] - self.jmc_g[i]) / self.jmc_f[i]
                 '''
                 assert self.joint_in_range(i, qf[i]), "Joint " + str(i) + " = " + str(qf[i]) + " is not in feasible range: (" + str(self.config_settings.ql[i]) + ',' + str(self.config_settings.qh[i]) + ')'
-                self.qstar[i] = trig.arccos((qf[i] - self.jmc_g[i]) / self.jmc_f[i])
+                self.qvr[i] = trig.arccos((qf[i] - self.jmc_g[i]) / self.jmc_f[i])
             elif self.config_settings.joint_handling[i] == 'TGM':
                 assert self.joint_in_range(i, qf[i]), "Joint " + str(i) + " = " + str(qf[i]) + " is not in feasible range: (" + str(self.config_settings.ql[i]) + ',' + str(self.config_settings.qh[i]) + ')'
-                self.qstar[i] = trig.arccos((math.tan(0.5*qf[i]) - self.jmc_g[i]) / self.jmc_f[i])
+                self.qvr[i] = trig.arccos((math.tan(0.5*qf[i]) - self.jmc_g[i]) / self.jmc_f[i])
             else:
                 print 'Wrong Joint Handling (Free Joint ' + str(i) + '): ' + self.config_settings.joint_handling[i]
                 assert False, genpy.err_str(__name__, self.__class__.__name__, 'q_to_q', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
 
     ## protected            
-    def update_joint_limit_jacobian_multipliers(self):
+    def update_virtual_jacobian_multipliers(self):
         '''
         joint_limit_multipliers are coefficients of forward and inverse mapping to/from limited to/from unlimited jointspace.
         i.e: jmc_a is the derivative of q to q_star
@@ -196,7 +201,7 @@ class Manipulator_Configuration(object):
         Since the coefficient "jmc_c" for a joint, depends on the current value of that joint, it should be updated everytime "q" changes
         The other multipliers: "jmc_a", "jmc_b", "jmc_f" and "jmc_g" do not depend on the joints, therefore do not need to be updated
         '''
-        func_name = "update_joint_limit_jacobian_multipliers"
+        func_name = "update_virtual_jacobian_multipliers"
         for i in range(0,self.config_settings.DOF):
             if self.config_settings.joint_handling[i] == 'NM':
                 self.jmc_c[i] = 1.0
@@ -205,14 +210,15 @@ class Manipulator_Configuration(object):
                 self.jmc_c[i] = 1.0 / self.jmc_a[i]
 
             elif self.config_settings.joint_handling[i] == 'TM':
-                self.jmc_c[i] = - math.sin(self.qstar[i])/self.jmc_a[i]
+                self.jmc_c[i] = - math.sin(self.qvr[i])/self.jmc_a[i]
 
             elif self.config_settings.joint_handling[i] == 'TGM':
-                t = self.jmc_f[i] * math.cos(self.qstar[i]) + self.jmc_g[i]
-                self.jmc_c[i] = - 2.0 * math.sin(self.qstar[i])/(self.jmc_a[i]*(1 + t**2))
+                t = self.jmc_f[i] * math.cos(self.qvr[i]) + self.jmc_g[i]
+                self.jmc_c[i] = - 2.0 * math.sin(self.qvr[i])/(self.jmc_a[i]*(1 + t**2))
             else:
-                assert False, genpy.err_str(__name__, self.__class__.__name__, 'update_joint_limit_jacobian_multipliers', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
+                assert False, genpy.err_str(__name__, self.__class__.__name__, 'update_virtual_jacobian_multipliers', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
 
+    # If you changed any joint from fixed to free or vice-versa you need to call this function
     def initialize(self):
         '''
         Everything regarding joint parameters needed to be done before running kinematic calculations
@@ -243,26 +249,26 @@ class Manipulator_Configuration(object):
 
         '''
         The following code defines the joint limit multipliers
-        jmc_a and jmc_b are auxiliary coefficients which are used for conversion from "q" to "qstar" space
+        jmc_a and jmc_b are auxiliary coefficients which are used for conversion from "q" to "qvr" space
         (Please refer to the joint limits section of the documentation associated with this code)
 
         To make sure that all joints are in their desired range identified as: (self.ql, self.qh), the real jointspace is mapped into an unlimited jointspace.
         
         "q    " represent the real joint values which are in a limited jointpace
-        "qstar" represent the mapped joint values in unlimited jointspace
+        "qvr" represent the mapped joint values in unlimited jointspace
         
         The following code creates and defines "Joint Limit Multipliers". These are coefficients for this jointspace mapping - (jmc: Jointspace Mapping Coefficients)
         in linear mapping:
         
-            q  = a * qstar + b
+            q  = a * qvr + b
             qs = (q - b) / a
         
         in trigonometric mapping:
 
-            q      = f * cos(qstar) + g
-            qstar  = arccos [  (q - g) / f ]
+            q      = f * cos(qvr) + g
+            qvr  = arccos [  (q - g) / f ]
             
-        a, b, f and g are calculated in such a way that the real joint values which are in their feasible range are mapped into an equivalent qstar in an unlimited space (-pi, +pi)
+        a, b, f and g are calculated in such a way that the real joint values which are in their feasible range are mapped into an equivalent qvr in an unlimited space (-pi, +pi)
         
         "jmc_c" is multiplied by the columns of the error jacobian matrix
         '''
@@ -295,11 +301,11 @@ class Manipulator_Configuration(object):
             else:
                 assert False, genpy.err_str(__name__, self.__class__.__name__, 'initialize', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
                     
-        # map q to qstar for the first time:
-        self.q_to_qstar()
+        # map q to qvr for the first time:
+        self.mapto_virtual()
 
         # assign the value of jmc_c the jacobian multiplier:
-        self.update_joint_limit_jacobian_multipliers()
+        self.update_virtual_jacobian_multipliers()
 
     def joint_correction_in_range(self, dq):
         '''
@@ -311,24 +317,24 @@ class Manipulator_Configuration(object):
             i = i + 1
         return in_range
 
-    def set_qstar(self, qs):
+    def set_config_virtual(self, qvrd):
         '''
-        Changes and updates the values of the joint configuration in the unlimited space ("qstar") after correction by "delta_qs".
+        Changes and updates the values of the joint configuration in the unlimited space ("qvr") after correction by "delta_qs".
         The real joint values ("q") is then calculated and updated as well.
         "delta_qs" should contain only the correction values for the free joints in the unlimited space.
         This method changes the joint configuration. Therefore a forward kinematics update should be implemented after it.
         '''
-        self.qstar = qs
-        qd         =  self.qstar_to_q(qs)
+        self.qvr   = qvrd
+        qd         =  self.mapfrom_virtual(qvrd)
         permission = not self.config_settings.joint_limits_respected
         if not permission:
             permission = self.joints_in_range(qd)
         if permission:
             self.q = self.free_config_inv(qd)
-            self.update_joint_limit_jacobian_multipliers()
+            self.update_virtual_jacobian_multipliers()
             return True
         else:
-            assert False, genpy.err_str(__name__, self.__class__.__name__, 'set_qstar', 'The joint values computed from qstar are out of range while joint limits are respected.')
+            assert False, genpy.err_str(__name__, self.__class__.__name__, 'set_config_virtual', 'The joint values computed from qvr are out of range while joint limits are respected.')
             return False
         
 	## This function gives an interval for the magnitude of the arm joint angles correction vector. (Copied from pr2_arm_kinematics.py)
@@ -396,7 +402,7 @@ class Manipulator_Configuration(object):
     #  If property joint_limits_respected is False, any value for the joints are accepted.
 	#  @param qd A numpy array of size 7 containing the desired joint values to be set
 	#  @return A boolean: True if the given joints are in range and the configuration is set, False if not	
-    def set_config(self, qd, set_qstar = True):
+    def set_config(self, qd, set_virtual = True):
         '''
         This function sets the robot joint configuration to the given "qd"
         This function should not be called by the end user. 
@@ -418,8 +424,8 @@ class Manipulator_Configuration(object):
                         self.q[jj] = qd[j]
                     j = j + 1
 
-            self.q_to_qstar()
-            self.update_joint_limit_jacobian_multipliers()
+            self.mapto_virtual()
+            self.update_virtual_jacobian_multipliers()
 
             return True
         else:
@@ -458,7 +464,7 @@ class Manipulator_Configuration(object):
         qh  = self.qh
         ql  = self.ql
         u   = np.zeros(dof)
-        qs  = trig.angles_standard_range(self.qstar)
+        qs  = trig.angles_standard_range(self.qvr)
         for i in range(0, self.config_settings.DOF):
             if self.config_settings.joint_handling[i] == 'TM':
                 u[i] = - k*qs[i]/(dof*((2*math.pi)**2))
@@ -473,7 +479,7 @@ class Manipulator_Configuration(object):
 
     def objective_function_value(self, k = 1.0):
         dof = self.config_settings.DOF
-        qs  = trig.angles_standard_range(self.qstar)
+        qs  = trig.angles_standard_range(self.qvr)
         qh  = self.qh
         ql  = self.ql
         f   = 0.0

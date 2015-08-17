@@ -8,12 +8,21 @@
 #               	Faculty of Engineering and Information Technology 
 #               	University of Technology Sydney (UTS) 
 #               	Broadway, Ultimo, NSW 2007, Australia 
-#               	Phone No. :   04 5027 4611 
+#               	Phone No. : 04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	4.0
+#  @version     	5.0
 #
-#  Last Revision:  	03 January 2015
+#  Last Revision:  	11 August 2015
+
+'''
+Changes from previous version:
+    1- added function js_create()
+    2- added settings in ik_settings:
+    respect_error_reduction, respect_limits_in_trajectories
+    3- property ik_settings.joint_limits_respected renamed to ik_settings.continue_until_inrange
+    
+'''
 
 # BODY
 
@@ -40,6 +49,10 @@ key_dic = {
     'DLS(ADF)'      : 'Damped Least Squares Method(Adaptive Damping Factor)'
 }
 
+class OTPS_Log():
+    def __init__(self):
+        self.counter = 0
+        self.failure = 0
 
 class Inverse_Kinematics_Settings():
     '''
@@ -56,21 +69,23 @@ class Inverse_Kinematics_Settings():
         assert run_mode in self.__class__.all_run_modes, self.__class__.err_head + func_name + ": The given run_mode is not known!"
         assert algorithm in self.__class__.all_algorithms, self.__class__.err_head + func_name + ": The given algorithm is not known!"
         
-        self.ngp_active             = False  # Nullspace Gradient Projection Active?
-        self.joint_limits_respected = False  # Continue iterations until all joints are in range?
-        self.return_min_config      = True   # If True returns the configuration corresponding to minimum error achieved if False returnts the config of the last iteration
+        self.ngp_active              = False  # Nullspace Gradient Projection Active?
+        self.continue_until_inrange  = False  # Continue iterations until all joints are in range?
+        self.return_min_config       = True   # If True returns the configuration corresponding to minimum error achieved if False returnts the config of the last iteration
+        self.respect_error_reduction = True   # If True the configuration is added to the trajectory only if the norm of pose error is reduced
+        self.respect_limits          = True   # If True, position, velocity and acceleration limits will be respected in function moveto_target()
+        self.respect_limits_in_trajectories = True # If True, position, velocity and acceleration limits will be respected in output trajectories
+        self.df_gain                 = 2.0   # Determines the damping factor gain in DLS-ADF algorithm
 
-        self.df_gain                = 2.0   # Determines the damping factor gain in DLS-ADF algorithm
-
-        self.algorithm              = algorithm
-        self.run_mode               = run_mode
-        self.number_of_steps        = num_steps
-        self.initial_damping_factor = 1.0
-        self.real_time              = False
-        self.time_step              = 0.020 # (sec)
-        self.max_js                 = 1.0   # (Rad/sec)
-        self.max_ja                 = 100.0 # (Rad/sec^2)
-
+        self.algorithm               = algorithm
+        self.run_mode                = run_mode
+        self.number_of_steps         = num_steps
+        self.initial_damping_factor  = 1.0
+        self.real_time               = False
+        self.time_step               = 0.010 # (sec)
+        self.max_js                  = 1.0   # (Rad/sec)
+        self.max_ja                  = 100.0 # (Rad/sec^2)
+        
         self.representation_of_orientation_for_binary_run = 'vectorial_identity'
         self.include_current_config = True
         
@@ -120,6 +135,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         self.end_settings.last_link_number = geo_settings.nlink - 1
         
         self.log_info               = (0.000000, 0)
+        self.otps_log               = OTPS_Log()
         
         # self.initial_config       = self.free_config(self.q)
         self.initial_config         = None
@@ -127,8 +143,6 @@ class Inverse_Kinematics( eflib.Endeffector ):
         
         self.initial_config_list    = []
 
-
-        
     def settings_key():
         '''
         generate and return the text key for the settings
@@ -154,26 +168,28 @@ class Inverse_Kinematics( eflib.Endeffector ):
         This direction should be multiplied by a proper stepsize to ensure that the pose error norm is reduced.
         '''      
         genpy.check_valid(self.ik_settings.algorithm, all_algorithms, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'ik_settings.algorithm')
-        # Pose Error is multiplied by step_size
+
         err = self.pose_error()
-        # Error jacobian is placed in Je
         Je  = self.error_jacobian()
+        W   = self.joint_damping_weights()   
 
         # right pseudo inverse of error jacobian is calculated and placed in Je_dagger
         #(Je_dagger,not_singular) = mathpy.right_pseudo_inverse(Je)
         if self.ik_settings.algorithm == "JI":
             Je_dag = np.linalg.inv(Je)
         elif self.ik_settings.algorithm == "JPI":
-            Je_dag = np.linalg.pinv(Je)
+            Je_dag = vecmat.weighted_pseudo_inverse(Je, W)
         elif self.ik_settings.algorithm == "JT":
             Je_dag = - Je.T
         elif self.ik_settings.algorithm in ["DLS(CDF)", "DLS(ADF)"]:
-            Je_dag = vecmat.right_dls_inverse(Je, self.damping_factor)
+            # Je_dag = vecmat.right_dls_inverse(Je, self.damping_factor)
+            Je_dag = vecmat.weighted_dls_inverse(Je, W, k = self.damping_factor)
         else:
             assert False
 
         # Joint Correction is calculated here:
         delta_qs = - np.dot(Je_dag, err)
+        # print delta_qs
     
         if u != None:
             assert len(u) == self.config_settings.DOF
@@ -195,13 +211,6 @@ class Inverse_Kinematics( eflib.Endeffector ):
             assert False, genpy.err_str(__name__, self.__class__.__name__, 'optimum_stepsize', self.ik_settings.algorithm + " is an unknown value for algorithm")
 
         # assert k >= 0.0
-        '''
-        if self.ik_settings.joint_limits_respected:
-            (el, eh)  = self.joint_stepsize_interval(direction = direction) 
-            # assert el < 0.0
-            if eh < k: # k = 1.0 when algorithm is JPI
-                k = eh  
-        '''
         return k        
 
     def update_step(self):
@@ -210,7 +219,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         '''
         '''
         print 'US Start: **************************'
-        print 'US: qqs', np.sum(self.q), np.sum(self.qstar)
+        print 'US: qqs', np.sum(self.q), np.sum(self.qvr)
         print 'US: per', np.sum(self.pose_error())
         print 'US: ejt', np.sum(self.task_point[0].error_jacobian()), np.sum(self.task_frame[0].error_jacobian())
         print 'US: EJ ', np.sum(self.error_jacobian()[0,:])
@@ -226,12 +235,13 @@ class Inverse_Kinematics( eflib.Endeffector ):
         k        = self.optimum_stepsize(jdir)
         delta_qs = k*jdir
        
-        assert self.set_qstar(self.qstar + delta_qs)
+        assert self.set_config_virtual(self.qvr + delta_qs)
+        '''
         self.clear_pose()
         self.T = None
         self.H = None
         self.ajac.clear()
-
+        '''
         elapsed_kinematic_inversion = time.time() - start_kinematic_inversion
         
         (time_til_now, num_iter_til_now ) = self.log_info
@@ -251,7 +261,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         self.damping_factor  = ik.damping_factor
 
         self.q               = copy.copy(ik.q)    
-        self.qstar           = copy.copy(ik.qstar)
+        self.qvr           = copy.copy(ik.qvr)
         self.jmc_a           = copy.copy(ik.jmc_a)
         self.jmc_b           = copy.copy(ik.jmc_b)
         self.jmc_c           = copy.copy(ik.jmc_c)
@@ -284,6 +294,58 @@ class Inverse_Kinematics( eflib.Endeffector ):
         self.err_jac           = copy.copy(ik.err_jac)    
         self.log_info          = copy.copy(ik.log_info)
         
+    def js_create(self, phi_end = None, traj_capacity = 2, traj_type = 'regular'):
+        '''
+        '''
+        self.damping_factor = self.ik_settings.initial_damping_factor
+        keep_q = np.copy(self.q)
+        H      = self.transfer_matrices()
+
+        if phi_end == None:
+            phi_end = self.ik_settings.number_of_steps*self.ik_settings.time_step
+
+        if traj_type == 'regular':
+            jt = trajlib.Trajectory(dimension = self.config_settings.DOF, capacity = traj_capacity)
+        elif traj_type == 'polynomial':
+            jt = trajlib.Trajectory_Polynomial(dimension = self.config_settings.DOF, capacity = traj_capacity)
+        else:
+            assert False, "\n Unknown Trajectory Type \n"
+        if self.ik_settings.respect_limits_in_trajectories:
+            jt.vel_max  = self.ik_settings.max_js
+            jt.acc_max  = self.ik_settings.max_ja
+            jt.pos_max  = self.config_settings.qh
+            jt.pos_min  = self.config_settings.ql
+
+        phi   = 0.0
+
+        jt.add_position(0.0, pos = np.copy(self.q))
+        
+        stay      = not self.in_target()
+
+        self.otps_log.counter = 0
+        self.otps_log.failure = 0
+        while stay:
+            stay = not self.in_target()
+            self.otps_log.counter += 1
+            phi = phi + self.ik_settings.time_step
+
+            if (phi > phi_end) or genmath.equal(phi, phi_end, epsilon = 0.1*self.ik_settings.time_step):
+                phi = phi_end
+                stay = False
+
+            err_reduced = self.moveto_target()
+
+            if err_reduced or (not self.ik_settings.respect_error_reduction):
+                jt.add_position(phi = phi, pos = np.copy(self.q))
+            else:
+                self.otps_log.failure += 1
+
+        if traj_type == 'polynomial':
+            jt.interpolate()
+
+        self.set_config(keep_q)
+
+        return jt
         
 
     def run_dls_vdf(self):
@@ -335,7 +397,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
                 self.log_info = (niter, telap)
                 frontier.log_info = (niter, telap)
 
-            rs = self.ik_settings.joint_limits_respected
+            rs = self.ik_settings.continue_until_inrange
             ir = self.joints_in_range(self.free_config(self.q))
 
             not_arrived = (not self.in_target() ) or (rs and (not ir))
@@ -343,7 +405,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
             # print "pose error norm = ", self.pose_error_norm()
         #
-            
+
     def run(self):
         '''
         Runs the inverse kinematic algorithm from the given starting point. 
@@ -357,6 +419,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
         This method should only be used for "Pose Projection" or "PP" application scenario.
         
         '''
+        
+        self.damping_factor = self.ik_settings.initial_damping_factor
 
         run_time = 0.0
         if self.ik_settings.return_min_config:
@@ -380,7 +444,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
                 print "******** Singular Matrix ********";
                 break
     
-            rs = self.ik_settings.joint_limits_respected
+            rs = self.ik_settings.continue_until_inrange
             ir = self.joints_in_range(self.free_config(self.q))
             it = self.in_target()
     
@@ -389,7 +453,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             '''
             print
             print "Current config    : ", self.q
-            print "Current config v  : ", self.qstar
+            print "Current config v  : ", self.qvr
             
             print "Current Error     : ", self.pose_error_norm()
             print "Current Ofun      : ", self.objective_function_value()
@@ -431,7 +495,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         self.log_info               = (0.000000, 0)
                 
         if self.ik_settings.include_current_config:
-            self.initial_config         = copy.copy(self.q)
+            self.initial_config         = self.free_config(self.q)
             if self.in_target():
                 return True
                 
@@ -468,42 +532,38 @@ class Inverse_Kinematics( eflib.Endeffector ):
  
             self.start_node += 1
 
-    def moveto_target(self, show = False, optimize = False):
+    def moveto_target(self, show = False):
         q0        = self.free_config(self.q)
         err       = self.pose_error_norm()
         
         jdir      = self.ik_direction()
 
         if np.linalg.norm(jdir) > 0.00001:
-            (el, eh)  = self.joint_stepsize_interval(direction = jdir, max_speed = self.ik_settings.max_js, delta_t = self.ik_settings.time_step) 
-            # assert el < 0.0
             max_eta = self.optimum_stepsize(jdir)
-            if eh > max_eta: 
+            if self.ik_settings.respect_limits:
+                (el, eh)  = self.joint_stepsize_interval(direction = jdir, max_speed = self.ik_settings.max_js, delta_t = self.ik_settings.time_step) 
+                # assert el < 0.0
+                if eh > max_eta: 
+                    eh = max_eta  # max_eta = 1.0 when algorithm is JPI
+            else:
                 eh = max_eta  # max_eta = 1.0 when algorithm is JPI
 
-            # self.grow_qstar(eh*jdir)
-            assert self.set_qstar(self.qstar + eh*jdir)
+            self.set_config_virtual(self.qvr + eh*jdir)
+            '''
+            assert self.set_config_virtual(self.qvr + eh*jdir)
             self.clear_pose()
             self.T = None
             self.H = None
             self.ajac.clear()
-        
+            '''
             if self.pose_error_norm() < err:
+                self.damping_factor = self.damping_factor/self.ik_settings.df_gain
                 return True    
             else:
-                print "Error is not reduced"
+                self.damping_factor = self.damping_factor*self.ik_settings.df_gain
+                # print ':', self.pose_error_norm(), ">=", err, "and eh = ", eh
+                print ':',
                 
-            '''    
-            q = q0 + eh*jdir
-            if self.set_config(q):
-                if self.error_norm < err:
-                    print "********************Hurrrraaaaaa"
-                    return True
-                else:
-                    print "Error is not reduced"
-            else:
-                print "set config failed"
-            '''    
         else:
             return True
             
@@ -519,7 +579,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
             print "New Error: ", self.pose_metric()
             print "--------------------"
 
-        assert self.set_config(q0)
+        if self.ik_settings.respect_error_reduction:
+            assert self.set_config(q0)
         return False
 
     def js_project(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, relative = True, traj_capacity = 2, traj_type = 'regular'):
@@ -528,6 +589,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         The phase starts from phi_start and added by self.ik_settings.time_step in each step.
         at any time, if a solution is not found, the target is ignored and no configuration is added to the trajectory
         '''
+        self.damping_factor = self.ik_settings.initial_damping_factor
         keep_q = np.copy(self.q)
         H      = self.transfer_matrices()
 
@@ -568,7 +630,10 @@ class Inverse_Kinematics( eflib.Endeffector ):
         
         stay      = True
 
+        self.otps_log.counter = 0
+        self.otps_log.failure = 0
         while stay:
+            self.otps_log.counter += 1
             phi = phi + self.ik_settings.time_step
 
             if (phi > phi_end) or genmath.equal(phi, phi_end, epsilon = 0.1*self.ik_settings.time_step):
@@ -581,10 +646,10 @@ class Inverse_Kinematics( eflib.Endeffector ):
             self.set_target([p], [ori_traj.current_orientation])
 
             err_reduced = self.moveto_target(optimize = False)
-            if err_reduced:
+            if err_reduced or (not self.ik_settings.respect_error_reduction):
                 jt.add_position(phi = phi - phi_start, pos = np.copy(self.q))
             else:
-                print ":",
+                self.otps_log.failure += 1
 
         if traj_type == 'polynomial':
             jt.interpolate()
@@ -593,7 +658,34 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
         return jt
 
-    def ts_project(self,  js_traj, phi_start = 0.0, phi_end = None, delta_phi = 0.1):
+    def ts_project(self,  js_traj, phi_start = 0.0, phi_end = None):
+        '''
+        projects the given jointspace trajectory into the taskspace
+        The phase starts from phi_start and added by delta_phi in each step.
+        if at any time the joint values are not feasible, the process is stopped.
+        '''
+        
+        if phi_end == None:
+            phi_end = js_traj.phi_end
+
+        pt = trajlib.Trajectory_Polynomial(dimension = 3*len(self.task_point) + 9*len(self.task_frame))
+        if phi_end > js_traj.phi_end:
+            phi_end = js_traj.phi_end
+
+        phi = phi_start
+        stay = True
+        while stay:
+            if (phi > phi_end) or genmath.equal(phi, phi_end, epsilon = 0.1*self.ik_settings.time_step):
+                phi = phi_end
+                stay = False
+            js_traj.set_phi(phi)
+            if self.set_config(js_traj.current_position):
+                pt.add_point(phi - phi_start, self.pose())
+            phi = phi + self.ik_settings.time_step
+        return pt
+
+    """
+    def ts_project(self,  js_traj, phi_start = 0.0, phi_end = None):
         '''
         projects the given jointspace trajectory into the taskspace
         The phase starts from phi_start and added by delta_phi in each step.
@@ -620,9 +712,10 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
             pos_traj.add_point(phi - phi_start, self.task_point[0].position(H))
             ori_traj.add_point(phi - phi_start, self.task_frame[0].orientation(H))
-            phi = phi + delta_phi
+            phi = phi + self.ik_settings.time_step
             js_traj.set_phi(phi)
             
         pos_traj.add_point(phi - phi_start, self.task_point[0].position(self.transfer_matrices()))
         ori_traj.add_point(phi - phi_start, self.task_frame[0].orientation(self.transfer_matrices()))
         return (pos_traj, ori_traj)
+    """

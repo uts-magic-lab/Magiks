@@ -393,6 +393,17 @@ def left_dls_inverse(M, k):
     Minv = np.dot(np.linalg.inv(A + k*k*np.eye(m)), M.T)
     return Minv
 
+def weighted_pseudo_inverse(M, W):
+    return np.dot(np.dot(W,M.T),np.linalg.inv(np.dot(np.dot(M,W),M.T)))
+
+def weighted_dls_inverse(M, W = None, k = 0.0):
+    m = M.shape[0]
+    n = M.shape[1]
+    if W == None:
+        W = np.eye(n)
+    return np.dot(np.dot(W,M.T),np.linalg.inv(k*k*np.eye(m) + np.dot(np.dot(M,W),M.T)))
+    
+
 def clamp(v, max_norm):
     '''
     if the magnitude(norm) of the given vector is smaller than max_norm, the given vctor is returned

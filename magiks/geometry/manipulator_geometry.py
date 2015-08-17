@@ -14,8 +14,13 @@
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
 @start date:    February 2010
-@version:	    2.0
-Last Revision:  11 December 2014
+@version:	    3.0
+Last Revision:  11 August 2015
+'''
+'''
+Changes from previous version:
+    1- function set_config_virtual() added
+
 '''
 
 # BODY
@@ -114,6 +119,15 @@ class Manipulator_Geometry(configlib.Manipulator_Configuration):
 
             self.ajac.H = self.H
         return self.H
+
+    def set_config_virtual(self, qvrd):
+        if super(Manipulator_Geometry, self).set_config_virtual(qvrd):
+            self.T = None
+            self.H = None
+            self.ajac.clear()
+            return True
+        else:
+            return False        
 
     def set_config(self, qd):
         if super(Manipulator_Geometry, self).set_config(qd):

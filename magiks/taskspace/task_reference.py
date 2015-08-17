@@ -36,6 +36,8 @@ class Task_Reference(object):
 
         self.clear()
 
+        self.priority_level = 'Main Task'
+
     def clear_error(self):
         self.error.clear()
         self.err_jac.clear()

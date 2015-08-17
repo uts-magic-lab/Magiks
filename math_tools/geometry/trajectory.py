@@ -630,8 +630,8 @@ class Path(object):
     #  @param phi A float specifying the desired phase value. The given value must not exceed the phase of the last key point.
     #  @return None
     def set_phase(self, phi):
-        assert phi <= self.phi_end, genpy.err_str(__name__, __class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
-        assert len(self.point) > 1, genpy.err_str(__name__, __class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
+        assert phi <= self.phi_end, genpy.err_str(__name__, self.__class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
+        assert len(self.point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
         self.current_phi      = phi
         i                     = self.closest_keypoint_number()
         k                     = (self.current_phi - self.point[i-1].phi)/(self.point[i].phi - self.point[i-1].phi)
@@ -659,7 +659,7 @@ class Path(object):
         return self.current_position
 
     def __getitem__(self, phi):
-        genpy.check_range(phi, 0.0, self.phi_end, __name__, __class__.__name__, sys._getframe().f_code.co_name, 'phi')
+        genpy.check_range(phi, 0.0, self.phi_end, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'phi')
         self.set_phase(phi)
         return self.current_position
 
@@ -1006,7 +1006,7 @@ class Trajectory(object):
         self.current_acceleration = self.segment[i].current_acceleration
 
     def position(self, phi):
-        genpy.check_range(phi, 0.0, self.phi_end, __name__, __class__.__name__, sys._getframe().f_code.co_name, 'phi')
+        genpy.check_range(phi, 0.0, self.phi_end, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, 'phi')
         self.set_phase(phi)
         return self.current_position
 
