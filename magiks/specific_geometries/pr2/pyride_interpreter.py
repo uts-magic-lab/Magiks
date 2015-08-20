@@ -83,8 +83,8 @@ rt_active        = False
 #  @return None
 def on_move_arm_finished( is_left_arm ):
     global larm_reached, rarm_reached
-    if PyPR2.onMovePoseComplete and hasattr( PyPR2.onMovePoseComplete, '__call__' ):
-      PyPR2.onMovePoseComplete( is_left_arm )
+    if hasattr( PyPR2, 'onMoveArmPoseComplete' ) and hasattr( PyPR2.onMoveArmPoseComplete, '__call__' ):
+      PyPR2.onMoveArmPoseComplete( is_left_arm )
     if is_left_arm:
         print "larm reached"
         larm_reached = True
