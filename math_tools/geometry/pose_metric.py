@@ -197,11 +197,12 @@ class Position_Metric(Metric):
         self.settings = copy.copy(settings)
 
     def basis_error(self, current, target) :
-        func_name = ".basis_error()"    
-        # def basis_position_error(self, current, target):
         '''
         return the value of basis_position_error
         '''
+        ers = "Target has not been set"
+        assert target != None, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
+
         if self.settings.representation == 'Cartesian Coordinates':
             err = current - target
             f   = err**self.settings.power    
@@ -216,7 +217,8 @@ class Position_Metric(Metric):
             f = numpy.zeros((p))
             assert False
         else:
-            assert False, 'Error from: ' + __name__ + func_name + ": " + self.settings.representation + " is an invalid representation"
+            ers = self.settings.representation + " is an invalid value for property self.settings.representation"
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
 
         return f
 

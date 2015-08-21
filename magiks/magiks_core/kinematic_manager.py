@@ -596,7 +596,7 @@ class Kinematic_Manager(object):
         Predefined Class Properties :
         '''
         self.settings           = settings
-        self.km_log             = loglib.Test_Log_Data_Multiple_Run(settings)
+        self.km_log             = loglib.Test_Log(settings)
         
         # "self.forward_kinematics" is an instance of class "Forward_Kinematics" in package "kinemagic" which contains all kinematic properties of a manipulator which depend on the joint configuration
         # These properties are: transfer matrices, analytic, geometric and error jacobians, taskpoints and taskframes and the pose error vector.
@@ -699,16 +699,13 @@ class Kinematic_Manager(object):
             self.inverse_kinematics.initial_config_list = self.workspace_ic.nearest_configs(self.inverse_kinematics)
             
             #implement the inverse kinematic solver
-            self.inverse_kinematics.inverse_update()
+            self.inverse_kinematics.goto_target()
 
             elapsed_kinematic_inversion = time.time() - start_kinematic_inversion
 
             self.workspace_tp.config_list[cnt] = numpy.copy(self.inverse_kinematics.q)
 
-            (running_time, number_of_steps) = self.inverse_kinematics.log_info
-
-            if number_of_steps == 0:
-                number_of_steps = 1
+            (running_time, number_of_steps) = (self.inverse_kinematics.run_log.time_elapsed, len(self.inverse_kinematics.run_log.step))
 
             average_step_time = running_time / number_of_steps
             n_iters_total = n_iters_total + number_of_steps
@@ -725,24 +722,32 @@ class Kinematic_Manager(object):
                 print "Already in Target!"
 
             start_config_str = ik_initial.config_str()
-            start_pose_str = str(ik_initial)
+            start_pose_str   = str(ik_initial)
             # Final status:
             final_config_str = self.inverse_kinematics.config_str()
-            final_pose_str = str(self.inverse_kinematics)
-            # Run Time Log:
-            time_log = loglib.Log_Run_Time(elapsed_kinematic_inversion, time_total, average_step_time)
-            # Num Iter Log:
-            iter_log = loglib.Log_Num_Iter(number_of_steps, n_iters_total)
-            # Success Log:
-            suc_log = loglib.Log_Success(n_suc, self.inverse_kinematics.in_target(), self.inverse_kinematics.joints_in_range(self.inverse_kinematics.free_config(self.inverse_kinematics.q)))
-            self.km_log.body.append(loglib.Test_Log_Data_Single_Run(cnt, self.inverse_kinematics.start_node, suc_log, time_log, iter_log, start_config_str, final_config_str, start_pose_str, final_pose_str))
+            final_pose_str   = str(self.inverse_kinematics)
+
+            run_log = loglib.Single_Run_Log(cnt, success = self.inverse_kinematics.in_target(), config_in_range =  self.inverse_kinematics.joints_in_range(self.inverse_kinematics.free_config(self.inverse_kinematics.q)))
+            # run_log.num_trial           = 0
+            run_log.num_suc_til_now     = n_suc
+            run_log.num_iter            = number_of_steps
+            run_log.num_iter_til_now    = n_iters_total
+            run_log.run_time            = elapsed_kinematic_inversion
+            run_log.run_time_til_now    = time_total
+            run_log.mean_stp_time       = average_step_time
+            run_log.start_config_str    = start_config_str
+            run_log.final_config_str    = final_config_str
+            run_log.start_pose_str      = start_pose_str
+            run_log.final_pose_str      = final_pose_str
+
+            self.km_log.body.append(run_log)
 
             cnt += 1
 
             #test_result_list.append(result_info_detail)
             if verbose:
                 print str(self.km_log.body[cnt - 1])
-                print 'Log: (Running Time, Number of Iterations)', self.inverse_kinematics.log_info;
+                print 'Log: (Running Time, Number of Iterations)', (running_time, number_of_steps)
                 print "______________________________________________________________________________________________________________________________"
             
             #evaluation_log = (self.inverse_kinematics.endeffector.in_target, elapsed_kinematic_inversion, self.inverse_kinematics.log_info)

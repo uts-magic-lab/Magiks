@@ -14,8 +14,9 @@
 # 
 #  Last Revision:  	11 January 2015
 
-import numpy, math, copy
+import numpy, math, copy, sys
 import link_point as lplib, task_reference as trlib, cost_function as cflib
+import general_python as genpy
 
 from magiks.geometry import manipulator_geometry as mangeolib 
 from magiks.magiks_core import function_library as flib
@@ -88,35 +89,13 @@ class Endeffector(mangeolib.Manipulator_Geometry):
 
         # mp -- number of position coordinates (3 by default)
         # mo -- number of orientation coordinates (3 by default) 
-
-        self.mp = 3
-        self.mo = 3
-        
-        # Property "self.all_task_points_in_target" is True if all of the task_points are in their desired positions
-        self.all_task_points_in_target   = None
-        # Property "self.all_reference_orientations_in_target" is True if all of the reference_orientations are identical to their desired orientations
-        self.all_task_frames_in_target   = None
-        # Property "self.in_target" is True if all of the task_points and task_frames are in their desired positions and orientations
-        self.is_in_target  = None
-        # self.pose_error is the overall vector containing values of error functions (both position and orientation) 
         # ("self.mp" elements representing position error come first )
         # ("self.mo" elements representing orientation error come next) 
+        self.mp = 3
+        self.mo = 3
+
+        self.clear_pose()        
         
-        # self.pose is the pose vector. Three elements for each task_point followed by nine elements for each reference_orientation
-        # represent actual positions and orientations of the endeffector respectively in one pose vector
-        self.current_pose       = None 
-        # self.pose_error is the error vector
-        self.current_pose_error = None 
-        # self.error_norm contains the norm of the error vector
-        self.current_error_norm = None
-        # Matrix of Geometric Jacobian (for both positions and orientations)
-        # The first rows represent geometric jacobian for position. Number of rows for position = 3*len(task_points)
-        # The next  rows represent geometric jacobian for orientation. Number of rows for orientation = 3*len(task_frame)
-        self.geo_jac = None 
-        # Matrix of Error Jacobian (for both position and orientation errors)
-        # (The first "self.mp" rows represent error jacobian for position)
-        # (The next  "self.mo" rows represent error jacobian for orientation)
-        self.err_jac = None  
 
     def clear_pose(self):
         for tp in self.task_point:
@@ -125,14 +104,14 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         for tf in self.task_frame:
             tf.clear()
                 
+        # self.current_pose is the pose vector. Three elements for each task_point followed by nine elements for each reference_orientation
+        # represent actual positions and orientations of the endeffector respectively in one pose vector
         self.current_pose             = None
-        self.current_pose_error       = None
-        self.current_error_norm       = None
+        # Matrix of Geometric Jacobian (for both positions and orientations)
+        # The first rows represent geometric jacobian for position. Number of rows for position = 3*len(task_points)
+        # The next  rows represent geometric jacobian for orientation. Number of rows for orientation = 3*len(task_frame)
         self.geo_jac                  = None
-        self.err_jac                  = None
-        self.all_taskpoints_in_target = None
-        self.all_taskframes_in_target = None
-        self.is_in_target = None
+        self.clear_error()
 
     def clear_error(self):
         for tp in self.task_point:
@@ -141,13 +120,23 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         for tf in self.task_frame:
             tf.clear_error()
                 
+        # self.current_pose_error is the overall vector containing values of error functions (both position and orientation) 
         self.current_pose_error       = None
+        # self.current_error_norm contains the norm of the error vector
         self.current_error_norm       = None
-        self.err_jac                  = None
 
+        # Matrix of Error Jacobian (for both position and orientation errors)
+        # (The first "self.mp" rows represent error jacobian for position)
+        # (The next  "self.mo" rows represent error jacobian for orientation)
+        self.err_jac                  = None
+        # Property "self.all_task_points_in_target" is True if all of the task_points are in their desired positions
         self.all_taskpoints_in_target = None
+        # Property "self.all_reference_orientations_in_target" is True if all of the reference_orientations are identical to their desired orientations
         self.all_taskframes_in_target = None
-        self.is_in_target             = None
+        # Property "self.in_target" is True if all of the task_points and task_frames are in their desired positions and orientations
+        self.is_in_target = None
+        # Property self.mu contains the current value of the manipulability index 
+        self.mu           = None
 
     def add_taskpoint(self, task_point):
         self.task_point.append(task_point)
@@ -182,7 +171,24 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         s +=  "    Norm of Pose Error:                         "
         s +=  str(self.pose_error_norm()) + "\n"
         return s
-    
+
+    def num_task_constraints(self):
+        cnt = 0 # constraint counter
+        
+        # For task_points:
+        for tp in self.task_point:
+            # Counting total number of constraints
+            cnt = cnt + tp.error.settings.weight.shape[0]
+                
+        self.mp = cnt
+        # For task_frame:
+        for tf in self.task_frame:
+            #Counting total number of constraints
+            cnt = cnt + tf.error.settings.weight.shape[0]
+
+        self.mo = cnt - self.mp
+        return (self.mp, self.mo)
+
     def joint_damping_weights(self):
 
         W = numpy.ones(self.config_settings.DOF)
@@ -205,32 +211,26 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             #Create pose vector:
             self.current_pose = numpy.zeros(( 3*len(self.task_point) + 9*len(self.task_frame) ))
             
-            cnt = 0 #counter for pose error vector
             k   = 0 #counter for pose vector
             
             H = self.transfer_matrices()
             # For task_points:
             for tp in self.task_point:
-                # Counting total number of constraints
-                cnt = cnt + len(tp.error.value(current = tp.position(H), target = tp.rd))
+                pos = tp.position(H)
                 #Arranging three position coordinates of each task_point in the endeffector pose vector
                 for j in range(0,3):
-                    self.current_pose[k] = tp.ra[j]
+                    self.current_pose[k] = pos[j]
                     k +=1
                     
-            self.mp = cnt
-            # For task_frame:
+            # For task_frames:
             for tf in self.task_frame:
-                #Counting total number of constraints
-                cnt = cnt + tf.error.settings.weight.shape[0]
                 #Arranging nine orientation coordinates of each reference_orientation (Elements of the Rotation Matrix) in the endeffector pose vector
-                ra = tf.orientation(H).matrix()
+                ori = tf.orientation(H).matrix()
                 for i in range(0,3):
                     for j in range(0,3):
-                        self.current_pose[k] = ra[i,j]
+                        self.current_pose[k] = ori[i,j]
                         k +=1
 
-            self.mo = cnt - self.mp
         return self.current_pose
 
     def pose_error(self):        
@@ -247,6 +247,8 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             self.all_task_points_in_target = True
             H = self.transfer_matrices()
             for tp in self.task_point:
+                ers = "Target has not been set for some of the taskpoints"
+                assert tp.rd != None, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
                 # Calculating position error for each task_point
                 self.all_task_points_in_target = self.all_task_points_in_target and tp.error.in_target(tp.position(H), tp.rd)
                 #Arranging the vector of errors for position
@@ -257,6 +259,8 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             #For task_frames
             self.all_task_frames_in_target = True
             for tf in self.task_frame:
+                ers = "Target has not been set for some of the taskframes"
+                assert tf.rd != None, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
                 # Calculating orientation error for each task_frame
                 self.all_task_frames_in_target = self.all_task_frames_in_target and tf.error.in_target(tf.orientation(H), tf.rd)
                 #Arranging the vector of errors for orientation"
@@ -317,6 +321,8 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             H = self.transfer_matrices()
             #For task_points
             for tp in self.task_point:
+                ers = "Target has not been set for some of the taskpoints"
+                assert tp.rd != None, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
                 # Calculating error jacobian for each task_point
                 tp_ej = tp.error_jacobian(H, self.ajac)
 
@@ -328,6 +334,8 @@ class Endeffector(mangeolib.Manipulator_Geometry):
                     cnt = cnt + 1
             #For task_frames
             for tf in self.task_frame:
+                ers = "Target has not been set for some of the taskframes"
+                assert tf.rd != None, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
                 # Calculating error jacobian for each reference_orientation
                 tf_ej = tf.error_jacobian(self.ajac)
                 tf_er = tf.error.value(tf.orientation(H), tf.rd)
@@ -337,6 +345,12 @@ class Endeffector(mangeolib.Manipulator_Geometry):
                         self.err_jac[cnt,j] = self.jmc_c[j]*tf_ej[k,j]
                     cnt = cnt + 1
         return self.err_jac
+
+    def manipulability(self):
+        if self.mu == None:    
+            J       = self.error_jacobian()
+            self.mu = math.sqrt(abs(numpy.linalg.det(numpy.dot(J, J.T))))
+        return self.mu    
             
     def in_target(self):
         if self.is_in_target == None:

@@ -478,7 +478,7 @@ class PR2_ARM():
         self.set_target(self.wrist_position(), self.wrist_orientation())
 
         if run_magiks:
-            cs       = manlib.manip_config_settings('PR2ARM', joint_mapping = 'NM')
+            cs       = manlib.manip_config_settings('PR2ARM', joint_mapping = 'TM')
             cs.ql    = np.copy(self.config.ql)
             cs.qh    = np.copy(self.config.qh)
             es       = iklib.eflib.Endeffector_Settings()

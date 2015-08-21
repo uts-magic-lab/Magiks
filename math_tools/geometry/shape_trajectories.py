@@ -133,9 +133,9 @@ def arc(traj = None, center_dw = 0.1, center_dh = 0.0, direction = None, angle =
         if gen.equal(t, angle):
             stay = False
 
-    nseg = len(trj.segment)
-    npnt = len(trj.segment[nseg - 1].point)
-    trj.segment[nseg - 1].point[npnt-1].vel = v
+    lsi = len(trj.segment) - 1
+    lpi = len(trj.segment[lsi].point) - 1
+    trj.segment[lsi].point[lpi].vel = v
     
     return trj
 
@@ -454,7 +454,10 @@ def S(traj = None, height = 0.1, depth = 0.02, direction = None, static_ends = T
         traj.new_segment()
 
     traj = arc(traj, center_dh = - 0.5*width*cth, center_dw = 0.5*width*sth, angle = 240.0, clockwise = False, static_ends = False, direction=direction)
-    traj = arc(traj, center_dh = - 0.5*width, center_dw = 0, angle = 240.0, clockwise = True, static_ends = static_ends, direction=direction)
+    traj = arc(traj, center_dh = - 0.5*width, center_dw = 0, angle = 240.0, clockwise = True, static_ends = False, direction=direction)
+    lsi  = len(traj.segment) - 1
+    lpi  = len(traj.segment[lsi].point) - 1
+    traj.segment[lsi].point[lpi].vel = vel
     if complete:
         traj.add_vector(0.2, - depth*n, vel)
         traj.new_segment()

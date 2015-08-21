@@ -102,63 +102,43 @@ key_dic = {
     'Running Time-Mean Standard Error'          : 'RT-mse'
     }
 
-class Log_Success(): 
+class Single_Run_Log():
     '''
-    Contains data structure for evaluation test results for a single target pose pertaining the success 
-    '''    
-    
-    def __init__(self, n_suc = 0, suc = False, config_in_range = False):
-        # Number of successful attempts until now   
-        self.num_suc_til_now     = n_suc                        
-        # Boolean property indicating if the implementation was successful or not
-        self.success             = suc
-        self.config_in_range     = config_in_range
-    
-class Log_Num_Iter() : 
-    '''
-    Contains data structure for evaluation test results for a single target pose pertaining number of iterations
-    '''    
-    def __init__(self, number_of_steps = 0, n_iters_total = 0):
-        # Number of iterations for this target pose
-        self.num_iter            = number_of_steps              
-        # Total number of iterations until now
-        self.num_iter_til_now    = n_iters_total                
-    
-class Log_Run_Time() : 
-    '''
-    Contains data structure for evaluation test results for a single target pose pertaining running time
-    '''    
-    def __init__(self, elapsed_kinematic_inversion = 0.0, time_total = 0.0, average_step_time = 0.0):
-        # Running time for this configuration
-        self.run_time            = elapsed_kinematic_inversion  
-        # Total running time until now
-        self.run_time_til_now    = time_total                   
-        # Average running time for one iteration
-        self.mean_stp_time       = average_step_time            
-
-class Test_Log_Data_Single_Run():
-    '''
-    Contains data structure for evaluation test results for a single target pose
+    Contains data structure for evaluation test results for a single run associated with a target pose in PPS
     Including:
         Initial Status (Configuration, Endeffector Pose, Values of error functions)
         Final   Status (Configuration, Endeffector Pose, Values of error functions)
+
     '''    
-        
-    def __init__(self, cnt, num_trial = 0, log_success = Log_Success(), log_run_time = Log_Run_Time(), log_num_iter = Log_Num_Iter(), start_config_str = '', final_config_str = '', start_pose_str = '', final_pose_str = ''):
-        
+    
+    def __init__(self, pose_number, success = False, config_in_range = False):
+
         # Index of target pose in the target pose workspace 
-        self.target_pose_num     = cnt                          
+        self.target_pose_num     = pose_number
         # Number of starting point trials for this target pose
-        self.num_trial           = num_trial
-        
-        self.success_log         = log_success 
-        self.run_time_log        = log_run_time
-        self.num_iter_log        = log_num_iter
-        
-        self.start_config_str    = start_config_str
-        self.final_config_str    = final_config_str        
-        self.start_pose_str      = start_pose_str
-        self.final_pose_str      = final_pose_str
+        self.num_trial           = 0
+        # Number of successful attempts until now   
+        self.num_suc_til_now     = 0
+        # Boolean property indicating if the implementation was successful or not
+        self.success             = success
+        self.config_in_range     = config_in_range
+    
+        # Number of iterations for this target pose
+        self.num_iter            = 0
+        # Total number of iterations until now
+        self.num_iter_til_now    = 0
+    
+        # Running time for this configuration
+        self.run_time            = 0.0
+        # Total running time until now
+        self.run_time_til_now    = 0.0
+        # Average running time for one iteration
+        self.mean_stp_time       = 0.0
+
+        self.start_config_str    = ''
+        self.final_config_str    = ''
+        self.start_pose_str      = ''
+        self.final_pose_str      = ''
         self.str_parameter_set   = ['TPN', 'S', 'CIR', 'NSPT', 'NI', 'RT','NS', 'TRT', 'ART', 'TNI', 'ANI','PS', 'IC', 'FC', 'IP', 'FP']
         self.csv_parameter_set   = ['TPN', 'S', 'CIR', 'NSPT', 'NI', 'RT','NS', 'TRT', 'ART', 'TNI', 'ANI', 'PS']
 
@@ -166,27 +146,27 @@ class Test_Log_Data_Single_Run():
         if parameter == 'TPN':
             return str(self.target_pose_num)
         elif parameter == 'S':
-            return str(self.success_log.success)
+            return str(self.success)
         elif parameter == 'CIR':
-            return str(self.success_log.config_in_range)
+            return str(self.config_in_range)
         elif parameter == 'NSPT':
             return str(self.num_trial)
         elif parameter == 'NI':
-            return str(self.num_iter_log.num_iter)
+            return str(self.num_iter)
         elif parameter == 'RT':
-            return str(1000*self.run_time_log.run_time)
+            return str(1000*self.run_time)
         elif parameter == 'NS':
-            return str(self.success_log.num_suc_til_now)
+            return str(self.num_suc_til_now)
         elif parameter == 'TRT':
-            return str(1000*self.run_time_log.run_time_til_now)
+            return str(1000*self.run_time_til_now)
         elif parameter == 'ART':
-            return str(1000*self.run_time_log.run_time_til_now/(self.target_pose_num + 1))
+            return str(1000*self.run_time_til_now/(self.target_pose_num + 1))
         elif parameter == 'TNI':
-            return str(self.num_iter_log.num_iter_til_now)
+            return str(self.num_iter_til_now)
         elif parameter == 'ANI':
-            return str(self.num_iter_log.num_iter_til_now/(self.target_pose_num + 1))
+            return str(self.num_iter_til_now/(self.target_pose_num + 1))
         elif parameter == 'PS':
-            return str(100.00*self.success_log.num_suc_til_now/(self.target_pose_num + 1))
+            return str(100.00*self.num_suc_til_now/(self.target_pose_num + 1))
         elif parameter == 'IC':
             return self.start_config_str
         elif parameter == 'FC':
@@ -248,7 +228,7 @@ class Test_Log_Data_Single_Run():
         CSV_FILE_HANDLE.write(self.csv())
         print 'Test_Log_Data_Single_Run(): Writing csv file ended.'
         
-class Test_Log_Data_Statistics():
+class Test_Statistics():
     '''
     Contains structure for statistical data of evaluation test results for a set of target poses
     Including:
@@ -415,20 +395,20 @@ class Test_Log_Data_Statistics():
         run_time_list  = []
 
         for i in range(0, self.num_run):
-            num_iter_list.append(body[i].num_iter_log.num_iter)
+            num_iter_list.append(body[i].num_iter)
             num_trial_list.append(body[i].num_trial)
-            run_time_list.append(body[i].run_time_log.run_time)
+            run_time_list.append(body[i].run_time)
             
-            self.sum_num_iter   += body[i].num_iter_log.num_iter
+            self.sum_num_iter   += body[i].num_iter
             self.sum_num_trial  += body[i].num_trial
-            self.sum_run_time   += body[i].run_time_log.run_time
-            sum_stp_time        += body[i].run_time_log.mean_stp_time
+            self.sum_run_time   += body[i].run_time
+            sum_stp_time        += body[i].mean_stp_time
             
-            if body[i].num_iter_log.num_iter > self.max_num_iter:
-                self.max_num_iter = body[i].num_iter_log.num_iter
+            if body[i].num_iter > self.max_num_iter:
+                self.max_num_iter = body[i].num_iter
                 self.max_num_iter_pose_number = i
-            if body[i].num_iter_log.num_iter < self.min_num_iter:
-                self.min_num_iter = body[i].num_iter_log.num_iter
+            if body[i].num_iter < self.min_num_iter:
+                self.min_num_iter = body[i].num_iter
                 self.min_num_iter_pose_number = i
 
             if body[i].num_trial > self.max_num_trial:
@@ -438,15 +418,15 @@ class Test_Log_Data_Statistics():
                 self.min_num_trial = body[i].num_trial
                 self.min_num_trial_pose_number = i
 
-            if body[i].run_time_log.run_time > self.max_run_time:
-                self.max_run_time = body[i].run_time_log.run_time
+            if body[i].run_time > self.max_run_time:
+                self.max_run_time = body[i].run_time
                 self.max_run_time_pose_number = i
-            if body[i].run_time_log.run_time < self.min_run_time:
-                self.min_run_time = body[i].run_time_log.run_time
+            if body[i].run_time < self.min_run_time:
+                self.min_run_time = body[i].run_time
                 self.min_run_time_pose_number = i
 
-        assert self.sum_run_time == body[self.num_run - 1].run_time_log.run_time_til_now
-        assert self.sum_num_iter == body[self.num_run - 1].num_iter_log.num_iter_til_now
+        assert self.sum_run_time == body[self.num_run - 1].run_time_til_now
+        assert self.sum_num_iter == body[self.num_run - 1].num_iter_til_now
     
         self.mean_num_iter  = float(self.sum_num_iter) / self.num_run
         self.mean_num_trial = float(self.sum_num_trial) / self.num_run
@@ -464,12 +444,12 @@ class Test_Log_Data_Statistics():
         self.num_suc_inrange  = 0
         for i in range(0, self.num_run):
             
-            sum_var_num_iter += (float(body[i].num_iter_log.num_iter) - self.mean_num_iter) ** 2
-            sum_var_run_time += (      body[i].run_time_log.run_time  - self.mean_run_time) ** 2
+            sum_var_num_iter += (float(body[i].num_iter) - self.mean_num_iter) ** 2
+            sum_var_run_time += (      body[i].run_time  - self.mean_run_time) ** 2
 
-            self.num_inrange     += body[i].success_log.config_in_range
-            self.num_success     += body[i].success_log.success
-            self.num_suc_inrange += (body[i].success_log.config_in_range and body[i].success_log.success)
+            self.num_inrange     += body[i].config_in_range
+            self.num_success     += body[i].success
+            self.num_suc_inrange += (body[i].config_in_range and body[i].success)
         
         if self.num_run > 1:
             den = self.num_run - 1
@@ -484,27 +464,27 @@ class Test_Log_Data_Statistics():
         self.mse_num_iter  = self.sd_num_iter / math.sqrt(den)
         self.mse_run_time  = self.sd_run_time / math.sqrt(den)
 
-        assert self.num_success == body[self.num_run - 1].success_log.num_suc_til_now
+        assert self.num_success == body[self.num_run - 1].num_suc_til_now
         
-class Test_Log_Data_Multiple_Run():
+class Test_Log():
     '''
-    Contains data structure for evaluation test results for multiple target poses (
+    Contains data structure for evaluation test results for a set of runs associated with multiple target poses 
     Including:
         Header:
             Test Settings (An instance of "Kinematic_Manager_Settings")
         Body:
-            Log data for each configuration (A list of instances of "Eval_Log_Data_Single")
+            Log data for each configuration (A list of instances of "Run_Log")
         Footer
-            Statistic Data (An instance of "Eval_Log_Data_Statistics")
+            Statistic Data (An instance of "Run_Log_Statistics")
             
     '''    
     def __init__(self, km_settings ):
         self.header = km_settings
-        self.body   = [] # should be an array of instances of Eval_Log_Data_Single()
-        self.footer = Test_Log_Data_Statistics()
+        self.body   = [] # should be an array of instances of Run_Log()
+        self.footer = Test_Statistics()
 
     def write_log(self, filename):
-        print 'Eval_Log_Data_Multiple(): Writing log file started ...'
+        print 'Test_Log(): Writing log file started ...'
         LOG_FILE_HANDLE = open(filename, "w")
         LOG_FILE_HANDLE.write(str(self.header))
         LOG_FILE_HANDLE.write("\n" + "--------------------------------------------------------------------------------" + "\n")
@@ -512,20 +492,20 @@ class Test_Log_Data_Multiple_Run():
             LOG_FILE_HANDLE.write(str(body_log))
         LOG_FILE_HANDLE.write("\n" + "--------------------------------------------------------------------------------" + "\n")
         LOG_FILE_HANDLE.write(str(self.footer))
-        print 'Eval_Log_Data_Multiple(): Writing log file ended.'
+        print 'Test_Log: Writing log file ended.'
 
     def write_self(self, filename):
-        print 'Eval_Log_Data_Multiple(): Writing self file started ...'
+        print 'Test_Log: Writing self file started ...'
         SELF_FILE_HANDLE = open(filename, "w")
         pickle.dump(self, SELF_FILE_HANDLE)
-        print 'Eval_Log_Data_Multiple(): Writing self file ended.'
+        print 'Test_Log: Writing self file ended.'
 
     def write_csv(self, filename):
-        print 'Eval_Log_Data_Multiple(): Writing csv file started ...'
+        print 'Test_Log: Writing csv file started ...'
         CSV_FILE_HANDLE = open(filename, "w")
         x = self.body[0]
         CSV_FILE_HANDLE.write(x.csv_horizontal_header() + '\n')
         for x in self.body:
             CSV_FILE_HANDLE.write(x.csv_horizontal() + '\n')
-        print 'Eval_Log_Data_Multiple(): Writing csv file ended.'
+        print 'Test_Log: Writing csv file ended.'
 

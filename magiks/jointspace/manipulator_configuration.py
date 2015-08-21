@@ -71,7 +71,6 @@ class Manipulator_Configuration(object):
     '''
 
     def __init__(self, settings):
-        err_head       = "Error from configuration.Joint_Configuration." 
 
         self.config_settings = settings
 
@@ -357,7 +356,7 @@ class Manipulator_Configuration(object):
         # for ii in range(self.config_settings.njoint):
         for i in range(self.config_settings.DOF):
             if not gen.equal(direction[i], 0.0):
-                if self.config_settings.limited[i]:
+                if self.config_settings.limited[i] and self.config_settings.joint_handling[i] == 'NM':
                     a = (self.ql[i] - self.q[i])/direction[i]    
                     b = (self.qh[i] - self.q[i])/direction[i]
                     etta_l.append(gen.sign_choice(a, b, direction[i]))
@@ -429,7 +428,7 @@ class Manipulator_Configuration(object):
 
             return True
         else:
-            print "Error from configuration.set_config(): Given joints are not in their feasible range"
+            print "Warning from configuration.set_config(): Given joints are not in their feasible range"
             for i in range(self.config_settings.DOF):
                 if not self.joint_in_range(i, qd[i]):        
                     print    

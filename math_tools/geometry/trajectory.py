@@ -13,9 +13,9 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	7.0
+#  @version     	7.1
 #
-#  Last Revision:  	02 July 2015
+#  Last Revision:  	21 August 2015
 
 # BODY
 
@@ -24,6 +24,8 @@ Changes from previous version:
     1- jerk added
     2- smoothed add_point feature added based on finite difference coefficients
     3- add_point respecs limits for position, velocity, acceleration and jerk  
+    4- function draw_points() added.  
+    5- function plot_list() added
 '''
 
 import copy, math, sys, numpy as np
@@ -37,7 +39,14 @@ from math_tools import general_math as gen
 from math_tools.algebra import polynomials as pl, vectors_and_matrices as vm
 from math_tools.geometry import geometry as geo, trigonometry as trig, geometry_2d as geo2d
 
-all_figures = ['position', 'velocity', 'acceleration', 'jerk']
+all_figures = ['Position', 'Velocity', 'Acceleration', 'Jerk']
+all_ltypes  = ['-','r--', 'bs', 'g^', 'bo', 'k']
+
+'''
+r-- : dashed line
+bs  : blue squares
+g^  : green triangles 
+'''
 
 # Backward Finite Difference Coefficients for Velocity
 FDC_v = {1:[1.0,      - 1.0], 
@@ -476,7 +485,68 @@ def finite_difference_estimate(x, x_min, x_max, v_max, a_max, dt):
         assert (x_t[j] < x_max[j]  + 0.0001) and (x_t[j] > x_min[j]  - 0.0001), "j = " + str(j)
 
     return (x_t, v_t, a_t)
+
+
+def plot_list(pathlist, ncol = 1, show_limits = False, show_plot = True):
+    if len(pathlist) == 0:
+        return None
+    dim = pathlist[0].dim
+    for path in pathlist:
+        assert dim == path.dim, "\n Error: All paths must have the same dimensions \n"
+
+    plt.figure(1)
+    nrow = dim/ncol
     
+    for i in range(nrow):
+        for j in range(ncol):
+            cn = ncol*i+j
+            plt.subplot(nrow,ncol,cn + 1)
+            for path in pathlist:
+                path.draw_points(plt, axis = cn)
+                if show_limits:
+                    if path.plot_settings.figure == 'Position':
+                        path.axhline(y = path.pos_max[cn])
+                        path.axhline(y = path.pos_min[cn])
+                    elif path.plot_settings.figure == 'Velocity':
+                        path.axhline(y = path.vel_max)
+                        path.axhline(y = path.vel_min)
+                    elif path.plot_settings.figure == 'Acceleration':
+                        path.axhline(y = path.acc_max)
+                        path.axhline(y = path.acc_min)
+                    else:
+                        assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, path.plot_settings.figure + " is not a valid value for argument figure")
+
+                plt.xlabel('phi')
+                plt.ylabel(path.plot_settings.ylabel(cn)) 
+            
+    if show_plot:
+        plt.show()
+
+class Path_Plot_Settings():
+
+    def __init__(self, dim):
+        self.figure = 'Position'
+        self.ylabel_suffix = ''
+        self.ylabel_prefix = None
+        self.grid = False
+        self.dim_label = ['Axis ' + str(i) for i in range(dim)]
+    
+    def ylabel(self, axis):
+        if axis == None:
+            dl = ''
+        else:
+            assert axis < len(self.dim_label), genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, str(axis) + " is not a valid value for argument axis: Must be lower than dimension")
+            dl = self.dim_label[axis]
+
+        if self.ylabel_prefix == None:
+            s = self.figure + " of "
+        else:
+            s = self.plot_settings.ylabel_prefix    
+        
+        if self.ylabel_suffix != None:
+            s += dl + self.ylabel_suffix
+        return s
+
 ## This class, introduces a structure for a key point in the multi-dimensional space. 
 #  Key points are used to generate a trajectory. 
 #  A key point contains a phase value specifying the point phase (time), 
@@ -521,23 +591,23 @@ class Key_Point(object):
 
    ## Use this function to get the current value of position, velocity or acceleration in a desired dimension 
    #  @param field_name A string, must be selected from 
-   #                    set: ['position', 'velocity', 'acceleration'  
+   #                    set: ['Position', 'Velocity', 'Acceleration'  
    #                    specifying which vector is desired.  
    #  @param axis A non-negative integer specifying which element of the vector should be returned. 
    #             (Must not be greater than the space dimension) 
    #  @return A float containing the value of the element specified by argument \b axis from the vector specified by argument \b field_name   
-   def value(self, field_name = 'position', axis = 0):
-       assert (axis <= self.dim), "Error from " + __name__ + func_name + ": Argument axis must not esxeed the space dimension"
-       assert (axis >= 0), "Error from " + __name__ + func_name + ": Argument axis can not have a negative value"  
+   def value(self, field_name = 'Position', axis = 0):
+       assert (axis <= self.dim), genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Argument axis must not esxeed the space dimension")
+       assert (axis >= 0), genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Argument axis can not have a negative value")
        
-       if field_name == 'position':
+       if field_name == 'Position':
            return self.pos[axis]
-       elif field_name == 'velocity':
+       elif field_name == 'Velocity':
            return self.vel[axis]
-       elif field_name == 'acceleration':
+       elif field_name == 'Acceleration':
            return self.acc[axis]
        else:
-           print "Error from " + __name__ + func_name + ": " + field_name + " is not not a valid value for argument field_name"
+           assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, field_name + " is not not a valid value for argument field_name")
 
 ## This class contains properties and methods for a <em> Trajectory Segment </em>
 #  A trajectory is established of one segment or a number of segments connected together creating a path in the space. 
@@ -562,6 +632,8 @@ class Path(object):
         self.current_position       = np.zeros(self.dim)
         self.current_velocity       = np.zeros(self.dim)
         self.current_acceleration   = np.zeros(self.dim)
+
+        self.plot_settings = Path_Plot_Settings(dim = dimension)
 
         self.point = []
 
@@ -700,34 +772,30 @@ class Path(object):
         self.phi_start = phi_start    
         self.phi_end   = phi_end
 
-    def current_value(self, field_name= 'position', axis = 0):
+    def current_value(self, field_name= 'Position', axis = 0):
 
-        if field_name == 'position':
+        if field_name == 'Position':
             return self.current_position[axis]
-        elif field_name == 'velocity':
+        elif field_name == 'Velocity':
             return self.current_velocity[axis]
-        elif field_name == 'acceleration':
+        elif field_name == 'Acceleration':
             return self.current_acceleration[axis]
         else:
-            print "Error from Path.current_value(): Given field_name is not valid"
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, field_name + " is not a valid value for field_name")
     
-    def plot(self, axis = 0, n = 100, y_text = "", wtp = 'position', show_points = False):
-        if y_text == "":
-            s = wtp + " of Axis " + str(axis)
-        else:
-            s = wtp + " of " + y_text
-
+    def plot(self, axis = 0, n = 100, show_points = False):
+        s = self.plot_settings.ylabel(axis)
         x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         y = []
         for t in x:
             self.set_phi(t)
-            y.append(self.current_value(field_name = wtp, axis = axis))
+            y.append(self.current_value(field_name = self.plot_settings.figure, axis = axis))
         if show_points:
             px = []
             py = []
             for pnt in self.point:
                 px.append(pnt.phi)
-                py.append(pnt.value(field_name = wtp, axis = axis))
+                py.append(pnt.value(field_name = self.plot_settings.figure, axis = axis))
 
             plt.plot(x, y, px, py, 'o') 
         else:
@@ -738,24 +806,24 @@ class Path(object):
         plt.show()
 
     '''
-    def plot_all(self, axis = [0,1], n = 100, y_text = "", wtp = 'position', show_points = False):
+    def plot_all(self, axis = [0,1], n = 100, y_text = "", figure = 'Position', show_points = False):
         if y_text == "":
-            s = wtp + " of Axis " + str(axis)
+            s = figure + " of Axis " + str(axis)
         else:
-            s = wtp + " of " + y_text
+            s = figure + " of " + y_text
 
         x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         for m in axis:
             y = []
             for t in x:
                 self.set_phi(t)
-                y.append(self.current_value(field_name = wtp, axis = axis))
+                y.append(self.current_value(field_name = figure, axis = axis))
             if show_points:
                 px = []
                 py = []
                 for pnt in self.point:
                     px.append(pnt.phi)
-                    py.append(pnt.value(field_name = wtp, axis = axis))
+                    py.append(pnt.value(field_name = figure, axis = axis))
 
                 plt.plot(x, y, px, py, 'o') 
             else:
@@ -766,22 +834,22 @@ class Path(object):
             plt.show()
     '''
 
-    def scatter_plot(self, wtp = 'position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
+    def scatter_plot(self, figure = 'Position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
 
         t = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         x = []
         y = []
         for ph in t:
             self.set_phi(ph)
-            x.append(self.current_value(field_name = wtp, axis = axis_x))
-            y.append(self.current_value(field_name = wtp, axis = axis_y))
+            x.append(self.current_value(field_name = figure, axis = axis_x))
+            y.append(self.current_value(field_name = figure, axis = axis_y))
 
         if show_points:
             px = []
             py = []
             for pnt in self.point:
-                px.append(pnt.value(field_name = wtp, axis = axis_x))
-                py.append(pnt.value(field_name = wtp, axis = axis_y))
+                px.append(pnt.value(field_name = figure, axis = axis_x))
+                py.append(pnt.value(field_name = figure, axis = axis_y))
 
             plt.plot(x, y, px, py, 'o') 
         else:
@@ -816,8 +884,7 @@ class Path_Polynomial(Path):
             self.phi_end = self.point[n-1].phi
             return True
         else:
-            print "Error from Path_Polynomial.interpolate(): No key points defined !"
-            return False 
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "No key points defined")
 
     def map_phi(self, phi_start = 0, phi_end = 1.0):
         super(Path_Polynomial, self).map_phi(phi_start = phi_start, phi_end = phi_end)     
@@ -872,6 +939,8 @@ class Trajectory(object):
     def __init__(self, dimension = 3, capacity = 3):
         self.dim            = dimension
 
+        self.plot_settings = Path_Plot_Settings(dim = dimension)
+
         ## Specifies the default segment capacity. 
         #  When a new segment is added, it will have the default capacity unless specified differently.
         self.capacity       =  capacity
@@ -922,16 +991,16 @@ class Trajectory(object):
         (sn, pn) = self.locate_point(point_number)
         return self.segment[sn].point[pn]
 
-    def current_value(self, field_name= 'position', axis = 0):
+    def current_value(self, field_name= 'Position', axis = 0):
 
-        if field_name == 'position':
+        if field_name == 'Position':
             return self.current_position[axis]
-        elif field_name == 'velocity':
+        elif field_name == 'Velocity':
             return self.current_velocity[axis]
-        elif field_name == 'acceleration':
+        elif field_name == 'Acceleration':
             return self.current_acceleration[axis]
         else:
-            print "Error from Path.current_value(): Given field_name is not valid"
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, field_name + " is not a valid value for field_name")
 
     def add_segment(self, new_seg):
 
@@ -1166,33 +1235,49 @@ class Trajectory(object):
         self.phi_start = phi_start    
         self.phi_end   = phi_end
       
-    def plot(self, axis = 0, y_text = "", wtp = 'position'):
-        if y_text == "":
-            s = wtp + " of Axis " + str(axis)
-        else:
-            s = wtp + " of: " + y_text
+    def plot(self, axis = 0, y_text = "", figure = 'Position'):
 
+        s = self.plot_settings.ylabel(axis)
+
+        fig, ax = plt.subplots()
+        ax = self.draw_points(ax, axis = axis)
+        plt.ylabel(s)
+        plt.xlabel('phi')
+        plt.show()
+
+    def plot_all(self):
+        s = self.plot_settings.ylabel(axis = None)
+            
+        fig, ax = plt.subplots()
+        for j in range(self.dim):
+            self.draw_points(ax, axis = j)
+        '''
+        if self.plot_settings.grid:
+            plt.grid(True)        
+        '''
+        plt.xlabel('phi')
+        plt.ylabel(s)
+        plt.show()
+
+    def draw_points(self, ax, axis = 0, ltype = '-'):
+        assert axis < self.dim, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, str(axis) + " is not a valid value for argument axis: Must be lower than dimension")
         px = []
         py = []
         for i in range(len(self.segment)):
             for pnt in self.segment[i].point:
                 px.append(self.seg_start[i] + pnt.phi)
-                py.append(pnt.value(field_name = wtp, axis = axis))
+                py.append(pnt.value(field_name = self.plot_settings.figure, axis = axis))
 
-        plt.plot(px, py) 
+        ax.plot(px, py, ltype) 
 
-        plt.ylabel(s)
-        plt.xlabel('phi')
-        plt.show()
-
-    def csv_str(self, n = 100, wtp = 'position', header = True):
+    def csv_str(self, n = 100, header = True):
         
         x   = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         if header:
-            dic = {'position':'x', 'velocity':'v', 'acceleration':'a'}
+            dic = {'Position':'x', 'Velocity':'v', 'Acceleration':'a'}
             s   = 'phi'
             for i in range(self.dim):
-                s += ',' + dic[wtp] + str(i)     
+                s += ',' + dic[self.plot_settings.figure] + str(i)     
             s += '\n'
         else:
             s = ''
@@ -1200,11 +1285,11 @@ class Trajectory(object):
             s += str(t)
             self.set_phi(t)
             for j in range(self.dim):
-                if wtp == 'position':
+                if self.plot_settings.figure == 'Position':
                     s += ',' + str(self.current_position[j])
-                elif wtp == 'velocity':
+                elif self.plot_settings.figure == 'Velocity':
                     s += ',' + str(self.current_velocity[j])
-                elif wtp == 'acceleration':
+                elif self.plot_settings.figure == 'Acceleration':
                     s += ',' + str(self.current_acceleration[j])
             s += '\n'
 
@@ -1214,7 +1299,7 @@ class Trajectory(object):
         FILE_HANDLE = open(filename, "w")
         FILE_HANDLE.write(self.csv_str(n = n , header = header))
 
-    def matrix(self, n = 100, figures = ['position']):
+    def matrix(self, n = 100, figures = ['Position']):
         # genpy.check_valid(figures, all_figures, __name__, self.__class__.__name__, sys._getframe().f_code.co_name, figures)
         T    = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         nfig = len(figures)
@@ -1228,35 +1313,35 @@ class Trajectory(object):
             M[i, j] = t
             j      += 1
             self.set_phi(t)
-            if 'position' in figures:
+            if 'Position' in figures:
                 M[i, j:(j + self.dim)] = self.current_position
                 j += self.dim
-            if 'velocity' in figures:
+            if 'Velocity' in figures:
                 M[i, j:(j + self.dim)] = self.current_velocity
                 j += self.dim
-            if 'acceleration' in figures:
+            if 'Acceleration' in figures:
                 M[i, j:(j + self.dim)] = self.current_acceleration
                 j += self.dim
             i += 1
         return M
 
-    def plot2d(self, wtp = 'position', axis_x = 0, axis_y = 1, n = 100, y_text = "", show_points = False):
+    def plot2d(self, figure = 'Position', axis_x = 0, axis_y = 1, n = 100, show_points = False):
 
         t = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         x = []
         y = []
         for ph in t:
             self.set_phi(ph)
-            x.append(self.current_value(field_name = wtp, axis = axis_x))
-            y.append(self.current_value(field_name = wtp, axis = axis_y))
+            x.append(self.current_value(field_name = self.plot_settings.figure, axis = axis_x))
+            y.append(self.current_value(field_name = self.plot_settings.figure, axis = axis_y))
 
         if show_points:
             px = []
             py = []
             for i in range(len(self.segment)):
                 for pnt in self.segment[i].point:
-                    px.append(pnt.value(field_name = wtp, axis = axis_x))
-                    py.append(pnt.value(field_name = wtp, axis = axis_y))
+                    px.append(pnt.value(field_name = self.plot_settings.figure, axis = axis_x))
+                    py.append(pnt.value(field_name = self.plot_settings.figure, axis = axis_y))
 
             plt.plot(x, y, px, py, 'o') 
         else:
@@ -1266,7 +1351,7 @@ class Trajectory(object):
         plt.xlabel('X')
         plt.show()
 
-    def plot3d(self, wtp = 'position', axis_x = 0, axis_y = 1, axis_z = 2, n = 100, label = "", show_points = False):
+    def plot3d(self, figure = 'Position', axis_x = 0, axis_y = 1, axis_z = 2, n = 100, label = "", show_points = False):
 
         t = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         mpl.rcParams['legend.fontsize'] = 10
@@ -1278,9 +1363,9 @@ class Trajectory(object):
         z = []
         for ph in t:
             self.set_phi(ph)
-            x.append(self.current_value(field_name = wtp, axis = axis_x))
-            y.append(self.current_value(field_name = wtp, axis = axis_y))
-            z.append(self.current_value(field_name = wtp, axis = axis_z))
+            x.append(self.current_value(field_name = self.plot_settings.figure, axis = axis_x))
+            y.append(self.current_value(field_name = self.plot_settings.figure, axis = axis_y))
+            z.append(self.current_value(field_name = self.plot_settings.figure, axis = axis_z))
 
         ax.plot(x, y, z, label = label)
         ax.legend()
@@ -1347,36 +1432,29 @@ class Trajectory_Polynomial(Trajectory):
         lsi = len(self.segment) - 1
         self.phi_end = self.seg_start[lsi] + self.segment[lsi].phi_end
 
-    def plot(self, axis = 0, n = 100, y_text = "", wtp = 'position', show_points = False):
-        if y_text == "":
-            s = wtp + " of Axis " + str(axis)
-        else:
-            s = wtp + " of: " + y_text
-
+    def draw_polynomial(self, ax, axis = 0, n = 1000, ltype = '-'):
         x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         y = []
         for t in x:
             self.set_phi(t)
-            y.append(self.current_value(field_name = wtp, axis = axis))
-            
-        if show_points:
-            px = []
-            py = []
-            for i in range(len(self.segment)):
-                for pnt in self.segment[i].point:
-                    px.append(self.seg_start[i] + pnt.phi)
-                    py.append(pnt.value(field_name = wtp, axis = axis))
-                    
+            y.append(self.current_value(field_name = self.plot_settings.figure, axis = axis))
 
-            plt.plot(x, y, px, py, 'o') 
-        else:
-            plt.plot(x, y) 
+        ax.plot(x, y, ltype) 
+            
+    def plot(self, axis = 0, n = 100, show_points = False):
+        s = self.plot_settings.ylabel(axis)
+        fig, ax = plt.subplots()
+        self.draw_polynomial(ax, axis = axis, n = n)
+        
+        if show_points:
+            self.draw_points(ax, axis = axis, ltype = 'o')
 
         plt.ylabel(s)
         plt.xlabel('phi')
         plt.show()
 
     def consistent_velocities(self):
+        self.interpolate()
         lsi = len(self.segment) - 1
 
         for i in range(lsi + 1):
@@ -1407,6 +1485,7 @@ class Trajectory_Polynomial(Trajectory):
         self.interpolate()         
 
     def consistent_accelerations(self):
+        self.interpolate()
         lsi = len(self.segment) - 1
         self.segment[0].point[0].acc = np.zeros(self.dim)
         for i in range(lsi + 1):

@@ -99,7 +99,7 @@ def on_move_arm_finished( is_left_arm ):
 #  @return None 
 def on_move_arm_failed( is_left_arm ):
     global larm_failed, rarm_failed
-    if hasattr( PyPR2 'onMoveArmPoseFailed' ) and hasattr( PyPR2.onMoveArmPoseFailed, '__call__' ):
+    if hasattr( PyPR2, 'onMoveArmPoseFailed' ) and hasattr( PyPR2.onMoveArmPoseFailed, '__call__' ):
       PyPR2.onMoveArmPoseFailed( is_left_arm )
     if is_left_arm:
         print "larm failed"

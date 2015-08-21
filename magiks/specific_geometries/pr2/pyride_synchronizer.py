@@ -338,7 +338,7 @@ class PyRide_PR2(pr2lib.PR2):
                 assert pint.wait_until_finished(limb_list = limb_list)
                 t = time.time() - t0
         else: 
-            print "Error from PyRide_PR2.set_config_synced(): Given joints are not feasible"
+            print "Warning from PyRide_PR2.set_config_synced(): Given joints are not feasible. Configuration was not set"
         return self.synced(limb_list)
     
     ## Synchronizes the right arm of the real robot or robot in simulation with the right arm of the object.
@@ -804,7 +804,7 @@ class PyRide_PR2(pr2lib.PR2):
                 else:
                     g   = pint.gen_rarm_joint_posvel_dict(arm.config.q, vel, ttr)
             else:
-                print "Error from PyRide_PR2.arm_arc(): The arc is not in the workspace!"
+                print "The arc is not in the workspace!"
                 return False
 
             config_list.append(g)
@@ -848,8 +848,7 @@ class PyRide_PR2(pr2lib.PR2):
         elif direction == 'left':
             ori = rot.point_left_orientation
         else:
-            print "Error from PyRide_PR2.point_gripper(): Given direction is unknown!"
-            return None
+            assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, direction + " is not a valid value for direction")
 
         self.sync_object()
         arm = self.reference_arm()
@@ -910,7 +909,7 @@ class PyRide_PR2(pr2lib.PR2):
         self.sync_object()
         arm     = self.reference_arm()
 
-        assert resolution > 4, "Error from PyRide_PR2.arm_trajectory(): Invalid Resolution"
+        assert resolution > 4, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, str(resolution) + " is an invalid value for resolution. Must be greater than 4")
 
         keep_dt = arm.dt
         arm.dt  = pos_traj.phi_end/resolution
