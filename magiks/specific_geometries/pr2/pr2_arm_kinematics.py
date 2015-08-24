@@ -27,8 +27,7 @@ from sets import Set
 from math_tools import general_math as genmath
 from math_tools.geometry import trigonometry as trig, trajectory as trajlib, geometry as geo
 from math_tools.algebra import vectors_and_matrices as vecmat
-
-from magiks.magiks_core import general_magiks as genkin, inverse_kinematics as iklib, manipulator_library as manlib
+from magiks.magiks_core import general_magiks as genkin
 
 drc        = math.pi/180.00
 
@@ -414,7 +413,7 @@ class PR2_ARM():
         self.d4 = d4
 
         self.dt     = 0.01
-        self.max_js = 1.0   #  (Rad/sec)
+        self.max_js = 2.0   #  (Rad/sec)
         self.max_ja = 100.0 # (Rad/sec^2)
 
         l2 = d2**2 + d4**2 - a0**2
@@ -474,10 +473,8 @@ class PR2_ARM():
 		#   containing the feasible interval for the growth of redundant parameter (\f$ \Delta \phi \f$) 		
         self.Delta  = None
 
-		# Sets the target initially as the endeffector pose corresponding to the midrange joint configuration:
-        self.set_target(self.wrist_position(), self.wrist_orientation())
-
         if run_magiks:
+            from magiks.magiks_core import inverse_kinematics as iklib, manipulator_library as manlib
             cs       = manlib.manip_config_settings('PR2ARM', joint_mapping = 'TM')
             cs.ql    = np.copy(self.config.ql)
             cs.qh    = np.copy(self.config.qh)
@@ -488,6 +485,10 @@ class PR2_ARM():
         else:
             self.magiks_running = False
 
+        self.use_magiks = False
+
+		# Sets the target initially as the endeffector pose corresponding to the midrange joint configuration:
+        self.set_target(self.wrist_position(), self.wrist_orientation())
 
 	## Sets the robot configuration to the desired given joint values
 	#  @param qd A numpy array of 7 elements containing the values of the given joints
@@ -531,6 +532,8 @@ class PR2_ARM():
         assert genmath.equal(np.linalg.det(target_orientation), 1.0)
         self.xd = target_position
         self.Rd = target_orientation
+        if self.use_magiks:
+            self.ik.set_target([target_position], [geo.Orientation_3D(target_orientation)])
 
         [Q, Q2, d42, d44, a00, d22_plus_d44, foura00d44, alpha] = self.additional_dims
 
@@ -627,9 +630,12 @@ class PR2_ARM():
 	#  @param norm_precision A float specifying the required precision for the norm of both position and orientation error
 	#  @return A boolean: True if the norm of differences between the actual and desired poses of the endeffector are smaller than \a norm_precision, False if not.
     def in_target(self, norm_precision = 0.01):
-        if self.in_target_flag == None:
-            self.in_target_flag = vecmat.equal(self.xd, self.wrist_position(), epsilon = norm_precision) and vecmat.equal(self.Rd, self.wrist_orientation(), epsilon = norm_precision)
-        return self.in_target_flag
+        if self.use_magiks:
+            return self.ik.in_target()
+        else:
+            if self.in_target_flag == None:
+                self.in_target_flag = vecmat.equal(self.xd, self.wrist_position(), epsilon = norm_precision) and vecmat.equal(self.Rd, self.wrist_orientation(), epsilon = norm_precision)
+            return self.in_target_flag
 	## protected
     def div_phi_err(self):
         '''
@@ -961,12 +967,15 @@ class PR2_ARM():
      #  @param optimize A boolean If True the IK solution minimize the defined cost function, otherwise the closest solution will be returned. The default is False.
      #  @return A numpy vector of size 7, containing the direction of joint correction.
     def ik_direction(self, phi = None, optimize = False):
-        q0 = np.copy(self.config.q)
-        if self.inverse_update(phi = phi, optimize = optimize):
-            q  = self.restore_config(q0)
-            return trig.angles_standard_range(q - q0)
-        else:
-            return np.zeros(7)
+        if self.use_magiks:
+            return self.ik.ik_direction()
+        else:    
+            q0 = np.copy(self.config.q)
+            if self.goto_target(phi = phi, optimize = optimize):
+                q  = self.restore_config(q0)
+                return trig.angles_standard_range(q - q0)
+            else:
+                return np.zeros(7)
     
     ## Given a direction for joint correction and a joint speed limit, this function returns the maximum feasible value by which the joints can move in this direction.
      # @parameter direction A numpy vector of size 7 specifying the desired direction for joints to move
@@ -987,26 +996,33 @@ class PR2_ARM():
         return self.set_config(q)
 
     def moveto_target(self, optimize = False):
-        q0        = np.copy(self.config.q)
-        err       = self.pose_metric()
-        jdir      = self.ik_direction(phi = self.config.q[0], optimize = optimize)
-        err_reduced    = False
-        if np.linalg.norm(jdir) > 0.0001:
-            (el, eh)  = self.config.joint_stepsize_interval(direction = jdir, max_speed = self.max_js, dt = self.dt) 
-            assert el < 0.0
-            if eh > 1.0:
-                eh = 1.0
-            q = q0 + eh*jdir
-            if self.set_config(q):
-                if self.pose_metric() <  err:
-                    err_reduced = True
-                else:
-                    self.set_config(q0)
+        if self.use_magiks:
+            if self.ik.moveto_target():
+                self.sync_from_magiks()
+                return True
+            else:
+                return False
         else:
-            return True
-        return err_reduced
+            q0        = np.copy(self.config.q)
+            err       = self.pose_metric()
+            jdir      = self.ik_direction(phi = self.config.q[0], optimize = optimize)
+            err_reduced    = False
+            if np.linalg.norm(jdir) > 0.0001:
+                (el, eh)  = self.config.joint_stepsize_interval(direction = jdir, max_speed = self.max_js, dt = self.dt) 
+                assert el < 0.0
+                if eh > 1.0:
+                    eh = 1.0
+                q = q0 + eh*jdir
+                if self.set_config(q):
+                    if self.pose_metric() <  err:
+                        err_reduced = True
+                    else:
+                        self.set_config(q0)
+            else:
+                return True
+            return err_reduced
 
-    def inverse_update(self, phi = None, optimize = False, show = False):    
+    def goto_target(self, phi = None, optimize = False, show = False):    
         '''
         Finds the inverse kinematic solution for the given redundant parameter phi
         is phi is not feasible, the solution corresponding to the closest phi is returned.
@@ -1017,50 +1033,56 @@ class PR2_ARM():
         The new joint angles will be set if all the kinematic equations are satisfied. 
         All kinematic parameters will be updated.
         '''
-        # Finding a feasible phi (theta0)
-        if phi == None:
-            phi     = self.config.q[0]
-
-        PS = self.permission_set_position()
-        if show:
-            print "Permission Set for phi = ", PS
-            print "Initial phi            = ", phi
-        
-        if len(PS) == 0:
-            if show:
-                print "len(PS) = 0"
-                print "The target is out of workspace! No solution found."
-            return False
+        if self.use_magiks:
+            if self.ik.goto_target():
+                self.sync_from_magiks()
+            else:
+                self.ik.set_config(self.config.q)
+                print "\n Magiks could not find a solution ! \n"
         else:
-            if not (phi in PS):
-                phi = genmath.closest_border(phi, PS, k = 0.01)
-                if show:
-                    print "Phi is not in PS"
-                    print "Closest phi in PS:", phi
+            # Finding a feasible phi (theta0)
+            if phi == None:
+                phi     = self.config.q[0]
 
-            q = self.IK_config(phi) 
-            if q == None:
-                if show:
-                    print phi, " is not a feasible phi. No solution found"
-                if not self.closest_feasible_phi(phi, PS):
-                    if show:
-                        print "The target is out of workspace! No solution found."
-                    return False
-                if show:
-                    print "Next phi: ", self.config.q[0]
-            else:    
-                if not self.set_config(q):
-                    if show:
-                        print "Not expected to see. Solution exists but not feasible!"
-                    return False
-
-            # when you reach here, the feasible q has been set    
+            PS = self.permission_set_position()
+            if show:
+                print "Permission Set for phi = ", PS
+                print "Initial phi            = ", phi
             
-            if optimize:
-                self.set_config(self.optimal_config())
-             
-        assert self.in_target()
-        return True
+            if len(PS) == 0:
+                if show:
+                    print "len(PS) = 0"
+                    print "The target is out of workspace! No solution found."
+                return False
+            else:
+                if not (phi in PS):
+                    phi = genmath.closest_border(phi, PS, k = 0.01)
+                    if show:
+                        print "Phi is not in PS"
+                        print "Closest phi in PS:", phi
+
+                q = self.IK_config(phi) 
+                if q == None:
+                    if show:
+                        print phi, " is not a feasible phi. No solution found"
+                    if not self.closest_feasible_phi(phi, PS):
+                        if show:
+                            print "The target is out of workspace! No solution found."
+                        return False
+                    if show:
+                        print "Next phi: ", self.config.q[0]
+                else:    
+                    if not self.set_config(q):
+                        if show:
+                            print "Not expected to see. Solution exists but not feasible!"
+                        return False
+
+                # when you reach here, the feasible q has been set    
+                
+                if optimize:
+                    self.set_config(self.optimal_config())
+                 
+        return self.in_target()
         
     def all_IK_solutions(self, phi):    
         '''
@@ -1321,7 +1343,7 @@ class PR2_ARM():
         else:
             p0    = np.zeros(3)
             self.set_target(pos_traj.current_position, ori_traj.current_orientation['matrix'])
-            self.inverse_update(optimize = True)
+            self.goto_target(optimize = True)
 
         jt.add_position(0.0, pos = self.config.q)
         
@@ -1357,6 +1379,10 @@ class PR2_ARM():
         self.set_config(keep_q)
 
         return jt
+
+    def sync_from_magiks(self):
+        ers = 'Joint values computed from magiks are not feasible'
+        assert self.set_config(self.ik.q), genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, ers)
 
     def permission_set_position(self):
         """

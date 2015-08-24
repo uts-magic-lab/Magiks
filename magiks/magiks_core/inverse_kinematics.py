@@ -95,7 +95,6 @@ class Step_Log():
         for fig in figures:
             s += ',' + str(self.value(fig))
         return s + '\n'
-
        
 class Run_Log():
     def __init__(self):
@@ -172,6 +171,7 @@ class Inverse_Kinematics_Settings():
         self.respect_error_reduction = True   # If True the configuration is added to the trajectory only if the norm of pose error is reduced
         self.respect_limits          = True   # If True, position, velocity and acceleration limits will be respected in function moveto_target()
         self.respect_limits_in_trajectories = True # If True, position, velocity and acceleration limits will be respected in output trajectories
+        self.generate_log            = True   # If True, the system will generate log after each run or trajectory creation/projection. The log is stored in property self.run_log
         self.df_gain                 = 2.0   # Determines the damping factor gain in DLS-ADF algorithm
 
         self.algorithm               = algorithm
@@ -181,7 +181,7 @@ class Inverse_Kinematics_Settings():
         self.manipulability_threshold= 0.0001
         self.real_time               = False
         self.time_step               = 0.010 # (sec)
-        self.max_js                  = 1.0   # (Rad/sec)
+        self.max_js                  = 2.0   # (Rad/sec)
         self.max_ja                  = 100.0 # (Rad/sec^2)
         
         self.representation_of_orientation_for_binary_run = 'vectorial_identity'
@@ -281,7 +281,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
     
         if u != None:
             assert len(u) == self.config_settings.DOF
-            J_dag_J           = np.dot(np.linalg.pinv(Je), Je)
+            J_dag_J           = np.dot(Je_dag, Je)
             In_minus_J_dag_J  = np.eye(self.config_settings.DOF) - J_dag_J
             dq                = np.dot(In_minus_J_dag_J, u)
             # print "Internal motion: ", dq
@@ -325,10 +325,11 @@ class Inverse_Kinematics( eflib.Endeffector ):
        
         assert self.set_config_virtual(self.qvr + delta_qs)
 
-        telap    = time.time() - ts
-        step_log = self.report_status()
-        step_log.time_elapsed = telap
-        self.run_log.step.append(step_log)
+        if self.ik_settings.generate_log:
+            telap    = time.time() - ts
+            step_log = self.report_status()
+            step_log.time_elapsed = telap
+            self.run_log.step.append(step_log)
 
     def report_status(self):
         sl = Step_Log()
@@ -392,7 +393,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
         '''
         '''
         self.damping_factor = self.ik_settings.initial_damping_factor
-        self.run_log.clear()
+        if self.ik_settings.generate_log:
+            self.run_log.clear()
         keep_q = np.copy(self.q)
         H      = self.transfer_matrices()
 
@@ -436,7 +438,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
             jt.interpolate()
 
         self.set_config(keep_q)
-        self.run_log.time_elapsed = time.time() - self.run_log.time_start
+        if self.ik_settings.generate_log:
+            self.run_log.time_elapsed = time.time() - self.run_log.time_start
 
         return jt
 
@@ -482,7 +485,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
             not_arrived = (not self.in_target() ) or (rs and (not ir))
             have_time   = (counter < self.ik_settings.number_of_steps)
 
-        self.run_log.time_elapsed = time.time() - self.run_log.time_start
+        if self.ik_settings.generate_log:
+            self.run_log.time_elapsed = time.time() - self.run_log.time_start
 
     def run(self):
         '''
@@ -562,15 +566,14 @@ class Inverse_Kinematics( eflib.Endeffector ):
         if not_yet and self.ik_settings.return_min_config:
             self.set_config(min_config)
         
-        self.run_log.time_elapsed = time.time() - self.run_log.time_start
+        if self.ik_settings.generate_log:
+            self.run_log.time_elapsed = time.time() - self.run_log.time_start
 
     def goto_target(self):
         '''
         '''
-
-        func_name = '.goto_target()'
-
-        self.run_log.clear()
+        if self.ik_settings.generate_log:
+            self.run_log.clear()
                 
         if self.ik_settings.include_current_config:
             self.initial_config         = self.free_config(self.q)
@@ -610,12 +613,20 @@ class Inverse_Kinematics( eflib.Endeffector ):
  
             self.start_node += 1
 
+        return self.in_target()
+
     def moveto_target(self, show = False):
         ts        = time.time()
         q0        = self.free_config(self.q)
         err       = self.pose_error_norm()
 
-        jdir      = self.ik_direction()
+        if self.ik_settings.ngp_active:
+            u = self.objective_function_gradient(k = 1.0)
+            # print "u = ", u
+        else:
+            u = None    
+
+        jdir      = self.ik_direction(u)
 
         elt = time.time() - ts  # elt: elapsed time
         if np.linalg.norm(jdir) > 0.00001:
@@ -632,22 +643,25 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
             if self.pose_error_norm() < err:
                 self.damping_factor = self.damping_factor/self.ik_settings.df_gain
-                step_log = self.report_status()
-                step_log.time_elapsed = elt
-                self.run_log.step.append(step_log)
+                if self.ik_settings.generate_log:
+                    step_log = self.report_status()
+                    step_log.time_elapsed = elt
+                    self.run_log.step.append(step_log)
                 return True    
             else:
                 self.damping_factor = self.damping_factor*self.ik_settings.df_gain
-                step_log = self.report_status()
-                step_log.time_elapsed = elt
-                self.run_log.step.append(step_log)
+                if self.ik_settings.generate_log:
+                    step_log = self.report_status()
+                    step_log.time_elapsed = elt
+                    self.run_log.step.append(step_log)
                 if self.ik_settings.respect_error_reduction:
                     assert self.set_config(q0)
                 return False
         else:
-            step_log = self.report_status()
-            step_log.time_elapsed = elt
-            self.run_log.step.append(step_log)
+            if self.ik_settings.generate_log:
+                step_log = self.report_status()
+                step_log.time_elapsed = elt
+                self.run_log.step.append(step_log)
             return True
 
     def js_project(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, relative = True, traj_capacity = 2, traj_type = 'regular'):
@@ -697,8 +711,9 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
         jt.add_position(0.0, pos = np.copy(self.q))
 
-        self.run_log.clear()
-        self.run_log.step.append(self.report_status())
+        if self.ik_settings.generate_log:
+            self.run_log.clear()
+            self.run_log.step.append(self.report_status())
         
         stay      = True
 
@@ -723,7 +738,8 @@ class Inverse_Kinematics( eflib.Endeffector ):
 
         self.set_config(keep_q)
 
-        self.run_log.time_elapsed = time.time() - self.run_log.time_start
+        if self.ik_settings.generate_log:
+            self.run_log.time_elapsed = time.time() - self.run_log.time_start
 
         return jt
 

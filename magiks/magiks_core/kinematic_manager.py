@@ -137,8 +137,10 @@ key_dic = {
 
 nkc_dic = {'DiCaCo(xyz)':3,'DiCaCo(xy)':2,'DiCaCo(xz)':2,'DiCaCo(yz)':2, 'DiCaCo(x)':1, 'DiCaCo(y)':1,'DiCaCo(z)':1,
            'AxInPr(ijk)':3,'AxInPr(ij)':3,'AxInPr(ik)':3,'AxInPr(jk)':3, 'AxInPr(i)':2, 'AxInPr(j)':2,'AxInPr(k)':2}
+
 param_dic = {'ReOrVe(IDTY)':'identity', 'ReOrVe(LIN)':'linear', 'ReOrVe(CaGiRo)' : 'cayley-gibbs-rodrigues', 'ReOrVe(EXP)' : 'exponential', 'ReOrVe(BaTr)' : 'bauchau-trainelli',
              'DiOrVe(IDTY)':'identity', 'DiOrVe(LIN)':'linear', 'DiOrVe(CaGiRo)' : 'cayley-gibbs-rodrigues', 'DiOrVe(EXP)' : 'exponential', 'DiOrVe(BaTr)' : 'bauchau-trainelli'}
+
 def generate_orientation_metric_settings(orientation_constraint):
     func_name = "kinematic.manager.generate_orientation_error_function_package()"
     
@@ -707,6 +709,8 @@ class Kinematic_Manager(object):
 
             (running_time, number_of_steps) = (self.inverse_kinematics.run_log.time_elapsed, len(self.inverse_kinematics.run_log.step))
 
+            if number_of_steps == 0:
+                number_of_steps = 1
             average_step_time = running_time / number_of_steps
             n_iters_total = n_iters_total + number_of_steps
 

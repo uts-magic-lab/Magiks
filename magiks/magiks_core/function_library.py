@@ -15,8 +15,14 @@
                 Email(2): nima.ramezani@gmail.com
                 Email(3): nima_ramezani@yahoo.com
                 Email(4): ramezanitn@alum.sharif.edu
-@version:	    1.0
-Last Revision:  10 August 2015
+@version:	    2.0
+Last Revision:  23 August 2015
+'''
+
+'''
+Changes from last version:
+    1- a new task cost function added:  Liegeois_Midrange_Deviance() used for Jacobian Nullspace Gradient Projection to avoid joint limits as a second-priority cost function
+
 '''
 # BODY
 

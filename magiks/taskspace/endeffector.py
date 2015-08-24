@@ -10,9 +10,14 @@
 #               	Phone No. :   04 5027 4611 
 #               	Email(1)  : nima.ramezani@gmail.com 
 #               	Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
-#  @version     	3.0
+#  @version     	4.0
 # 
-#  Last Revision:  	11 January 2015
+#  Last Revision:  	23 August 2015
+
+'''
+Changes from last version:
+    1- a new task cost function added:  Liegeois_Midrange_Deviance() used for Jacobian Nullspace Gradient Projection to avoid joint limits as a second-priority cost function
+'''
 
 import numpy, math, copy, sys
 import link_point as lplib, task_reference as trlib, cost_function as cflib
@@ -84,8 +89,12 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         self.task_cost.append(cflib.Cost_Function(input_ref = 'Joint Values'))
         self.task_cost[0].function = flib.Zghal_Function(xl = numpy.copy(self.ql), xh = numpy.copy(self.qh))
         self.task_cost[0].abs_grad = numpy.zeros(self.config_settings.DOF)
-
-        self.der = numpy.zeros(self.config_settings.DOF)
+        # self.task_cost[0].purpose = 'Joint Damping'
+        '''
+        self.task_cost.append(cflib.Cost_Function(input_ref = 'Joint Values'))
+        self.task_cost[1].function = flib.Liegeois_Midrange_Deviance(xl = numpy.copy(self.ql), xh = numpy.copy(self.qh))
+        # self.task_cost[1].purpose = 'Gradient Projection'
+        '''    
 
         # mp -- number of position coordinates (3 by default)
         # mo -- number of orientation coordinates (3 by default) 

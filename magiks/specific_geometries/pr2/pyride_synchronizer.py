@@ -423,9 +423,9 @@ class PyRide_PR2(pr2lib.PR2):
         func_name = ".rarm_target()"
         self.rarm.set_target(self.rarm.xd, self.rarm.Rd)  # make sure the target parameters are set
         if phi == None:
-            if self.rarm.inverse_update(optimize = True):
+            if self.rarm.goto_target(optimize = True):
                 qr = self.rarm.config.q
-            elif self.rarm.inverse_update(optimize = False):
+            elif self.rarm.goto_target(optimize = False):
                 qr = self.rarm.config.q
             else:
                 assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Could not find an IK solution for given target. Make sure the target pose is in the workspace")
@@ -469,7 +469,7 @@ class PyRide_PR2(pr2lib.PR2):
         
         self.larm.set_target(self.larm.xd, self.larm.Rd)  # make sure the target parameters are set
         if phi == None:
-            if self.larm.inverse_update(optimize = True):
+            if self.larm.goto_target(optimize = True):
                 ql = self.larm.config.q
             else:
                 assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, "Could not find an IK solution for given target. Make sure the target pose is in the workspace")
@@ -501,7 +501,7 @@ class PyRide_PR2(pr2lib.PR2):
 
     def reach_target(self):
         '''
-        # should change to inverse_update() calling the inverse_update() function of the super class    
+        # should change to goto_target() calling the goto_target() function of the super class    
         Solves the IK in the current control mode and takes the robot endeffector to the desired pose specified by self.xd and self.Rd
         '''
         if self.larm_reference:
@@ -512,7 +512,7 @@ class PyRide_PR2(pr2lib.PR2):
         if self.control_mode == "Free-Base":
             tl.append('body')
 
-        if self.inverse_update():
+        if self.goto_target():
             self.set_config_synced(qd = self.q, limb_list = tl)
             return True
         else:   
@@ -986,7 +986,7 @@ class PyRide_PR2(pr2lib.PR2):
             self.kc_jtd   = trajlib.Trajectory(dimension = 7, capacity = 10) 
             self.kc_jta   = trajlib.Trajectory(dimension = 7, capacity = 10) 
             '''
-            arm.inverse_update(optimize = True)
+            arm.goto_target(optimize = True)
             '''
             self.kc_jtd.add_point(phi = self.kc_time, pos = np.copy(arm.config.q), vel = np.zeros(7), acc = np.zeros(7))
         else:        
@@ -999,7 +999,7 @@ class PyRide_PR2(pr2lib.PR2):
             if data['in_progress']:
                 q0 = np.copy(arm.config.q)
                 arm.config.qm = np.copy(arm.config.q)
-                # arm.inverse_update(optimize = True)
+                # arm.goto_target(optimize = True)
                 arm.dt = dt    
                 if arm.moveto_target(optimize = True):
                     jdir  = arm.config.q - q0

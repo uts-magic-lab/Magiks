@@ -195,7 +195,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
             p   = pos - (self.board_offset[0]+self.depth)*n + self.board_offset[2]*h + self.board_offset[1]*w
                 
             self.set_target(p, R)
-            self.inverse_update()
+            self.goto_target()
             self.sync_robot()        
 
         if self.larm_reference:
@@ -369,7 +369,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                 pos    = np.copy(pr.segment[0].point[0].pos)
                 pos    = pos - self.depth*nr
                 self.rarm.set_target(pos, ori_r)
-                assert self.rarm.inverse_update(optimize = True)
+                assert self.rarm.goto_target(optimize = True)
                 pint.take_rarm_to(self.rarm.config.q, time_to_reach = 2.0)
                 step_r += 1    
 
@@ -381,7 +381,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                 pos    = np.copy(pl.segment[0].point[0].pos)
                 pos    = pos - self.depth*nl
                 self.larm.set_target(pos, ori_l)
-                assert self.larm.inverse_update(optimize = True)
+                assert self.larm.goto_target(optimize = True)
                 pint.take_larm_to(self.larm.config.q, time_to_reach = 2.0)
                 step_l += 1    
             # head forward:
@@ -391,7 +391,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                     print "Trajectory: ", ir, " Step 1 for Right Arm"
                 pos    = np.copy(pr.segment[0].point[0].pos)
                 self.rarm.set_target(pos, ori_r)
-                assert self.rarm.inverse_update(optimize = True)
+                assert self.rarm.goto_target(optimize = True)
                 pint.take_rarm_to(self.rarm.config.q, time_to_reach = 1.0)
                 step_r += 1    
 
@@ -401,7 +401,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                     print "Trajectory: ", il, " Step 1 for Left Arm"
                 pos    = np.copy(pl.segment[0].point[0].pos)
                 self.larm.set_target(pos, ori_l)
-                assert self.larm.inverse_update(optimize = True)
+                assert self.larm.goto_target(optimize = True)
                 pint.take_larm_to(self.larm.config.q, time_to_reach = 1.0)
                 step_l += 1    
 
@@ -440,7 +440,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                 self.sync_object()
                 pos    = self.rarm.wrist_position() - nr*self.depth
                 self.rarm.set_target(pos, ori_r)
-                assert self.rarm.inverse_update(optimize = True)
+                assert self.rarm.goto_target(optimize = True)
                 pint.take_rarm_to(self.rarm.config.q, time_to_reach = 1.0)
                 step_r += 1    
 
@@ -452,7 +452,7 @@ class Skilled_PR2(pyride_synchronizer.PyRide_PR2):
                 self.sync_object()
                 pos    = self.larm.wrist_position() - nl*self.depth
                 self.larm.set_target(pos, ori_l)
-                assert self.larm.inverse_update(optimize = True)
+                assert self.larm.goto_target(optimize = True)
                 pint.take_larm_to(self.larm.config.q, time_to_reach = 1.0)
                 '''
                 self.larm_reference = True

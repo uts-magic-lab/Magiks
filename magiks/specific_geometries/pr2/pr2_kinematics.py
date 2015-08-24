@@ -1088,7 +1088,7 @@ class PR2(object):
             qq[11:18] = q[0:7]
         return qq
 
-    def inverse_update(self):
+    def goto_target(self):
         '''
         Finds the inverse kinematic solution closest to the current configuration
         The new joint angles will be set if all the kinematic equations are satisfied. 
@@ -1098,8 +1098,8 @@ class PR2(object):
         arm = self.reference_arm()
             
         if self.control_mode == "Fixed-Base":
-            if not arm.inverse_update(optimize = True):
-                print "Error from inverse_update: No soluton for the arm in fixed mode"
+            if not arm.goto_target(optimize = True):
+                print "Error from goto_target: No soluton for the arm in fixed mode"
                 return False
             else:
                 if not self.larm_reference:
@@ -1110,10 +1110,10 @@ class PR2(object):
                 self.set_config(self.q)
                 return True            
         elif self.control_mode == "Free-Base":
-            print "Error from PR2().inverse_update: Free-Base mode is not supported yet."
+            print "Error from PR2().goto_target: Free-Base mode is not supported yet."
             return False
         else:            
-            print "Error from PR2().inverse_update: Unknown control mode"
+            print "Error from PR2().goto_target: Unknown control mode"
             return False
 
     def project_to_js(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, delta_phi = 0.1, relative = True):
@@ -1157,7 +1157,7 @@ class PR2(object):
             p = p0 + pos_traj.current_position
             R = np.dot(R0, ori_traj.current_orientation)
             self.set_target(p, R)
-            if self.inverse_update():
+            if self.goto_target():
                 jt.add_point(phi = phi - phi_start, pos = np.copy(self.q))
                 phi = phi + delta_phi
                 if phi > phi_end:
