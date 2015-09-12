@@ -1,7 +1,9 @@
 var searchData=
 [
-  ['nao',['NAO',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1special__geometries_1_1nao_1_1nao__dynamics_1_1_n_a_o.html',1,'packages::nima::robotics::kinematics::special_geometries::nao::nao_dynamics']]],
-  ['nao',['NAO',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1special__geometries_1_1nao_1_1nao__kinematics_1_1_n_a_o.html',1,'packages::nima::robotics::kinematics::special_geometries::nao::nao_kinematics']]],
-  ['nao_5fleg',['NAO_Leg',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1special__geometries_1_1nao_1_1nao__leg__kinematics_1_1_n_a_o___leg.html',1,'packages::nima::robotics::kinematics::special_geometries::nao::nao_leg_kinematics']]],
-  ['nao_5fleg_5fsymbolic',['NAO_Leg_Symbolic',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1special__geometries_1_1nao_1_1nao__leg__symbolics_1_1_n_a_o___leg___symbolic.html',1,'packages::nima::robotics::kinematics::special_geometries::nao::nao_leg_symbolics']]]
+  ['orientation_5f3d',['Orientation_3D',['../classmath__tools_1_1geometry_1_1geometry_1_1_orientation__3_d.html',1,'math_tools::geometry::geometry']]],
+  ['orientation_5fmetric',['Orientation_Metric',['../classmath__tools_1_1geometry_1_1pose__metric_1_1_orientation___metric.html',1,'math_tools::geometry::pose_metric']]],
+  ['orientation_5fpath',['Orientation_Path',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___path.html',1,'math_tools::geometry::trajectory']]],
+  ['orientation_5fpath_5fpolynomial',['Orientation_Path_Polynomial',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___path___polynomial.html',1,'math_tools::geometry::trajectory']]],
+  ['orientation_5ftrajectory',['Orientation_Trajectory',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___trajectory.html',1,'math_tools::geometry::trajectory']]],
+  ['orientation_5ftrajectory_5fpolynomial',['Orientation_Trajectory_Polynomial',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___trajectory___polynomial.html',1,'math_tools::geometry::trajectory']]]
 ];

@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['analytic_5fjacobian',['Analytic_Jacobian',['../classpackages_1_1nima_1_1robotics_1_1kinematics_1_1jacobian_1_1jacobian_1_1_analytic___jacobian.html',1,'packages::nima::robotics::kinematics::jacobian::jacobian']]]
+  ['analytic_5fjacobian',['Analytic_Jacobian',['../classmagiks_1_1jacobian_1_1jacobian_1_1_analytic___jacobian.html',1,'magiks::jacobian::jacobian']]],
+  ['and',['and',['../classmath__tools_1_1statistics_1_1statistics2_1_1and.html',1,'math_tools::statistics::statistics2']]]
 ];

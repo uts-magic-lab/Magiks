@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.8"/>
-<title>MAGIKS: /home/nimasoft/Dropbox/software/python/packages/nima/robotics/kinematics/special_geometries/pr2/pyride_interpreter.py File Reference</title>
+<title>MAGIKS: pyride_interpreter.py File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,9 +23,9 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">MAGIKS
-   &#160;<span id="projectnumber">1.0</span>
+   &#160;<span id="projectnumber">1.1</span>
    </div>
-   <div id="projectbrief">MAnipulator General Inverse Kinematic Solver</div>
+   <div id="projectbrief">Manipulator General Inverse Kinematic Solver</div>
   </td>
  </tr>
  </tbody>
@@ -39,6 +39,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="navrow1" class="tabs">
     <ul class="tablist">
       <li><a href="index.html"><span>Main&#160;Page</span></a></li>
+      <li><a href="pages.html"><span>Related&#160;Pages</span></a></li>
+      <li><a href="namespaces.html"><span>Packages</span></a></li>
       <li><a href="annotated.html"><span>Classes</span></a></li>
       <li class="current"><a href="files.html"><span>Files</span></a></li>
       <li>
@@ -69,7 +71,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Variables</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -80,11 +82,12 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ab1b1d7c3d992eecbda08a25ce69e18b.html">software</a></li><li class="navelem"><a class="el" href="dir_5af422f2409e1391b952d869ba454648.html">python</a></li><li class="navelem"><a class="el" href="dir_f7e66ac35ca65304d45c4acd8db52648.html">packages</a></li><li class="navelem"><a class="el" href="dir_6aac233dc7d9a5977deb565eaa7abcbb.html">nima</a></li><li class="navelem"><a class="el" href="dir_3a6c15c3af10687155ae4e4ab6fed6bb.html">robotics</a></li><li class="navelem"><a class="el" href="dir_b32a5aa537ae57d6fb3a25dd3a53de7b.html">kinematics</a></li><li class="navelem"><a class="el" href="dir_f3f452083f6dd0a6a501934e851603b2.html">special_geometries</a></li><li class="navelem"><a class="el" href="dir_440060a5ea7ba3cfc11cce584d9e7fb5.html">pr2</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_c8fa76d8dc1b9e06ff8aeb3121608b1b.html">software</a></li><li class="navelem"><a class="el" href="dir_d167020c71189344e6919b44a946aaad.html">python</a></li><li class="navelem"><a class="el" href="dir_ad6ac650c21668f5e5424e76dfdd9d6e.html">magiks</a></li><li class="navelem"><a class="el" href="dir_83494d7cb55058a24e6780325e1a8d87.html">specific_geometries</a></li><li class="navelem"><a class="el" href="dir_ae19f5b9afd9e89376a9d25031fb8037.html">pr2</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#namespaces">Namespaces</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
@@ -97,191 +100,188 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <p><a href="pyride__interpreter_8py_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
+Namespaces</h2></td></tr>
+<tr class="memitem:namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html">magiks.specific_geometries.pr2.pyride_interpreter</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a7128adf0d6165ba477d597466c1d3176"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.on_move_arm_finished</b></td></tr>
-<tr class="memdesc:a7128adf0d6165ba477d597466c1d3176"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function for arm reach: This function is called when the arm joints reach their target values Global variable larm_reached or rarm_reached will be switched to True depending on which arm is specified by argument is_left_arm.  <a href="#a7128adf0d6165ba477d597466c1d3176">More...</a><br /></td></tr>
-<tr class="separator:a7128adf0d6165ba477d597466c1d3176"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2d304c2b86b3751be213afc2a599f0be"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.on_move_arm_failed</b></td></tr>
-<tr class="memdesc:a2d304c2b86b3751be213afc2a599f0be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function for arm reach failure: This function is called when the arm joints fail to reach their target values Global variable larm_failed or rarm_failed will be switched to True depending on which arm is specified by argument is_left_arm.  <a href="#a2d304c2b86b3751be213afc2a599f0be">More...</a><br /></td></tr>
-<tr class="separator:a2d304c2b86b3751be213afc2a599f0be"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a969b7f07b5b02e77e598ac75a106930c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a969b7f07b5b02e77e598ac75a106930c"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.on_move_body_finished</b></td></tr>
-<tr class="separator:a969b7f07b5b02e77e598ac75a106930c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa286c3ed68d82c1c6e5e785ed36064bf"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa286c3ed68d82c1c6e5e785ed36064bf"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.on_move_body_failed</b></td></tr>
-<tr class="separator:aa286c3ed68d82c1c6e5e785ed36064bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a319d01ff588d01285a7d30d51cda8e20"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a319d01ff588d01285a7d30d51cda8e20"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.on_base_laser</b></td></tr>
-<tr class="separator:a319d01ff588d01285a7d30d51cda8e20"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aba3184198c1456fc575cdbcb6c212f73"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aba3184198c1456fc575cdbcb6c212f73"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.on_tilt_laser</b></td></tr>
-<tr class="separator:aba3184198c1456fc575cdbcb6c212f73"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ea7f3aca13d75b218bb261efeb12ca5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8ea7f3aca13d75b218bb261efeb12ca5"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.set_callback_functions</b></td></tr>
-<tr class="separator:a8ea7f3aca13d75b218bb261efeb12ca5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab06bf593253d9f8df5e5dbe1e244cb05"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.gen_larm_joint_dict</b></td></tr>
-<tr class="memdesc:ab06bf593253d9f8df5e5dbe1e244cb05"><td class="mdescLeft">&#160;</td><td class="mdescRight">Use this function to convert a task for left arm joint move, into a joint dictionary known by pyride.  <a href="#ab06bf593253d9f8df5e5dbe1e244cb05">More...</a><br /></td></tr>
-<tr class="separator:ab06bf593253d9f8df5e5dbe1e244cb05"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51573c0d4760c0c68ccab25bcfc71147"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a51573c0d4760c0c68ccab25bcfc71147"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.gen_rarm_joint_dict</b></td></tr>
-<tr class="separator:a51573c0d4760c0c68ccab25bcfc71147"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a73897ae3e50918fa76b1a471719c2509"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a73897ae3e50918fa76b1a471719c2509"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.gen_rarm_joint_posvel_dict</b></td></tr>
-<tr class="separator:a73897ae3e50918fa76b1a471719c2509"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a05bcde944114e0d38695c396a9cfd36f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a05bcde944114e0d38695c396a9cfd36f"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.gen_larm_joint_posvel_dict</b></td></tr>
-<tr class="separator:a05bcde944114e0d38695c396a9cfd36f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a405172feef272ae0c17c7c44731acb9d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a405172feef272ae0c17c7c44731acb9d"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.gen_rarm_joint_vector_from_dic</b></td></tr>
-<tr class="separator:a405172feef272ae0c17c7c44731acb9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac81d7a323a0f04e4ac19c06f600cc0c1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac81d7a323a0f04e4ac19c06f600cc0c1"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.gen_larm_joint_vector_from_dic</b></td></tr>
-<tr class="separator:ac81d7a323a0f04e4ac19c06f600cc0c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6ccea62db809ecb765f94a5404e87372"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_shoulder_pan_joint</b></td></tr>
-<tr class="separator:a6ccea62db809ecb765f94a5404e87372"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a93ad3320a61b4771758b543e834210c9"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_shoulder_pan_joint</b></td></tr>
-<tr class="separator:a93ad3320a61b4771758b543e834210c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af6fbe04798357dc6dcca0d3bf1dd5a2c"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_shoulder_lift_joint</b></td></tr>
-<tr class="separator:af6fbe04798357dc6dcca0d3bf1dd5a2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9d193e6ed3a111c3be00b754c3d8a499"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_shoulder_lift_joint</b></td></tr>
-<tr class="separator:a9d193e6ed3a111c3be00b754c3d8a499"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a766312e1afdc61e57a734cfd08aa6ae1"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_elbow_flex_joint</b></td></tr>
-<tr class="separator:a766312e1afdc61e57a734cfd08aa6ae1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30b3f4b3fc2df8be6476bf64da9cce07"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_elbow_flex_joint</b></td></tr>
-<tr class="separator:a30b3f4b3fc2df8be6476bf64da9cce07"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ff682195c614ebbd9bb45b876f69053"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a9ff682195c614ebbd9bb45b876f69053"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_joints</b></td></tr>
-<tr class="separator:a9ff682195c614ebbd9bb45b876f69053"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:addd2099e81d1f363e50e917a2deab0b8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="addd2099e81d1f363e50e917a2deab0b8"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_joints</b></td></tr>
-<tr class="separator:addd2099e81d1f363e50e917a2deab0b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abd2c11bf0e021f03f4342d499e4c13c7"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_wrist_position</b></td></tr>
-<tr class="separator:abd2c11bf0e021f03f4342d499e4c13c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abef36a7c89483f90c0ccdee0ec46929c"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_wrist_position</b></td></tr>
-<tr class="separator:abef36a7c89483f90c0ccdee0ec46929c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab1f46acf51366730acbf7f87894dda5f"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_elbow_position</b></td></tr>
-<tr class="separator:ab1f46acf51366730acbf7f87894dda5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc21319269d2de0d21e14b84847aa8f2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_elbow_position</b></td></tr>
-<tr class="separator:afc21319269d2de0d21e14b84847aa8f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa4fcb585dcda536a4e4f96ada7d5d0b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.pos_rarm_grip_wrt_tor_shpan</b></td></tr>
-<tr class="separator:aaa4fcb585dcda536a4e4f96ada7d5d0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5cff40acac51816dbdd508eab1373757"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.pos_larm_grip_wrt_tor</b></td></tr>
-<tr class="separator:a5cff40acac51816dbdd508eab1373757"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a40ad9b9adda97f63e5f90467d72150e7"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.pos_rarm_grip_wrt_tor</b></td></tr>
-<tr class="separator:a40ad9b9adda97f63e5f90467d72150e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac25eaf6d320bc06e5c121158f11f3776"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.pos_larm_grip_wrt_tor_shpan</b></td></tr>
-<tr class="separator:ac25eaf6d320bc06e5c121158f11f3776"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a566aa49b562b12952880d8191cb43f6b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.pos_rarm_grip</b></td></tr>
-<tr class="separator:a566aa49b562b12952880d8191cb43f6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5768db368bde11ad614d57e9dc9042c6"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.pos_larm_grip</b></td></tr>
-<tr class="separator:a5768db368bde11ad614d57e9dc9042c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aee4b31828af9cfa0bdb587f61973e068"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aee4b31828af9cfa0bdb587f61973e068"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.body_position</b></td></tr>
-<tr class="separator:aee4b31828af9cfa0bdb587f61973e068"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a02227bd47c4622c40b9d4470902ab87b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a02227bd47c4622c40b9d4470902ab87b"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.body_angle</b></td></tr>
-<tr class="separator:a02227bd47c4622c40b9d4470902ab87b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a06e64fbc6371b06219ad58e3c696e44c"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.bl_midpoint</b></td></tr>
-<tr class="separator:a06e64fbc6371b06219ad58e3c696e44c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4310f1dfc5ccfeedacc8a514ad40f6f2"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a4310f1dfc5ccfeedacc8a514ad40f6f2"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.activate_base_laser</b></td></tr>
-<tr class="separator:a4310f1dfc5ccfeedacc8a514ad40f6f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6dc7d559680b03297c803c07a9b21eea"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6dc7d559680b03297c803c07a9b21eea"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.activate_tilt_laser</b></td></tr>
-<tr class="separator:a6dc7d559680b03297c803c07a9b21eea"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab62bc0580c60662e70a62bd1ee64ac7a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab62bc0580c60662e70a62bd1ee64ac7a"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.deactivate_base_laser</b></td></tr>
-<tr class="separator:ab62bc0580c60662e70a62bd1ee64ac7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af430e9aa02c8bdcb5b6534e1cb87a09e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af430e9aa02c8bdcb5b6534e1cb87a09e"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.deactivate_tilt_laser</b></td></tr>
-<tr class="separator:af430e9aa02c8bdcb5b6534e1cb87a09e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf4c5cef7e52ab053e2c45b73743d1e1"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.set_lg</b></td></tr>
-<tr class="separator:aaf4c5cef7e52ab053e2c45b73743d1e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6a9a81db02fcd6e2c0ed4dbb28de8c83"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.set_rg</b></td></tr>
-<tr class="separator:a6a9a81db02fcd6e2c0ed4dbb28de8c83"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aac69f9dc0e2d5c6fbbd6b2ef8470fbce"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aac69f9dc0e2d5c6fbbd6b2ef8470fbce"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.twist_forearm</b></td></tr>
-<tr class="separator:aac69f9dc0e2d5c6fbbd6b2ef8470fbce"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aebce1633024a73b8fe1c87d98eb435ec"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aebce1633024a73b8fe1c87d98eb435ec"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.twist_lg</b></td></tr>
-<tr class="separator:aebce1633024a73b8fe1c87d98eb435ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a246589748a0419acc75d3d2bf101e582"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a246589748a0419acc75d3d2bf101e582"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.twist_rg</b></td></tr>
-<tr class="separator:a246589748a0419acc75d3d2bf101e582"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af04c78234c1fa19ce9329ac938e1b78c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af04c78234c1fa19ce9329ac938e1b78c"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.look_lg</b></td></tr>
-<tr class="separator:af04c78234c1fa19ce9329ac938e1b78c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a59546e62e0647ef275b4ee7a0e909835"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a59546e62e0647ef275b4ee7a0e909835"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.look_rg</b></td></tr>
-<tr class="separator:a59546e62e0647ef275b4ee7a0e909835"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3ec9a6fe574e7a7f8823a531caddf0b9"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a3ec9a6fe574e7a7f8823a531caddf0b9"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.take_rarm_to</b></td></tr>
-<tr class="separator:a3ec9a6fe574e7a7f8823a531caddf0b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3b0b35551a57ff056133863fcf34e6be"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a3b0b35551a57ff056133863fcf34e6be"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.take_larm_to</b></td></tr>
-<tr class="separator:a3b0b35551a57ff056133863fcf34e6be"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a62617caca791e0a1f0a78a138326ce0a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a62617caca791e0a1f0a78a138326ce0a"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.take_robot_to</b></td></tr>
-<tr class="separator:a62617caca791e0a1f0a78a138326ce0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a57408e5a005231afea7b3c46d1065169"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a57408e5a005231afea7b3c46d1065169"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rotate_robot_to</b></td></tr>
-<tr class="separator:a57408e5a005231afea7b3c46d1065169"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa133d463af1258305980e9d613cf65c1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa133d463af1258305980e9d613cf65c1"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.move_robot_to</b></td></tr>
-<tr class="separator:aa133d463af1258305980e9d613cf65c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a21181b2105f2143b7e86137b52158819"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.finished</b></td></tr>
-<tr class="separator:a21181b2105f2143b7e86137b52158819"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a92a168363d7ead8d8f07330c595d87f3"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.wait_until_finished</b></td></tr>
-<tr class="separator:a92a168363d7ead8d8f07330c595d87f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a851711ec81e42f1a0ac09e0528f5c18a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a851711ec81e42f1a0ac09e0528f5c18a"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.run_navigation_trajectory</b></td></tr>
-<tr class="separator:a851711ec81e42f1a0ac09e0528f5c18a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84e23297b54a489e1637ce4351b20d32"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.run_config_trajectory</b></td></tr>
-<tr class="memdesc:a84e23297b54a489e1637ce4351b20d32"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs a given arm joint trajectory on the robot.  <a href="#a84e23297b54a489e1637ce4351b20d32">More...</a><br /></td></tr>
-<tr class="separator:a84e23297b54a489e1637ce4351b20d32"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9a60f61d732962cd3be1ec2cf721c2a2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a9a60f61d732962cd3be1ec2cf721c2a2">on_move_arm_finished</a></td></tr>
+<tr class="memdesc:a9a60f61d732962cd3be1ec2cf721c2a2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function for arm reach: This function is called when the arm joints reach their target values Global variable larm_reached or rarm_reached will be switched to True depending on which arm is specified by argument is_left_arm.  <a href="#a9a60f61d732962cd3be1ec2cf721c2a2">More...</a><br /></td></tr>
+<tr class="separator:a9a60f61d732962cd3be1ec2cf721c2a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a315e925d79ac6a27bf5141ea63084edd"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a315e925d79ac6a27bf5141ea63084edd">on_move_arm_failed</a></td></tr>
+<tr class="memdesc:a315e925d79ac6a27bf5141ea63084edd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback function for arm reach failure: This function is called when the arm joints fail to reach their target values Global variable larm_failed or rarm_failed will be switched to True depending on which arm is specified by argument is_left_arm.  <a href="#a315e925d79ac6a27bf5141ea63084edd">More...</a><br /></td></tr>
+<tr class="separator:a315e925d79ac6a27bf5141ea63084edd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a061b8c39404c29f5228626424f913ab4"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a061b8c39404c29f5228626424f913ab4">on_move_body_finished</a></td></tr>
+<tr class="separator:a061b8c39404c29f5228626424f913ab4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b193442cc53a69d7f9f58dde23ca19e"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a5b193442cc53a69d7f9f58dde23ca19e">on_move_body_failed</a></td></tr>
+<tr class="separator:a5b193442cc53a69d7f9f58dde23ca19e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a305c6d760285b2139d9df2074ac28aba"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a305c6d760285b2139d9df2074ac28aba">on_base_laser</a></td></tr>
+<tr class="separator:a305c6d760285b2139d9df2074ac28aba"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af86313049dc5f0294112156fd6225e70"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#af86313049dc5f0294112156fd6225e70">on_tilt_laser</a></td></tr>
+<tr class="separator:af86313049dc5f0294112156fd6225e70"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a79322b145f8b2fdb4c9ec83288307162"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a79322b145f8b2fdb4c9ec83288307162">set_callback_functions</a></td></tr>
+<tr class="separator:a79322b145f8b2fdb4c9ec83288307162"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abc08b2946d4eff705c6d8daf696c1540"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#abc08b2946d4eff705c6d8daf696c1540">on_trajectory_received</a></td></tr>
+<tr class="separator:abc08b2946d4eff705c6d8daf696c1540"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5df4c58f927603f56e0d133ddd30d7bc"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a5df4c58f927603f56e0d133ddd30d7bc">gen_larm_joint_dict</a></td></tr>
+<tr class="memdesc:a5df4c58f927603f56e0d133ddd30d7bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Use this function to convert a vector of left arm joint values, into a joint dictionary known by pyride.  <a href="#a5df4c58f927603f56e0d133ddd30d7bc">More...</a><br /></td></tr>
+<tr class="separator:a5df4c58f927603f56e0d133ddd30d7bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afdd62da1f3bc45958b7fa6423fb31c34"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#afdd62da1f3bc45958b7fa6423fb31c34">gen_rarm_joint_dict</a></td></tr>
+<tr class="separator:afdd62da1f3bc45958b7fa6423fb31c34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa09ed24abc3dddce4fe2473ee790f0a9"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aa09ed24abc3dddce4fe2473ee790f0a9">gen_rarm_joint_posvel_dict</a></td></tr>
+<tr class="separator:aa09ed24abc3dddce4fe2473ee790f0a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a013f3a5ddc00a2cf9554bc509e83a967"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a013f3a5ddc00a2cf9554bc509e83a967">gen_larm_joint_posvel_dict</a></td></tr>
+<tr class="separator:a013f3a5ddc00a2cf9554bc509e83a967"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aab94d2bbe69af5f4811d819f0af4b6f3"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aab94d2bbe69af5f4811d819f0af4b6f3">gen_larm_joint_vel_dict</a></td></tr>
+<tr class="separator:aab94d2bbe69af5f4811d819f0af4b6f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae71bebe5097f7fe4324863880d0d1020"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ae71bebe5097f7fe4324863880d0d1020">gen_rarm_joint_vel_dict</a></td></tr>
+<tr class="separator:ae71bebe5097f7fe4324863880d0d1020"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d73cd3f2813c057483ec528e6407ba7"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a7d73cd3f2813c057483ec528e6407ba7">gen_rarm_joint_vector_from_dic</a></td></tr>
+<tr class="separator:a7d73cd3f2813c057483ec528e6407ba7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6c2e645ee72ab9d83c91877296f8495e"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a6c2e645ee72ab9d83c91877296f8495e">gen_larm_joint_vector_from_dic</a></td></tr>
+<tr class="separator:a6c2e645ee72ab9d83c91877296f8495e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a16a264fec66f7c2c57b43a8e36d33e87"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a16a264fec66f7c2c57b43a8e36d33e87">larm_shoulder_pan_joint</a></td></tr>
+<tr class="separator:a16a264fec66f7c2c57b43a8e36d33e87"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ddaafea58ed1e779e482aa8d64e09e8"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a0ddaafea58ed1e779e482aa8d64e09e8">rarm_shoulder_pan_joint</a></td></tr>
+<tr class="separator:a0ddaafea58ed1e779e482aa8d64e09e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a81f228db4d459a738d8b37d24410dc57"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a81f228db4d459a738d8b37d24410dc57">rarm_shoulder_lift_joint</a></td></tr>
+<tr class="separator:a81f228db4d459a738d8b37d24410dc57"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3fbfad1ca1e811ff3b31d1672f5001c2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a3fbfad1ca1e811ff3b31d1672f5001c2">larm_shoulder_lift_joint</a></td></tr>
+<tr class="separator:a3fbfad1ca1e811ff3b31d1672f5001c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d8670404f9b20480489ff48a0d7d3e7"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a2d8670404f9b20480489ff48a0d7d3e7">larm_elbow_flex_joint</a></td></tr>
+<tr class="separator:a2d8670404f9b20480489ff48a0d7d3e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7ed48b40f95db55969f0ee0f2cb04403"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a7ed48b40f95db55969f0ee0f2cb04403">rarm_elbow_flex_joint</a></td></tr>
+<tr class="separator:a7ed48b40f95db55969f0ee0f2cb04403"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19ad74326dbd64d5df74a9121cba9a7a"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a19ad74326dbd64d5df74a9121cba9a7a">rarm_joints</a></td></tr>
+<tr class="separator:a19ad74326dbd64d5df74a9121cba9a7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae94fbfab243fc8dba51939a690760ba3"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ae94fbfab243fc8dba51939a690760ba3">larm_joints</a></td></tr>
+<tr class="separator:ae94fbfab243fc8dba51939a690760ba3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3abcc1f8f7e8862061442857be312171"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a3abcc1f8f7e8862061442857be312171">larm_wrist_position</a></td></tr>
+<tr class="separator:a3abcc1f8f7e8862061442857be312171"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0c1ebcb17a907accdaed1b6e33f13c5a"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a0c1ebcb17a907accdaed1b6e33f13c5a">larm_wrist_orientation</a></td></tr>
+<tr class="separator:a0c1ebcb17a907accdaed1b6e33f13c5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c1b17b7c73d9266a0f2746816e19d18"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a1c1b17b7c73d9266a0f2746816e19d18">rarm_wrist_orientation</a></td></tr>
+<tr class="separator:a1c1b17b7c73d9266a0f2746816e19d18"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af324603c7b3dcbe22a4c3cc8ee25787d"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#af324603c7b3dcbe22a4c3cc8ee25787d">rarm_wrist_position</a></td></tr>
+<tr class="separator:af324603c7b3dcbe22a4c3cc8ee25787d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a727d642ba8b58dd2b066c3f43a6ac995"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a727d642ba8b58dd2b066c3f43a6ac995">rarm_elbow_position</a></td></tr>
+<tr class="separator:a727d642ba8b58dd2b066c3f43a6ac995"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a40d01e301c648faa9bcfeafca811c987"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a40d01e301c648faa9bcfeafca811c987">larm_elbow_position</a></td></tr>
+<tr class="separator:a40d01e301c648faa9bcfeafca811c987"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac74cfbd83c47d66ffe2a1ee908123d3d"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ac74cfbd83c47d66ffe2a1ee908123d3d">pos_rarm_grip_wrt_tor_shpan</a></td></tr>
+<tr class="separator:ac74cfbd83c47d66ffe2a1ee908123d3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8d973f2aa123ffc591539c603524d1c1"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a8d973f2aa123ffc591539c603524d1c1">pos_larm_grip_wrt_tor</a></td></tr>
+<tr class="separator:a8d973f2aa123ffc591539c603524d1c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad0242f314b748b60011c6a6365d71bf2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ad0242f314b748b60011c6a6365d71bf2">pos_rarm_grip_wrt_tor</a></td></tr>
+<tr class="separator:ad0242f314b748b60011c6a6365d71bf2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a65f5114995da77d061a7f2bf16d37380"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a65f5114995da77d061a7f2bf16d37380">pos_larm_grip_wrt_tor_shpan</a></td></tr>
+<tr class="separator:a65f5114995da77d061a7f2bf16d37380"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac2806c23ffc71c5f00eb9143cb6d10ce"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ac2806c23ffc71c5f00eb9143cb6d10ce">pos_rarm_grip</a></td></tr>
+<tr class="separator:ac2806c23ffc71c5f00eb9143cb6d10ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae8d5d7ab4326ba0651fc0814670e25bc"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ae8d5d7ab4326ba0651fc0814670e25bc">pos_larm_grip</a></td></tr>
+<tr class="separator:ae8d5d7ab4326ba0651fc0814670e25bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae4f50f53d06d238a6e77ebf7417c8827"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ae4f50f53d06d238a6e77ebf7417c8827">body_position</a></td></tr>
+<tr class="separator:ae4f50f53d06d238a6e77ebf7417c8827"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a932e9314923b09920eeaf7e5d68a6ce1"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a932e9314923b09920eeaf7e5d68a6ce1">body_angle</a></td></tr>
+<tr class="separator:a932e9314923b09920eeaf7e5d68a6ce1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee9fbfa7f457f72cc194531a156f5d04"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aee9fbfa7f457f72cc194531a156f5d04">bl_midpoint</a></td></tr>
+<tr class="separator:aee9fbfa7f457f72cc194531a156f5d04"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae5bb932600b149af46c3e56ac58eec7f"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ae5bb932600b149af46c3e56ac58eec7f">activate_trajectory_input</a></td></tr>
+<tr class="separator:ae5bb932600b149af46c3e56ac58eec7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b6b965a017ef9c21ba7cd7d04129205"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a3b6b965a017ef9c21ba7cd7d04129205">deactivate_trajectory_input</a></td></tr>
+<tr class="separator:a3b6b965a017ef9c21ba7cd7d04129205"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afdf7192afa4f52a5ecc5d5d3a11f2b04"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#afdf7192afa4f52a5ecc5d5d3a11f2b04">activate_base_laser</a></td></tr>
+<tr class="separator:afdf7192afa4f52a5ecc5d5d3a11f2b04"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a83d87a79ff4339129422b83f40a92f8c"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a83d87a79ff4339129422b83f40a92f8c">activate_tilt_laser</a></td></tr>
+<tr class="separator:a83d87a79ff4339129422b83f40a92f8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7f3d94d8de0822045c2d6f8af8cff368"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a7f3d94d8de0822045c2d6f8af8cff368">deactivate_base_laser</a></td></tr>
+<tr class="separator:a7f3d94d8de0822045c2d6f8af8cff368"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a279d9520eabe2bf037b409dda4c1e194"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a279d9520eabe2bf037b409dda4c1e194">deactivate_tilt_laser</a></td></tr>
+<tr class="separator:a279d9520eabe2bf037b409dda4c1e194"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a867ed52aa8f041bf6edeae93916c2aad"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a867ed52aa8f041bf6edeae93916c2aad">set_lg</a></td></tr>
+<tr class="separator:a867ed52aa8f041bf6edeae93916c2aad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac190b6c6f34683f285996908b2a2e0d2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ac190b6c6f34683f285996908b2a2e0d2">set_rg</a></td></tr>
+<tr class="separator:ac190b6c6f34683f285996908b2a2e0d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6814f94e260dadc9e6ebdc215615bc40"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a6814f94e260dadc9e6ebdc215615bc40">twist_forearm</a></td></tr>
+<tr class="separator:a6814f94e260dadc9e6ebdc215615bc40"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a875a54cf2083215dd7f511741f2dbc37"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a875a54cf2083215dd7f511741f2dbc37">twist_lg</a></td></tr>
+<tr class="separator:a875a54cf2083215dd7f511741f2dbc37"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a413a3ccbb37b3d8eb21d78add2bdbb59"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a413a3ccbb37b3d8eb21d78add2bdbb59">twist_rg</a></td></tr>
+<tr class="separator:a413a3ccbb37b3d8eb21d78add2bdbb59"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a170a95aedec0443f19f70d594b15fc3a"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a170a95aedec0443f19f70d594b15fc3a">look_lg</a></td></tr>
+<tr class="separator:a170a95aedec0443f19f70d594b15fc3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a76fcb2d94e84d0a8983fce09e4a8bf13"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a76fcb2d94e84d0a8983fce09e4a8bf13">look_rg</a></td></tr>
+<tr class="separator:a76fcb2d94e84d0a8983fce09e4a8bf13"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab838670398676d027c38f7cfc0b140f3"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ab838670398676d027c38f7cfc0b140f3">take_rarm_to</a></td></tr>
+<tr class="separator:ab838670398676d027c38f7cfc0b140f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a869434351b249a275ef7b736e431bad7"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a869434351b249a275ef7b736e431bad7">take_larm_to</a></td></tr>
+<tr class="separator:a869434351b249a275ef7b736e431bad7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a186c6731dee926fb8ae29408bdfc7cfd"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a186c6731dee926fb8ae29408bdfc7cfd">take_robot_to</a></td></tr>
+<tr class="separator:a186c6731dee926fb8ae29408bdfc7cfd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa828466567f04a5d39e00c13dcb59b9"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aaa828466567f04a5d39e00c13dcb59b9">rotate_robot_to</a></td></tr>
+<tr class="separator:aaa828466567f04a5d39e00c13dcb59b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a73c6751d6d8708cb9264efcd09e3a8a2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a73c6751d6d8708cb9264efcd09e3a8a2">move_robot_to</a></td></tr>
+<tr class="separator:a73c6751d6d8708cb9264efcd09e3a8a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada3794ef77e1fd1b28f31ff056a3e659"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ada3794ef77e1fd1b28f31ff056a3e659">finished</a></td></tr>
+<tr class="separator:ada3794ef77e1fd1b28f31ff056a3e659"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad3fb632d8689f942c22d4b3f5172d7f7"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ad3fb632d8689f942c22d4b3f5172d7f7">wait_until_finished</a></td></tr>
+<tr class="separator:ad3fb632d8689f942c22d4b3f5172d7f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abbe06d6da7d0132c5a7cb33c5dd3d454"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#abbe06d6da7d0132c5a7cb33c5dd3d454">run_navigation_trajectory</a></td></tr>
+<tr class="separator:abbe06d6da7d0132c5a7cb33c5dd3d454"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a485f57fd05b20f368f32d3b187bfd4a2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a485f57fd05b20f368f32d3b187bfd4a2">run_config_trajectory</a></td></tr>
+<tr class="memdesc:a485f57fd05b20f368f32d3b187bfd4a2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs a given arm joint trajectory on the robot.  <a href="#a485f57fd05b20f368f32d3b187bfd4a2">More...</a><br /></td></tr>
+<tr class="separator:a485f57fd05b20f368f32d3b187bfd4a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac543968423446270734d08b1c88d3029"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ac543968423446270734d08b1c88d3029">send_arm_joint_speed</a></td></tr>
+<tr class="separator:ac543968423446270734d08b1c88d3029"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:a76f6b0b814159d8030ebf45ab10dcc70"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_reached</b> = True</td></tr>
-<tr class="memdesc:a76f6b0b814159d8030ebf45ab10dcc70"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the left arm joints have reached their target.  <a href="#a76f6b0b814159d8030ebf45ab10dcc70">More...</a><br /></td></tr>
-<tr class="separator:a76f6b0b814159d8030ebf45ab10dcc70"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adc7cf801ce5635a45f7108dee6e25a96"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_reached</b> = True</td></tr>
-<tr class="memdesc:adc7cf801ce5635a45f7108dee6e25a96"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the right arm joints have reached their target.  <a href="#adc7cf801ce5635a45f7108dee6e25a96">More...</a><br /></td></tr>
-<tr class="separator:adc7cf801ce5635a45f7108dee6e25a96"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4e83b92d025a273acd927bb7f8eedc62"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.body_reached</b> = False</td></tr>
-<tr class="memdesc:a4e83b92d025a273acd927bb7f8eedc62"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the body joints (non-arm joints) have reached their target.  <a href="#a4e83b92d025a273acd927bb7f8eedc62">More...</a><br /></td></tr>
-<tr class="separator:a4e83b92d025a273acd927bb7f8eedc62"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad65aa9a46da22e7b920f50d461ba75f3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.larm_failed</b> = False</td></tr>
-<tr class="memdesc:ad65aa9a46da22e7b920f50d461ba75f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the left arm joints failed to reach their target.  <a href="#ad65aa9a46da22e7b920f50d461ba75f3">More...</a><br /></td></tr>
-<tr class="separator:ad65aa9a46da22e7b920f50d461ba75f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70e612cced1b0149e1259e77de123ce8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a70e612cced1b0149e1259e77de123ce8"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.rarm_failed</b> = False</td></tr>
-<tr class="separator:a70e612cced1b0149e1259e77de123ce8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6299ea14fc4a00a7b20db6afccded465"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6299ea14fc4a00a7b20db6afccded465"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.body_failed</b> = False</td></tr>
-<tr class="separator:a6299ea14fc4a00a7b20db6afccded465"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5527e03f2a5e5c17c955c07e804585bc"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5527e03f2a5e5c17c955c07e804585bc"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.counter</b> = 0</td></tr>
-<tr class="separator:a5527e03f2a5e5c17c955c07e804585bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9d7994322f1d816ebd55ebc9e9d48f40"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.bl_cnt</b> = 0</td></tr>
-<tr class="memdesc:a9d7994322f1d816ebd55ebc9e9d48f40"><td class="mdescLeft">&#160;</td><td class="mdescRight">Counter for the base laser scan.  <a href="#a9d7994322f1d816ebd55ebc9e9d48f40">More...</a><br /></td></tr>
-<tr class="separator:a9d7994322f1d816ebd55ebc9e9d48f40"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0bd58ba3ad74eda1a470cfa7c549f748"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0bd58ba3ad74eda1a470cfa7c549f748"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.bl_dist</b> = None</td></tr>
-<tr class="separator:a0bd58ba3ad74eda1a470cfa7c549f748"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a264caa852bd7123dbfbbfea2b345b7ca"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a264caa852bd7123dbfbbfea2b345b7ca"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.bl_active</b> = False</td></tr>
-<tr class="separator:a264caa852bd7123dbfbbfea2b345b7ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7a983017a35a225c5ec12e47390a000b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7a983017a35a225c5ec12e47390a000b"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.tl_cnt</b> = 0</td></tr>
-<tr class="separator:a7a983017a35a225c5ec12e47390a000b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1c7c8a420b3322c2cea6052a77eb2c30"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1c7c8a420b3322c2cea6052a77eb2c30"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.tl_dist</b> = None</td></tr>
-<tr class="separator:a1c7c8a420b3322c2cea6052a77eb2c30"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acbe7d62a81dde2830fffdfc811f1d08d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="acbe7d62a81dde2830fffdfc811f1d08d"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics.kinematics.special_geometries.pr2.pyride_interpreter.tl_active</b> = False</td></tr>
-<tr class="separator:acbe7d62a81dde2830fffdfc811f1d08d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b4d10fac436a7bef3d193a75d420a29"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a8b4d10fac436a7bef3d193a75d420a29">larm_reached</a> = True</td></tr>
+<tr class="memdesc:a8b4d10fac436a7bef3d193a75d420a29"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the left arm joints have reached their target.  <a href="#a8b4d10fac436a7bef3d193a75d420a29">More...</a><br /></td></tr>
+<tr class="separator:a8b4d10fac436a7bef3d193a75d420a29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa98f55a31df2ef309bbcbaea1ebc1335"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aa98f55a31df2ef309bbcbaea1ebc1335">rarm_reached</a> = True</td></tr>
+<tr class="memdesc:aa98f55a31df2ef309bbcbaea1ebc1335"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the right arm joints have reached their target.  <a href="#aa98f55a31df2ef309bbcbaea1ebc1335">More...</a><br /></td></tr>
+<tr class="separator:aa98f55a31df2ef309bbcbaea1ebc1335"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a68d7ae83291499dc7ce6b62fd2d733"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a1a68d7ae83291499dc7ce6b62fd2d733">body_reached</a> = False</td></tr>
+<tr class="memdesc:a1a68d7ae83291499dc7ce6b62fd2d733"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the body joints (non-arm joints) have reached their target.  <a href="#a1a68d7ae83291499dc7ce6b62fd2d733">More...</a><br /></td></tr>
+<tr class="separator:a1a68d7ae83291499dc7ce6b62fd2d733"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a383bae452ca1897184e6bd510cf729d7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a383bae452ca1897184e6bd510cf729d7">larm_failed</a> = False</td></tr>
+<tr class="memdesc:a383bae452ca1897184e6bd510cf729d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">A boolean global variable indicating if the left arm joints failed to reach their target.  <a href="#a383bae452ca1897184e6bd510cf729d7">More...</a><br /></td></tr>
+<tr class="separator:a383bae452ca1897184e6bd510cf729d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a46095dbcb585e46ea29086fb466e2d42"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a46095dbcb585e46ea29086fb466e2d42">rarm_failed</a> = False</td></tr>
+<tr class="separator:a46095dbcb585e46ea29086fb466e2d42"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a384b5f505ec793932b78a79d0a66b536"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a384b5f505ec793932b78a79d0a66b536">body_failed</a> = False</td></tr>
+<tr class="separator:a384b5f505ec793932b78a79d0a66b536"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a617a47c70795bcff659815ad0efd2266"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a617a47c70795bcff659815ad0efd2266">counter</a> = 0</td></tr>
+<tr class="separator:a617a47c70795bcff659815ad0efd2266"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a853f84466cc01cbf502ff3b915da0a7b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a853f84466cc01cbf502ff3b915da0a7b">bl_cnt</a> = 0</td></tr>
+<tr class="memdesc:a853f84466cc01cbf502ff3b915da0a7b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Counter for the base laser scan.  <a href="#a853f84466cc01cbf502ff3b915da0a7b">More...</a><br /></td></tr>
+<tr class="separator:a853f84466cc01cbf502ff3b915da0a7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a84578a08dd79c66a9dd79be6b7229409"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a84578a08dd79c66a9dd79be6b7229409">rt_cnt</a> = 0</td></tr>
+<tr class="memdesc:a84578a08dd79c66a9dd79be6b7229409"><td class="mdescLeft">&#160;</td><td class="mdescRight">Counter for the raw trajectory function calls.  <a href="#a84578a08dd79c66a9dd79be6b7229409">More...</a><br /></td></tr>
+<tr class="separator:a84578a08dd79c66a9dd79be6b7229409"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa537b48422b63178b43fa689b144e5c8"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aa537b48422b63178b43fa689b144e5c8">bl_dist</a> = None</td></tr>
+<tr class="separator:aa537b48422b63178b43fa689b144e5c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8a4b54b9fa1f66acc016eb8be48f605f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a8a4b54b9fa1f66acc016eb8be48f605f">bl_active</a> = False</td></tr>
+<tr class="separator:a8a4b54b9fa1f66acc016eb8be48f605f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a32e4bcc198392a3a0854ad3b0d40c8e7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a32e4bcc198392a3a0854ad3b0d40c8e7">tl_cnt</a> = 0</td></tr>
+<tr class="separator:a32e4bcc198392a3a0854ad3b0d40c8e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9f464fc36f2750a97825fa79276aebdc"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a9f464fc36f2750a97825fa79276aebdc">tl_dist</a> = None</td></tr>
+<tr class="separator:a9f464fc36f2750a97825fa79276aebdc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2abc6c378d497c79e403b6fda5d21dc3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a2abc6c378d497c79e403b6fda5d21dc3">tl_active</a> = False</td></tr>
+<tr class="separator:a2abc6c378d497c79e403b6fda5d21dc3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acbace55bfff3f53abd43981853fafa1a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#acbace55bfff3f53abd43981853fafa1a">rt_orientation</a> = None</td></tr>
+<tr class="separator:acbace55bfff3f53abd43981853fafa1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa2ab24a02e77089c1b80149da697ba45"><td class="memItemLeft" align="right" valign="top">tuple&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#aa2ab24a02e77089c1b80149da697ba45">rt_position</a> = numpy.zeros(3)</td></tr>
+<tr class="separator:aa2ab24a02e77089c1b80149da697ba45"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a87b6a6a8d2d08db32ca608c16b7138cb"><td class="memItemLeft" align="right" valign="top">tuple&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a87b6a6a8d2d08db32ca608c16b7138cb">rt_velocity</a> = numpy.zeros(3)</td></tr>
+<tr class="separator:a87b6a6a8d2d08db32ca608c16b7138cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2211109bcc8de70ade4ac931338b6c2c"><td class="memItemLeft" align="right" valign="top">tuple&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a2211109bcc8de70ade4ac931338b6c2c">rt_acceleration</a> = numpy.zeros(3)</td></tr>
+<tr class="separator:a2211109bcc8de70ade4ac931338b6c2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1845176ba57bd67c617318a5a2f0463a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a1845176ba57bd67c617318a5a2f0463a">rt_active</a> = False</td></tr>
+<tr class="separator:a1845176ba57bd67c617318a5a2f0463a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Contains simplified functions to control PR2 using pyride engine. </p>
@@ -293,14 +293,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>packages.nima.robotics
           Email(1)  : nima.ramezani@gmail.com 
           Email(2)  : Nima.RamezaniTaghiabadi@uts.edu.au 
 </pre> </dd></dl>
-<dl class="section version"><dt>Version</dt><dd>4.0</dd></dl>
-<p>Last Revision: 03 January 2015 </p>
+<dl class="section version"><dt>Version</dt><dd>5.0</dd></dl>
+<p>Last Revision: 13 May 2015 </p>
 
 <p>Definition in file <a class="el" href="pyride__interpreter_8py_source.html">pyride_interpreter.py</a>.</p>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Feb 3 2015 14:02:08 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Sun Sep 13 2015 09:38:47 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>

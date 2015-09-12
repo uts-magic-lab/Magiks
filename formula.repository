@@ -28,3 +28,5 @@
 \form#27:$ \dot{\u} $
 \form#28:$ u $
 \form#29:$ \dot{\p} $
+\form#30:\[ d(x, x_d) = \Sigma_{i = 1}^{3}(x_i - x_{di})^2 + \Sigma_{i = 1}^{3} \Sigma_{j = 1}^{3}(r_{ij} - r_{dij})^2 \]
+\form#31:$ h_{ts} = q[7] , x = q[8], y = q[9], \theta = q[10] $

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['complex_2epy',['complex.py',['../complex_8py.html',1,'']]]
+  ['discrete_2epy',['discrete.py',['../discrete_8py.html',1,'']]]
 ];
