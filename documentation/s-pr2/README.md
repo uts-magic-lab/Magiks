@@ -27,7 +27,7 @@ The existing package:
 * Is fully embedded within the ROS system and cannot be easily replaced or migrated to other systems
 * Its algorithms are only provided in binary and so not available to inspect or modify
 
-<img src="https://cloud.githubusercontent.com/assets/6646691/9621510/8ebab36a-516a-11e5-81f4-b04c9531ca7d.png" width="500">
+<img src="https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/figures/spr2_structure_diagram2.pdf" width="500">
 
 **Figure 2. S-PR2 Remote Shell Access.**
 
