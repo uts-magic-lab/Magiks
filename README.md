@@ -2,6 +2,14 @@
 
 ##Introduction
 
+MAGIKS is A numerical iterative Inverse Kinematic solver which has been developed in Python. This software is presented as a developer's package containing various functions, classes and methods for the calculation of different kinematic properties of a general chained-linke
+manipulaor with arbitrary geometry and degrees of freedom. Some of the main parameters include:
+
+* Forward Kinematics including the current position and orientation of any reference point on the manipulator (e.g. arm endeffector, elbow, ...) or a linear combination of some reference points (e.g. center of mass, middle of two arm endeffectors, ...). 
+* Values and gradients of any customized desired pose error function or displacement metrics
+* The geometric, analytic Jacobian and Jacobians customized for any desired pose displecement metric
+* Various Inverse Kinematic solutions based on different alogorithms and redundancy resolution techniqes 
+
 ##Prerequisites
 Currently, Magiks is dependant on the following Python library packages
 
@@ -24,15 +32,22 @@ First, we install required packages from the standard Ubuntu distribution reposi
 There is no standard package for crlibm library on Ubuntu/Debian system. The
 source code can be downloaded from [here](http://lipforge.ens-lyon.fr/frs/download.php/162/crlibm-1.0beta4.tar.gz). Use the following commands to compile and install the library from a terminal:
 
-1. ```tar zxf crlibm-1.0beta4.tar.gz;cd crlibm-1.0beta4```.
-2. ```./configure CPPFLAGS=-fPIC```.
-3. ```make```.
-4. ```sudo make install```.
+```
+tar zxf crlibm-1.0beta4.tar.gz;cd crlibm-1.0beta4
+./configure CPPFLAGS=-fPIC
+make
+sudo make install
+```
 
-The crlibm library should be installed under ```/usr/local/lib``` directory.
+The crlibm library should be installed under this directory:
+```
+/usr/local/lib
+``` 
 
 ### Install pyinterval package
-```sudo pip install pyinterval```
+```
+sudo pip install pyinterval
+```
 
 ### Compile and install cgkit
 cgkit also requires custom installation. The source code can be downloaded from [here](http://liquidtelecom.dl.sourceforge.net/project/cgkit/cgkit/cgkit-2.0.0/cgkit-2.0.0-py3k.tar.gz). Similar to crlibm, use the following commands to install cgkit library from a terminal:
