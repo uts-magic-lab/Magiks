@@ -79,7 +79,7 @@ You should do this for all the above packages that you installed.
 ## A quick usage of S-PR2 under Magiks
 
 S-PR2 is a part of MAGIKS that is specifically designed for PR2 humanoid robot.
-You can find more information about S-PR2 [here](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2.html).
+You can find more information about S-PR2 [here](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/README.md).
 
 To start working with S-PR2, you need to create a Skilled_PR2 object.
 
