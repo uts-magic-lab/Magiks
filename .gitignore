@@ -60,8 +60,6 @@ target/
 *.tar.gz
 
 # pics and images:
-*.png
-*.jpg
 *.bmp
 *.gif
 
