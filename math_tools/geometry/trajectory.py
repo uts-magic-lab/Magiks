@@ -898,8 +898,8 @@ class Path_Polynomial(Path):
         check phi to be valid. Many changes must be delivered. 
             1- current_position must be a function returning property pos
         '''
-        # if not gen.equal(phi, self.current_phi):
-        assert phi <= self.phi_end, genpy.err_str(__name__, self.__class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
+        phi = min(phi, self.phi_end)
+        # assert phi <= self.phi_end, genpy.err_str(__name__, self.__class__.__name__, 'set_phi', 'Given phi (' + str(phi) + ') is greater than the phase of the last key point (' + str(self.phi_end) + ')')
         assert len(self.point) > 1, genpy.err_str(__name__, self.__class__.__name__, 'value', 'Can not change the phase when there are less than two key points!')        
         self.current_phi      = phi
 

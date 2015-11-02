@@ -20,7 +20,7 @@
 import numpy as np
 import time, math
 
-import skilled_pr2
+import skilled_pr2 as spr
 import pyride_interpreter as pint
 
 from math_tools import general_math as gen
@@ -40,7 +40,7 @@ array([ -1.26299826e-01,   1.77046412e+00,  -1.02862191e+00,
          2.44565260e+00,   7.10476515e-01,  -1.30808585e+00,
          1.15357810e+00,  -4.49485156e-01,  -2.46943329e+00])
 '''
-class Writer_PR2(skilled_pr2.Skilled_PR2):
+class Writer_PR2(spr.Skilled_PR2):
     def __init__(self):
         super(Writer_PR2, self).__init__()
         self.height = 0.05
