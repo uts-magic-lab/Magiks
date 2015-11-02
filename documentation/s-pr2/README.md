@@ -13,7 +13,7 @@ The package gives PR2 robot, the skills of tracking a user-defined trajectory li
 S-PR2 provides an efficient and reliable development environment providing optimal and feasible kinematic control 
 functions for PR2 users. S-PR2 has adopted the lastest techniques of the Inverse Kinematic (IK) solution in recent years.
 
-# What is PR2?
+### What is PR2?
 
 The PR2 is a wheel-based service robot produced by 
 [Willow-Garage](https://www.willowgarage.com/)
@@ -21,12 +21,12 @@ with two 7-DOF arms, a tilting head and a sliding joint,
 adjusting the working height of the arms adding one degree of freedom
 to the system. 
 
-<img src="https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/figures/PR2_Robot_Willow_Garage_3.jpg" width="500">
+<img src="https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/figures/PR2_Robot_Willow_Garage_3.jpg" width="700">
 
-The navigating platform can move on the floor and rotate around the $z$ axis providing three extra degrees of freedom. 
+The navigating platform can move on the floor and rotate around the **z** axis providing three extra degrees of freedom. 
 In free-base mode, eleven degrees of freedom kinematically influence the position or orientation of one gripper.
 
-# Existing Package
+### Existing Package
 
 The existing [IK solver](http://wiki.ros.org/pr2_kinematics/Tutorials/Tutorial%204) for the PR2, 
 which is a part of Robot Operating System (ROS), is fast but 
@@ -41,7 +41,7 @@ The existing package:
 * Is fully embedded within the ROS system and cannot be easily replaced or migrated to other systems
 * Its algorithms are only provided in binary and so is not available to inspect or modify
 
-# Why use S-PR2?
+### Why use S-PR2?
 
 We introduced a comprehensive kinematic control software package for the PR2 robot, 
 which is based on an analytic inverse kinematic solution and addresses all the aforementioned issues.
@@ -69,7 +69,7 @@ S-PR2 is implemented in a hierarchical structure in which
 higher level classes inherit and extend functionalities of the lower level classes. 
 The overall structure of S-PR2 is shown in Figure 1. 
 
-<img src="https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/figures/spr2_structure_diagram2.png" width="500">
+<img src="https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/figures/spr2_structure_diagram2.png" width="800">
 
 **Figure 1. Architecture diagram of S-PR2**
 
@@ -86,7 +86,7 @@ that is used in defining a user-defined objective function.
 The arm kinematic module is the main kinematic engine of S-PR2 with the lowest level of functionality. 
 This module provides methods required for kinematic computations of the PR2 arm.
 
-# Analytic Inverse Kinematic Solver 
+### Analytic Inverse Kinematic Solver 
 
 The most important part of the module is an analytic IK solver that can give all the feasible configurations 
 corresponding to a desired EE pose for an arbitrary value of the redundant parameter (up to maximum 8 solutions). 
@@ -102,7 +102,7 @@ i.e. the distance of the current configuration from the middle of the joint rang
 If the computed permission set is empty, then 
 it is certain that the requested task pose lies outside of the robot workspace in which case no valid solution exists.
 
-# Permission Set
+### Permission Set
 
 In IK problems, the key challenge is to use redundancy to find the optimal joint values within their feasible ranges.
 Each joint limitation makes part of the solution manifold invalid
@@ -115,7 +115,7 @@ no solution in the feasible range can be found for the desired EE pose.
 S-PR2 can compute the permission set for a given desired EE pose using 
 [Arithmetic of Intervals](https://en.wikipedia.org/wiki/Interval_arithmetic).
 
-# Optimal Redundancy Resolution
+### Optimal Redundancy Resolution
 
 A task in the cartesian space requires six kinematic constraints for the endeffector. 
 If the number of free joints (DOF) is greater than the number of constraints required to fulfil a task, 
@@ -125,8 +125,8 @@ It is also possible to consider a user-defined function of joints as a redundant
 Selecting an appropriate function for redundant parameters is called parametrization and it depends upon the geometry of the manipulator. 
 Each redundant parameter adds an additional constraint to the system, so the total number of redundant
 parameters denoted as Degree of Redundancy is computed
-as $r = n − m$ where $n$ is the degree of freedom and m is the number of main kinematics constraints
-($m = 6$ for a desired end effector position and orientation).
+as *r = n − m* where *n* is the degree of freedom and *m* is the number of main kinematics constraints
+(*m = 6* for a desired end effector position and orientation).
 
 Some redundancy parametrizations have been proposed for specific geometries, like 
 [Lee and Bejczy](http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=131621&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D131621) 
@@ -141,7 +141,7 @@ minimize a desired cost function subject to some additional constraints.
 The method used for redundancy resolution in fixed-base mode is similar to Shimizu’s work but with a different parametrization. 
 The analytic IK method used is also different as their formulations could not be used for the PR2 arm due to a slight difference in the [Denavit-Hartenberg (DH) parameters](http://wiki.ros.org/pr2_calibration_estimation) of the PR2 arms.
 
-# Smooth Trajectory Projection
+### Smooth Trajectory Projection
 
 The arm kinematic module can project a trajectory from task-space into the joint-space. 
 Trajectories are instances of module Trajectory consisting of segments 
@@ -157,7 +157,7 @@ The module also supports polynomial interpolation using one of the
  non-redundant representations of three-dimensional rotation.
 
 
-# Self Motion Generation
+### Self Motion Generation
 
 In a redundant manipulator, if the EE is fixed in some pose, 
 the joints can still change in the solution manifold
@@ -176,7 +176,7 @@ eleven joints (degrees of freedom) given the desired end effector pose in the gl
 This module also generates optimal trajectories for each of the eleven degrees
 of freedom corresponding to a desired task.
 
-# Redundancy Resolution in Free-Base Mode
+### Redundancy Resolution in Free-Base Mode
  
 In free-base mode, the redundancy resolution technique
 used for the arm is extended to five redundant parameters for
