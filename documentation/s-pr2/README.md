@@ -80,6 +80,30 @@ Each module instance is constructed with an ensemble of setting parameters speci
 For example, Manipulator_Configuration_Settings contains general joint-space settings of a manipulator such as 
 mechanical limits, types of joints and a set of weightings for each joint
 that is used in defining a user-defined objective function.
+The settings in the PR2-Arm-Kinematic module contains the robot main dimensions and algorithmic settings that 
+are used for the inverse kinematics and redundancy optimization calculation. 
+The entire kinematics of the robot are computed in a higher level module called PR2-Kinematics. 
+This module supports a comprehensive kinematic engine for the PR2 using the IK solvers of the arms. 
+PR2-Kinematics contains two instances of PR2-Arm-Kinematic for both the right and the left arms. 
+A user can define a target pose or a pose trajectory for each of the arm grippers in a global reference
+coordinate system and solve the IK or project the trajectory into the joint-space. 
+The free-base mode optimizer computes the optimum trunk position, rotation angle, and trunk height
+for a desired End Effector (EE) pose. 
+All the above modules perform necessary computations and are completely independent of the actual robot operations. Access to the physical robot platform is established by a connector module PR2-Synchronizer that 
+carries out the control commands and data mappings, and communicates them to 
+a middleware [**PyRIDE**](https://github.com/uts-magic-lab/pyride_pr2) which 
+acts as an intermediary agent to the low level robot control system.
+
+The actual communication with **PyRIDE** is done using a pyride-interpreter interface module. 
+Finally, '''Skilled-PR2()''' inherited from '''PR2-Synchronizer()''' 
+is the final module in the package with the highest level of functionality. 
+This module supports basic primitive motion skills like 
+moving in various directions, running internal motion into a low cost configuration or trajectory tracking. 
+The end user can create his/her own PR2 controller class inherited from '''Skilled-PR2()''' and add more skills.
+
+'''Writer-PR2()''' is a working example designed to enable the PR2 to copy a
+wide range of motion trajectories like writing, drawing, and
+cleaning through an iPad interface.
 
 ## PR2 Arm Kinematic Module
 
