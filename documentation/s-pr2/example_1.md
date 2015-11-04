@@ -115,7 +115,7 @@ boolean argument **relative** to ```True```.
 For example, to move the left arm forward *12 (cm)* towards the gripper pointing direction:
 ```
 obj.larm_reference = True #sets the reference arm to left arm
-obj.arm_forward(dx = 0.12, relative = True)o move t
+obj.arm_forward(dx = 0.12, relative = True)
 ```
 
 You can change the arm orientation to one of the six basic orientations w.r.t. the torso:
@@ -133,7 +133,7 @@ You can change the motion speed by setting property ```obj.arm_speed``` (set to 
 
 ### Move to a target pose in the task-space
 
-To move the arm to a specific position and orientation in the task-space, you need to first set the target:
+To move the arm to a specific position and orientation in the task-space, you need to first set a target and then move the arm:
 ```
 pos_l = obj.larm.wrist_position()    # Read the left arm position w.r.t. the left arm base
 ori_l = obj.larm.wrist_orientation() # Read the left arm orientation w.r.t. the torso
@@ -142,4 +142,23 @@ obj.larm_reference = False           # Make sure right arm is the reference arm
 obj.arm_target()                     # Move the arm to the desired pose
 ```
 
+### Draw a trajectory
 
+To draw a trajectory, you should define it.
+For this example, we will use one of the predefined trajectories in the library.
+You can create your own trajectory easily by specifying the path points with your desired position, speed and acceleration for each point.
+Here we pick one pre-defined trajectory from library:
+
+```
+from math_tools.geometry import shape_trajectories as sht
+S = sht.S(height = 0.2)
+```
+To have a three-dimensional plot of the selected trajectory, type:
+```
+S.plot3d()
+```
+
+obj.arm_orient()        # Change the gripper orientation to forward for a better view 
+obj.arm_back(dx = 0.25) # Move back for a better dexterity for the arm
+obj.arm_trajectory(S)   # Run the motion
+```
