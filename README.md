@@ -28,6 +28,6 @@ for S-PR2 is available for developers and more than %80 complete.
 
 To start quickly with S-PR2, see the following example:
 
-* [How to write a simple script to control PR2 robot via S-PR2](b.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/example_1.md)
+* [How to write a simple script to control PR2 robot via S-PR2](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/example_1.md)
 
 
