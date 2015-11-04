@@ -77,14 +77,21 @@ The core module is the PR2-Arm-Kinematics that contains all the required kinemat
 including an analytic arm IK solver and an optimal trajectory planner. 
 This component inherits joint-space methods and properties from a generalized class called Manipulator_Configuration. 
 Each module instance is constructed with an ensemble of setting parameters specific to the object. 
-For example, Manipulator_Configuration_Settings contains general joint-space settings of a manipulator such as 
+For example, 
+[```Manipulator_Configuration_Settings()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration___settings.html) 
+contains general joint-space settings of a manipulator such as 
 mechanical limits, types of joints and a set of weightings for each joint
 that is used in defining a user-defined objective function.
 The settings in the PR2-Arm-Kinematic module contains the robot main dimensions and algorithmic settings that 
 are used for the inverse kinematics and redundancy optimization calculation. 
-The entire kinematics of the robot are computed in a higher level module called PR2-Kinematics. 
+The entire kinematics of the robot are computed in a higher level module called 
+[```PR2_Kinematics```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics.html) 
 This module supports a comprehensive kinematic engine for the PR2 using the IK solvers of the arms. 
-PR2-Kinematics contains two instances of PR2-Arm-Kinematic for both the right and the left arms. 
+Class 
+[```PR2()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html) 
+defined in module ```PR2-Kinematics``` contains two instances of 
+[```PR2-Arm()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html) 
+for the right and the left arms. 
 A user can define a target pose or a pose trajectory for each of the arm grippers in a global reference
 coordinate system and solve the IK or project the trajectory into the joint-space. 
 The free-base mode optimizer computes the optimum trunk position, rotation angle, and trunk height
