@@ -73,48 +73,67 @@ The overall structure of S-PR2 is shown in Figure 1.
 
 **Figure 1. Architecture diagram of S-PR2**
 
-The core module is the PR2-Arm-Kinematics that contains all the required kinematic methods,
-including an analytic arm IK solver and an optimal trajectory planner. 
-This component inherits joint-space methods and properties from a generalized class called Manipulator_Configuration. 
-Each module instance is constructed with an ensemble of setting parameters specific to the object. 
-For example, 
-[```Manipulator_Configuration_Settings()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration___settings.html) 
-contains general joint-space settings of a manipulator such as 
-mechanical limits, types of joints and a set of weightings for each joint
+The main engine module of S-PR2 is the 
+[```PR2_Arm_Kinematics```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics.html)
+containing all the required kinematic methods, including an analytic arm IK solver and 
+an optimal trajectory planner for the 7-DOF PR2 arm. 
+This component inherits joint-space methods and properties from a generalized class called 
+[```PR2_ARM_Configuration()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m___configuration.html). 
+Each module instance is constructed with an ensemble of setting parameters specific to the object like
+mechanical limits and a set of weightings for each joint
 that is used in defining a user-defined objective function.
-The settings in the PR2-Arm-Kinematic module contains the robot main dimensions and algorithmic settings that 
-are used for the inverse kinematics and redundancy optimization calculation. 
+The settings in the ```PR2_Arm_Kinematics``` module contain the robot main dimensions and algorithmic settings  
+used for the inverse kinematics and redundancy optimization calculation. 
 The entire kinematics of the robot are computed in a higher level module called 
-[```PR2_Kinematics```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics.html) 
+[```PR2_Kinematics```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics.html). 
 This module supports a comprehensive kinematic engine for the PR2 using the IK solvers of the arms. 
 Class 
 [```PR2()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html) 
-defined in module ```PR2-Kinematics``` contains two instances of 
-[```PR2-Arm()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html) 
+defined in this module contains two instances of 
+[```PR2_Arm()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html) 
 for the right and the left arms. 
-A user can define a target pose or a pose trajectory for each of the arm grippers in a global reference
-coordinate system and solve the IK or project the trajectory into the joint-space. 
-The free-base mode optimizer computes the optimum trunk position, rotation angle, and trunk height
-for a desired End Effector (EE) pose. 
-All the above modules perform necessary computations and are completely independent of the actual robot operations. Access to the physical robot platform is established by a connector module PR2-Synchronizer that 
-carries out the control commands and data mappings, and communicates them to 
-a middleware [**PyRIDE**](https://github.com/uts-magic-lab/pyride_pr2) which 
-acts as an intermediary agent to the low level robot control system.
+A user can define a target pose in terms of position and orientation or a 
+[pose trajectory](http://uts-magic-lab.github.io/Magiks/namespacemath__tools_1_1geometry_1_1trajectory.html)
+ for each of the arm grippers in a global reference coordinate system and 
+solve the IK or project the pose or trajectory into the joint-space. 
+The free-base mode optimizer computes the optimum trunk position, rotation angle, and trunk height for a desired end-effector pose. 
+All the above modules perform necessary computations and are completely independent of the actual robot operations. 
 
-The actual communication with **PyRIDE** is done using a pyride-interpreter interface module. 
-Finally, '''Skilled-PR2()''' inherited from '''PR2-Synchronizer()''' 
-is the final module in the package with the highest level of functionality. 
-This module supports basic primitive motion skills like 
+### Connection to the real robot
+
+Up to here, we have introduced objects by which one can compute all forward and inverse kinematic propeties of the PR2 robot
+but these objects are ensembles of methods and properties and can not communicate with the real robot. 
+To communicate to the physical robot, a ROS interface is required. 
+Developers are free to choose between writing their own ROS interface or use the interface embedded in S-PR2.
+
+In S-PR2, access to the physical robot platform is established by a connector module named
+[```PyRide_Synchronizer```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer.html).
+This module contains a class named 
+[```PyRide_PR2()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html) 
+inherited from ```PR2()``` that enables the object to synchronize itself with the real robot or robot in simulation 
+via a middleware toolbox named [**PyRIDE**](https://github.com/uts-magic-lab/pyride_pr2) which
+is the interface between S-PR2 and ROS and acts as an intermediary agent to the low level robot control system.
+
+The actual communication with **PyRIDE** is done via an interface module named 
+[pyride_interpreter](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html) 
+which carries out the control commands and data mappings, and communicates with PyRide.
+ 
+Finally, class
+[```Skilled_PR2()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2_1_1_skilled___p_r2.html) inherited from ```PYRide_PR2()``` is the final module in the package with the highest level of functionality. 
+This class supports basic primitive motion skills like 
 moving in various directions, running internal motion into a low cost configuration or trajectory tracking. 
-The end user can create his/her own PR2 controller class inherited from '''Skilled-PR2()''' and add more skills.
+The end user can create his/her own PR2 controller class inherited from 
+```Skilled-PR2()``` and add more skills.
 
-'''Writer-PR2()''' is a working example designed to enable the PR2 to copy a
-wide range of motion trajectories like writing, drawing, and
-cleaning through an iPad interface.
+An example of a user-defined class inherited from ```Skilled-PR2()``` is placed in the package named as
+[```Writer-PR2()```](http://uts-magic-lab.github.io/Magiks/classmagiks_1_1specific__geometries_1_1pr2_1_1writer__pr2_1_1_writer___p_r2.html) 
+and shows how some of the functionalities of S-PR2 are utilized to provide writing skills for the robot. 
+It is a working example designed to enable the PR2 to copy a wide range of motion trajectories for writing and drawing purposes.
 
 ## PR2 Arm Kinematic Module
 
-The arm kinematic module is the main kinematic engine of S-PR2 with the lowest level of functionality. 
+Module [```PR2_arm_kinematics```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics.html) 
+is the main kinematic engine of S-PR2 with the lowest level of functionality. 
 This module provides methods required for kinematic computations of the PR2 arm.
 
 ### Analytic Inverse Kinematic Solver 
@@ -201,7 +220,9 @@ This enables the robot to change itself into a better configuration while the en
 
 ## PR2 Kinematics Module
 
-The PR2 kinematic module is a comprehensive toolbox for all kinematic computations of the PR2. 
+The 
+[```PR2_Kinematics```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics.html) 
+module is a comprehensive toolbox for all kinematic computations of the PR2. 
 It exploits the arm local IK solver to compute the configuration in terms of 
 eleven joints (degrees of freedom) given the desired end effector pose in the global coordinate system. 
 This module also generates optimal trajectories for each of the eleven degrees
@@ -215,13 +236,11 @@ the entire robot. In free-base mode, the position, orientation
 and height of the robot trunk are computed so that a desired
 cost function is minimized. This is another useful feature that
 can not be found in any of the existing packages for PR2.
-With the closed form arm IK equations, the redundancy opti-
-mization problem is transferred from the eleven dimensional
-joint-space into a five dimensional solution manifold spanned
-by the redundant parameters. In this method, gradient of the
-objective function with respect to redundant parameters are
-computed to find an optimum direction for the change of
-redundant parameters and hence the joint values.
+With the closed form arm IK equations, 
+the redundancy optimization problem is transferred from the eleven dimensional joint-space 
+into a five dimensional solution manifold spanned by the redundant parameters. 
+In this method, gradients of the objective function with respect to redundant parameters are
+computed to find an optimum direction for the change of redundant parameters and hence the joint values.
 
 ## Application Example
 
