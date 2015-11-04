@@ -13,7 +13,7 @@ manipulaor with arbitrary geometry and degrees of freedom. Some of the main para
 This package is almost completed and ready to use, but the API documention page is still under construction.
 We are continuously working on it to provide a complete API documentation with clarifying examples.
 
-To install and use MAGIKS follow the installation instructions [here](). 
+To install and use MAGIKS follow the installation instructions [here](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/magiks/install_magiks.md). 
 
 ## A quick usage of S-PR2 under Magiks
 
@@ -28,6 +28,6 @@ for S-PR2 is available for developers and more than %80 complete.
 
 To start quickly with S-PR2, see the following example:
 
-* How to write a simple script to control PR2 robot via S-PR2
+* [How to write a simple script to control PR2 robot via S-PR2](b.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/example_1.md)
 
 
