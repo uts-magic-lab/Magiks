@@ -1,9 +1,6 @@
 # Installing MAGIKS
 
-MAGIKS is a set of scripts for python developers. It can be easily installed by checking out the spurce code from the github repository:
-
-Make a directory anywhere in which you want to copy the scripts. This will be the root directory of MAGIKS. 
-Then go to that directory and type:
+MAGIKS is a set of scripts for python developers. It can be easily installed by checking out the spurce code from the github repository. Make a directory anywhere in which you want to copy the scripts. This will be the root directory of MAGIKS. Then go to that directory and type:
  
 ```
 git clone https://github.com/uts-magic-lab/Magiks.git
@@ -72,7 +69,7 @@ You can also run a trajectory or implement a real-time trajectory control on PR2
 You will need PyRide if you work with any of these packages:
 
 * [```PyRide_Synchronizer```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer.html)
-* [pyride_interpreter](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html)
+* [```pyride_interpreter```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html)
 * [```Skilled_PR2```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2.html)
 * [```Writer-PR2()```](http://uts-magic-lab.github.io/Magiks/namespacemagiks_1_1specific__geometries_1_1pr2_1_1writer__pr2.html)
 
