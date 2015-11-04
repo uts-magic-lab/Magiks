@@ -913,11 +913,12 @@ class PyRide_PR2(pr2lib.PR2):
 
         keep_dt = arm.dt
         arm.dt  = pos_traj.phi_end/resolution
-        jt  = arm.js_project(pos_traj, ori_traj, relative = relative, traj_type = 'polynomial')
+        #jt  = arm.js_project(pos_traj, ori_traj, relative = relative, traj_type = 'polynomial')
+        jt  = arm.js_project(pos_traj, ori_traj, relative = relative)
         arm.dt  = keep_dt
 
-        jt.segment[0].interpolate() # Check why you have to do an extra interpolate .... !!!!
-        jt.consistent_velocities()
+        #jt.segment[0].interpolate() # Check why you have to do an extra interpolate .... !!!!
+        #jt.consistent_velocities()
         '''
         jt.plot()
         jt.plot(1)
