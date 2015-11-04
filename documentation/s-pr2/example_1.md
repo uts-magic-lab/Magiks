@@ -158,6 +158,8 @@ To have a three-dimensional plot of the selected trajectory, type:
 S.plot3d()
 ```
 
+Now run the trajectory on the arm:
+```
 obj.arm_orient()        # Change the gripper orientation to forward for a better view 
 obj.arm_back(dx = 0.25) # Move back for a better dexterity for the arm
 obj.arm_trajectory(S)   # Run the motion
