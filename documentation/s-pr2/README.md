@@ -26,9 +26,9 @@ to the system.
 The navigating platform can move on the floor and rotate around the **z** axis providing three extra degrees of freedom. 
 In free-base mode, eleven degrees of freedom kinematically influence the position or orientation of one gripper.
 
-### Existing Package
+### Currently Available IK solver (IK Fast)
 
-The existing [IK solver](http://wiki.ros.org/pr2_kinematics/Tutorials/Tutorial%204) for the PR2, 
+The available [IK solver](http://wiki.ros.org/pr2_kinematics/Tutorials/Tutorial%204) for the PR2, 
 which is a part of Robot Operating System (ROS), is fast but 
 lacks some important advanced features required for generating smooth and reliable trajectories. 
 The existing package:
