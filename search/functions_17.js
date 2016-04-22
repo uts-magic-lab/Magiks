@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['w',['W',['../namespacemath__tools_1_1geometry_1_1shape__trajectories.html#abac3a49ea7bd6ef22511cc73f9b0e664',1,'math_tools::geometry::shape_trajectories']]],
   ['wait_5funtil_5ffinished',['wait_until_finished',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ad3fb632d8689f942c22d4b3f5172d7f7',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['weighted_5fdls_5finverse',['weighted_dls_inverse',['../namespacemath__tools_1_1algebra_1_1vectors__and__matrices.html#aa897095b6c1b47e67090c9519bd11e6b',1,'math_tools::algebra::vectors_and_matrices']]],
   ['weighted_5fpseudo_5finverse',['weighted_pseudo_inverse',['../namespacemath__tools_1_1algebra_1_1vectors__and__matrices.html#a35ab5c0bd9a5c7e4d25aa87645104ba0',1,'math_tools::algebra::vectors_and_matrices']]],

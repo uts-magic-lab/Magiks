@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['key_5fpoint',['Key_Point',['../classmath__tools_1_1geometry_1_1trajectory_1_1_key___point.html',1,'math_tools::geometry::trajectory']]],
-  ['kinematic_5fmanager',['Kinematic_Manager',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager.html',1,'magiks::magiks_core::kinematic_manager']]],
-  ['kinematic_5fmanager_5fsettings',['Kinematic_Manager_Settings',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html',1,'magiks::magiks_core::kinematic_manager']]]
+  ['single_5frun_5flog',['Single_Run_Log',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html',1,'magiks::magiks_core::log_manager']]],
+  ['skilled_5fpr2',['Skilled_PR2',['../classmagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2_1_1_skilled___p_r2.html',1,'magiks::specific_geometries::pr2::skilled_pr2']]]
 ];

@@ -1,13 +1,6 @@
 var searchData=
 [
-  ['n',['N',['../classmath__tools_1_1geometry_1_1trigonometry_1_1_fourier___series.html#a8cc2e7240164328fdc3f0e5e21032c56',1,'math_tools::geometry::trigonometry::Fourier_Series']]],
-  ['name',['name',['../classmagiks_1_1geometry_1_1manipulator__geometry_1_1_manipulator___geometry___settings.html#ab74e6bf80237ddc4109968cedc58c151',1,'magiks::geometry::manipulator_geometry::Manipulator_Geometry_Settings']]],
-  ['ngp_5factive',['ngp_active',['../classmagiks_1_1magiks__core_1_1inverse__kinematics_1_1_inverse___kinematics___settings.html#a1db49913ec76e440c85fe31f13f87eb3',1,'magiks::magiks_core::inverse_kinematics::Inverse_Kinematics_Settings']]],
-  ['njoint',['njoint',['../classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration___settings.html#a458e87deb4c56375f34051e03f83f11f',1,'magiks::jointspace::manipulator_configuration::Manipulator_Configuration_Settings']]],
   ['nkc_5fdic',['nkc_dic',['../namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#ae7df5aa22df06c8f1de017be93b0835b',1,'magiks::magiks_core::kinematic_manager']]],
-  ['nlink',['nlink',['../classmagiks_1_1geometry_1_1manipulator__geometry_1_1_manipulator___geometry___settings.html#a3931b5b473a3dd052063638d535bc371',1,'magiks::geometry::manipulator_geometry::Manipulator_Geometry_Settings']]],
-  ['npoint',['npoint',['../classmath__tools_1_1geometry_1_1trajectory_1_1_path.html#a55c464dfc98b430d94f4d0e3e959d2af',1,'math_tools::geometry::trajectory::Path']]],
-  ['npoints',['npoints',['../classmath__tools_1_1geometry_1_1trajectory_1_1_trajectory.html#abb5eb842ce70c6d14383139988ad05f0',1,'math_tools::geometry::trajectory::Trajectory']]],
   ['num_5finrange',['num_inrange',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_test___statistics.html#ae6b2007ddcac1ab09c462a393351df5b',1,'magiks::magiks_core::log_manager::Test_Statistics']]],
   ['num_5fiter',['num_iter',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#a1c3136a5ccb76430b0a17e8f6a7ebcfb',1,'magiks::magiks_core::log_manager::Single_Run_Log']]],
   ['num_5fiter_5ftil_5fnow',['num_iter_til_now',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#a7e8fbc6b46d8381c7b38d2a5fe1f32a8',1,'magiks::magiks_core::log_manager::Single_Run_Log']]],
@@ -17,8 +10,5 @@ var searchData=
   ['num_5fsuc_5finrange',['num_suc_inrange',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_test___statistics.html#a24dbd7851210df4c74ecf33193cbf7d6',1,'magiks::magiks_core::log_manager::Test_Statistics']]],
   ['num_5fsuc_5ftil_5fnow',['num_suc_til_now',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#a5acabda9af3dff34487869beacc912e6',1,'magiks::magiks_core::log_manager::Single_Run_Log']]],
   ['num_5fsuccess',['num_success',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_test___statistics.html#a72d05a89fe466c94de1fccfa3b9ad6c6',1,'magiks::magiks_core::log_manager::Test_Statistics']]],
-  ['num_5ftrial',['num_trial',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#a96ed315c071c051e18f66ccadc3cc094',1,'magiks::magiks_core::log_manager::Single_Run_Log']]],
-  ['number_5fof_5fconfigs',['number_of_configs',['../classmagiks_1_1taskspace_1_1workspace_1_1_workspace___settings.html#a6976df34d7a81df7b2d625a04d06d097',1,'magiks::taskspace::workspace::Workspace_Settings']]],
-  ['number_5fof_5fsearch_5fitems',['number_of_search_items',['../classmagiks_1_1taskspace_1_1workspace_1_1_workspace___settings.html#aaa730bd4dcef950ee5af892d58d88f03',1,'magiks::taskspace::workspace::Workspace_Settings']]],
-  ['number_5fof_5fsteps',['number_of_steps',['../classmagiks_1_1magiks__core_1_1inverse__kinematics_1_1_inverse___kinematics___settings.html#a4a7d720814d8b49d6a8152bf8231b1bc',1,'magiks::magiks_core::inverse_kinematics::Inverse_Kinematics_Settings']]]
+  ['num_5ftrial',['num_trial',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#a96ed315c071c051e18f66ccadc3cc094',1,'magiks::magiks_core::log_manager::Single_Run_Log']]]
 ];
