@@ -34,50 +34,63 @@ from math_tools.algebra import vectors_and_matrices as vecmat
 from math_tools.geometry import trigonometry as trig
 from math_tools.discrete import discrete
 
-
+## @brief This class contains joint properties of a chained-link manipulator.
+#   These properties include degree of freedom, joint types, joint limits and mapping functions.
 class Manipulator_Configuration_Settings:
-    '''
-    Contains joint parameters of a manipulator, joint types, joint_handling, joint limits and etc ...
-    '''
-
+	## The Class Constructor:
+	#  @param njoint A positive integer specifying the number of joints of the manipulator 	
+	#  @param DOF A positive integer specifying the number of degrees of freedom
+    #  @param joint_mapping A string specifying the default mapping function.
+    #         This parameter must be chosen among these options:
+    #         * NM: No Mapping (Identity mapping function)
+    #         * LM: Linear Mapping
+    #         * TM: Trigonometric Mapping   
     def __init__(self, njoint = 0, DOF= 0, joint_mapping = 'NM'):
         self.njoint = njoint
-        # DOF - is a short form of Degrees of Freedom and represents the number of free joints
+        # An integer: Is a short form of Degrees of Freedom and represents the number of free joints
         self.DOF = DOF
-
+        # An array of string containing the specific mapping function for each joint
         self.joint_handling = [joint_mapping for i in range(DOF)]
+        # An array of booleans specifying which joints are limited
         self.limited        = [True for i in range(0, DOF)]
+        # An array of string containing indivifual labels or names the for each joint
+        self.joint_label    = ['Joint ' + str(i) for i in range(DOF)]
 
-        ## Specify if the joint limits must be respected when new joint values are being set
+        ## A boolean specify if the joint limits must be respected when new joint values are being set.
         #  If this property is True, the system checks for the given joint values to be in the defined feasible range
         #  and fails with an error if given joint values are beyond the limits.
         #  If False, any value for the joints are accepted.
         self.joint_limits_respected = True
 
-        # ql  - A vector of real numbers representing lower bounds for the joint configuration
-        # qh  - A vector of real numbers representing higher bounds for the joint configuration
+        # A vector of real numbers representing lower bounds for the joint configuration
         self.ql   = [-math.pi for i in range(0, njoint)]
+        # A vector of real numbers representing higher bounds for the joint configuration
         self.qh   = [math.pi for i in range(0, njoint)]
 
-        # prismatic  - A list of booleans representing the type of the corresponding joint number. If True the joint is prismatic, if False it is revolute
+        # A list of booleans representing the type of the corresponding joint number. If True the joint is prismatic, if False it is revolute
         self.prismatic = [False for i in range(0, njoint)]
 
-        # free  - A list of booleans representing whether the corresponding joint is free or fixed at a certain value. The default is True for all joints
+        # A list of booleans representing whether the corresponding joint is free or fixed at a certain value. The default is True for all joints
         self.free = [True for i in range(0, njoint)]
-        
+   
+## @brief This class represents a model of the joint configuration of a chained-link manipulator.
+#   It contains current actual and virtual(mapped) joint values and the required joint settings. 
+#   The class also, has methods to check the feasibility of given joint values, set a given configuration,
+#   forward and inverse conversion of joint values into the mapped virtual space and a number of 
+#   auxiliary methods. This class contains everything you need to handle joint vlaues of the manipulator.  
 class Manipulator_Configuration(object):
-    '''
-    Contains methods for joint mapping, in_range checking and everything regarding the joints.
-    '''
-
+	## The Class Constructor:
+	#  @param settings An instance of class Manipulator_Configuration_Settings containing the joint settings of the manipulator
+    #         including joint types, joint limits and mapping functions	
     def __init__(self, settings):
-
+        # An instance of class Manipulator_Configuration_Settings containing the joint settings of the manipulator
+        # including joint types, joint limits and mapping functions
         self.config_settings = settings
 
-        # q    - A list of real numbers representing the joint configuration of the manipulator in the jointspace
+        # A list of real numbers representing the current joint configuration of the manipulator in the jointspace
         self.q     = 0.5*(settings.qh + settings.ql)        
 
-        # qvr - A list of real numbers representing the joint configuration of the manipulator in the mapped jointspace
+        # A list of real numbers representing the current joint configuration of the manipulator in the mapped jointspace
         self.qvr   = None
 
         self.initialize()
@@ -89,6 +102,7 @@ class Manipulator_Configuration(object):
         self.mapto_virtual()
         self.update_virtual_jacobian_multipliers()
     
+    # \cond  
     def set_joint_bounds(self, ql, qh):
         self.config_settings.ql = copy.copy(ql)
         self.config_settings.qh = copy.copy(qh)
@@ -112,12 +126,12 @@ class Manipulator_Configuration(object):
         for i in range(0, self.config_settings.njoint):
             if not self.config_settings.prismatic[i]:
                 self.q[i] = trig.angle_standard_range( self.q[i] ) 
-
+    # \endcond
 	## This function is used to check if a given value for specific joint is in its feasibility range
 	#  @param i An integer between 0 to 6 specifying the joint number to be checked
 	#  @param qi A float parameter specifying the value for the i-th joint
 	#  @return A boolean: True if the given joint angle qi is in feasible range for the i-th joint (within the specified joint limits for that joint)
-    def joint_in_range(self,i, qi):
+    def joint_in_range(self, i, qi):
         if abs(qi - self.ql[i]) < gen.epsilon:
             qi = self.ql[i]
         if abs(qi - self.qh[i]) < gen.epsilon:
@@ -135,6 +149,7 @@ class Manipulator_Configuration(object):
                 flag = flag and self.joint_in_range(i, qd[i])
         return flag
 
+    # \cond
     def mapfrom_virtual(self, qs):
         '''
         map from unlimited to limited jointspace. Get mapped values in the unlimited jointspace (property: qvr) and return the main joint configuration vector
@@ -217,6 +232,8 @@ class Manipulator_Configuration(object):
             else:
                 assert False, genpy.err_str(__name__, self.__class__.__name__, 'update_virtual_jacobian_multipliers', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
 
+    # \endcond
+    
     # If you changed any joint from fixed to free or vice-versa you need to call this function
     def initialize(self):
         '''
@@ -306,6 +323,7 @@ class Manipulator_Configuration(object):
         # assign the value of jmc_c the jacobian multiplier:
         self.update_virtual_jacobian_multipliers()
 
+    # \cond
     def joint_correction_in_range(self, dq):
         '''
         Return True if the joint configuration will be in the desired range after being added by the given "dq"
@@ -335,8 +353,9 @@ class Manipulator_Configuration(object):
         else:
             assert False, genpy.err_str(__name__, self.__class__.__name__, 'set_config_virtual', 'The joint values computed from qvr are out of range while joint limits are respected.')
             return False
+    # \endcond
         
-	## This function gives an interval for the magnitude of the arm joint angles correction vector. (Copied from pr2_arm_kinematics.py)
+	## This function gives an interval for the magnitude of the joint angles correction vector. 
 	#  @param direction A numpy array of size 7 specifying the direction of change	
 	#  @param max_speed A float parameter specifying the maximum feasible speed for a joint change. (Set by infinity by default)	
 	#  @param delta_t The step time in which the change(correction) is to be applied.
@@ -371,6 +390,7 @@ class Manipulator_Configuration(object):
         else:
             return (max(etta_l), min(etta_h))
 
+    # \cond
     def free_config(self, q):
         '''
         return a vector (DOF elements) containing the values of free joints. 
@@ -394,6 +414,7 @@ class Manipulator_Configuration(object):
                 c[jj] = qs[j]
                 j = j + 1
         return c
+    # \endcond
 
 	## Use this function to set the joint configuration to the given desired values.
     #  If property joint_limits_respected is True, the system checks for given qd to be in the defined feasible range
@@ -438,13 +459,17 @@ class Manipulator_Configuration(object):
                     print "Upper Limit  :", self.qh[i]
             return False
     
+    # Generates a random joint configuration in the defined feasible range in the settings.
+    # This function does not change manipulator configuration.
+    # @return An array of real numbers containing the joint values of the generated random configuration. 
     def random_config(self):
         q_rnd = np.zeros(self.config_settings.DOF)
         
         for j in range(0, self.config_settings.DOF):
             q_rnd[j] = self.ql[j] + random.random()*(self.qh[j] - self.ql[j])
         return q_rnd
-
+    
+    # \cond
     def grid_config(self, config_number, number_of_intervals):
         '''
         Replaces joint configuration with the configuration in a gridded jointspace with "number_of_intervals" divisions for each joint 
@@ -496,3 +521,5 @@ class Manipulator_Configuration(object):
                 assert False, genpy.err_str(__name__, self.__class__.__name__, 'objective_function_value', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
             f += df
         return f
+        
+# \endcond

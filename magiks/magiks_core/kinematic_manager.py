@@ -40,6 +40,7 @@ def generate_my_default_kin_manager() :
 '''
 all_application_scenarios = ['PPS', 'TGS', 'TPS'] 
 
+# \cond
 key_dic = {
     # For Application Scenario:
     'NA'            : 'Not Applicable',
@@ -54,6 +55,7 @@ key_dic = {
     'JPI'           : 'Jacobian Pseudo Inverse',
     'DLS(CDF)'      : 'Damped Least Squares Method (Constant Damping Factor)',
     'DLS(ADF)'      : 'Damped Least Squares Method (Adaptive Damping Factor)',
+    'DLS(MADF)'     : 'Damped Least Squares Method (Manipulability Adjusted Damping Factor)',
 
     # For Manipulators: 
     'MAN'           : 'Manipulator',
@@ -142,7 +144,6 @@ param_dic = {'ReOrVe(IDTY)':'identity', 'ReOrVe(LIN)':'linear', 'ReOrVe(CaGiRo)'
              'DiOrVe(IDTY)':'identity', 'DiOrVe(LIN)':'linear', 'DiOrVe(CaGiRo)' : 'cayley-gibbs-rodrigues', 'DiOrVe(EXP)' : 'exponential', 'DiOrVe(BaTr)' : 'bauchau-trainelli'}
 
 def generate_orientation_metric_settings(orientation_constraint):
-    func_name = "kinematic.manager.generate_orientation_error_function_package()"
     
     if orientation_constraint[0:6] == 'AxInPr':
         # ms        = metriclib.Metric_Settings(metric_type = 'relative', representation  = 'diag')
@@ -356,7 +357,7 @@ class Kinematic_Manager_Settings(object):
         self.end_settings           = endlib.Endeffector_Settings() 
         self.ik_settings            = iklib.Inverse_Kinematics_Settings(algorithm = "JPI", run_mode = 'normal_run', num_steps = 100) 
         # Setting Desired Precision in Inverse Kinematics
-
+        self.ik_settings.ngp_active = False
 
         self.end_settings.precision_base_for_position   = "Coordinate Distance"  
         self.end_settings.precision_base_for_rotation   = "Axis Angle"  
@@ -458,7 +459,13 @@ class Kinematic_Manager_Settings(object):
             else:
                 return self.orientation_constraint
         elif parameter == 'JM':
-            return genpy.most_common(self.config_settings.joint_handling)
+            if 'TM' in self.config_settings.joint_handling:
+                return 'TM'
+            elif 'LM' in self.config_settings.joint_handling:
+                return 'LM'
+            else:
+                return 'NM'       
+            # return genpy.most_common(self.config_settings.joint_handling)
         elif parameter == 'DF':
             if self.ik_settings.algorithm[0:3] == 'DLS':
                 return str(self.ik_settings.initial_damping_factor)
@@ -467,6 +474,8 @@ class Kinematic_Manager_Settings(object):
         elif parameter == 'DFG':
             if self.ik_settings.algorithm == 'DLS(ADF)':
                 return str(self.ik_settings.df_gain)
+            elif self.ik_settings.algorithm == 'DLS(MADF)':
+                return str(self.ik_settings.manipulability_threshold)
             else:
                 return 'NA'
         
@@ -604,6 +613,12 @@ class Kinematic_Manager(object):
         # These properties are: transfer matrices, analytic, geometric and error jacobians, taskpoints and taskframes and the pose error vector.
 
         #self.forward_kinematics = fklib.Forward_Kinematics(geometry, config)      
+        if self.settings.workspace_settings_ic.search_criteria == 'NCC':
+            self.settings.ik_settings.include_current_config = True
+        else:    
+            self.settings.ik_settings.include_current_config = False
+
+
         self.inverse_kinematics = iklib.Inverse_Kinematics(self.settings.config_settings, self.settings.geo_settings, self.settings.end_settings, self.settings.ik_settings )
         
         #set desired position and orientation constraints:
@@ -616,13 +631,15 @@ class Kinematic_Manager(object):
             tf.error.settings = generate_orientation_metric_settings(self.settings.orientation_constraint)
             tf.error.settings.precision = self.inverse_kinematics.end_settings.precision_for_rotation
 
+        self.inverse_kinematics.num_task_constraints()
         #self.inverse_kinematics.configuration.set_joint_limits_for(settings.manip_name)
         ###### self.inverse_kinematics.initialize()
-
+        '''
         if self.settings.num_position_ref       == 0:
             self.inverse_kinematics.endeffector.reference_positions = []
         if self.settings.num_orientation_ref    == 0:
             self.inverse_kinematics.endeffector.reference_orientations = []
+        '''
 
         if settings.workspace_settings_ic.read_workspace:    
             print 'Reading Init Config Workspace ... '
@@ -732,7 +749,7 @@ class Kinematic_Manager(object):
             final_pose_str   = str(self.inverse_kinematics)
 
             run_log = loglib.Single_Run_Log(cnt, success = self.inverse_kinematics.in_target(), config_in_range =  self.inverse_kinematics.joints_in_range(self.inverse_kinematics.free_config(self.inverse_kinematics.q)))
-            # run_log.num_trial           = 0
+            run_log.num_trial           = 1 + int(number_of_steps/self.inverse_kinematics.ik_settings.number_of_steps)
             run_log.num_suc_til_now     = n_suc
             run_log.num_iter            = number_of_steps
             run_log.num_iter_til_now    = n_iters_total
@@ -772,12 +789,12 @@ class Kinematic_Manager(object):
         result_info_detail = str()
 
         test_key_str = self.settings.generate_key()
-    
-        if self.settings.workspace_settings_ic.search_criteria == 'Nearest to Current Configuration':
-            self.settings.ik_settings.include_current_config = True
+
+        if self.settings.workspace_settings_ic.search_criteria == 'NCC': # Nearest to Current Configuration
+            assert self.inverse_kinematics.ik_settings.include_current_config, "Error todo"
         else:    
-            self.settings.ik_settings.include_current_config = False
-            
+            assert not self.inverse_kinematics.ik_settings.include_current_config, "Error todo"
+
         self.evaluate_ik_solver(verbose = verbose)
     
         if save_evaluation_csv:
@@ -788,3 +805,5 @@ class Kinematic_Manager(object):
 
         if save_evaluation_results:
             self.km_log.write_self(filename = self.settings.path_str + test_key_str + '.res')
+
+# \endcond

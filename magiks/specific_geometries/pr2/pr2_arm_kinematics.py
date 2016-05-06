@@ -305,6 +305,7 @@ class PR2_ARM_Configuration():
             self.c1_mult = c1*np.array([c0, s0, s1, s2, s3, s10, s20,s30,s32, s320])
             [c10, c1s0, c1s1, c1s2, c1s3, c1s10, c1s20,c1s30,c1s32,c1s320] = self.c1_mult
 
+            # \cond
             self.c2_mult = c2*np.array([c0,c1,c2,c10,s0,s1,s2,s3,s10,s20,s30,s31,s310, c1s30,c0s31])
             [c20,c21,c22,c210,c2s0,c2s1,c2s2,c2s3,c2s10,c2s20,c2s30,c2s31,c2s310,c21s30,c20s31] = self.c2_mult
 
@@ -339,6 +340,7 @@ class PR2_ARM_Configuration():
             '''
             Do not set any other environmental variables here
             '''    
+            # \endcond
             return True
         else:
             print "Error from PR2_ARM.set_config(): Given joints are not in their feasible range"

@@ -33,38 +33,39 @@ from magiks.jacobian import jacobian as jaclib
 from magiks.jointspace import manipulator_configuration as configlib
 from math_tools.geometry import rotation
 
+## @brief This class contains geometrical properties and dimensional settings of a chained-link manipulator.
+#  These settings mainly include the standard DH parameters that specify the geometry of the manipulator.          
+#  /f$ \theta, \alpha, a/f$ and /f$ d /f$ are vectors of real numbers by which the geometry of the manipulator is defined.
+#  These values are based on Denavit Hartenberg standrad representation (Please refer to reference 1, pages 36 to 40)
+#  The transformation matrices are calculated based on this standard.
+#  If the joint is revoulte, the value of theta[i] is added to q[i] in the transformation matrix
+#  If the joint is prismatic, the value of d[i] is added by q[i]  in the transformation matrix
 class Manipulator_Geometry_Settings(object):
-
-    '''
-    Link-Segment self is a chain of joints and links which can be used as a mathematical self of a robot, mechanical manipulator,
-    the whole or parts of human or animal moving mechanism
-
-    TODO : erase njoints and then (compare again the concept of an ABSTRACT super class) 
-        self.theta      = numpy.zeros( 0 )
-    '''
-
+	## The Class Constructor:
+	#  @param nlink A positive integer specifying the number of links of the manipulator 	
+	#  @param manip_name A character string specifying the name of a manipulator. Example: 'PR2ARM' or 'PA10' 
+    
     def __init__(self, nlink, manip_name):
-        '''
-        Predefined Class Properties :
-
-        theta, alpha, a and d are vectors of real numbers by which the geometry of the manipulator is defined.
-        These values are based on Denavit Hartenberg standrad representation (Please refer to reference 1, pages 36 to 40)
-        The transformation matrix is calculated based on this standard.
-
-        If the joint is revoulte, the value of theta[i] is added by q[i] in the transformation matrix
-        If the joint is prismatic, the value of d[i] is added by q[i]  in the transformation matrix
-
-        These parameters are only used to define the geometry of the manipulator. The values of these parameters will never change in the module
-        '''
+		##  A string containing the name of the manipulator
         self.name = manip_name
+		##  A positive integer containing the number of links of the manipulator
         self.nlink = nlink
 
+		##  A numpy vector containing the \f$ \theta \f$ values of the DH parameters
+        #   If the proximal joint of the link is revoulte, the value of theta[i] is added to q[i] in the transformation matrix
         self.theta      = numpy.zeros((nlink))
+        
+		##  A numpy vector containing the \f$ \alpha \f$ values of the DH parameters
         self.alpha      = numpy.zeros((nlink))
         
+		##  A numpy vector containing the \f$ a \f$ values of the DH parameters
         self.a          = numpy.zeros((nlink))
+        
+		##  A numpy vector containing the \f$ d \f$ values of the DH parameters
+        #   If the joint is prismatic, the value of d[i] is added to q[i] in the transformation matrix
         self.d          = numpy.zeros((nlink))
 
+# \cond
 class Manipulator_Geometry(configlib.Manipulator_Configuration):
     '''
     This class contains a list of relative and absolute transfer matrices which represent the forward kinematics of a manipulator. 
@@ -81,6 +82,7 @@ class Manipulator_Geometry(configlib.Manipulator_Configuration):
         # This class contains a two-dimensional list of matrices which are the derivatives of absolute transfer matrices in respect with each of the joint parameters
         self.ajac  = jaclib.Analytic_Jacobian(self.config_settings)
 
+
         '''
         T  : A list of transformation matrices. T[i] represents i-1 to i transformation matrix. Elements of the list, are 4 X 4 matrices.
         '''
@@ -91,6 +93,25 @@ class Manipulator_Geometry(configlib.Manipulator_Configuration):
         '''
         self.H = None
         
+    '''
+    ## This function is used to generate a string containing a set of properties of the object and their values.
+    #  If the set of displayed parameters is not specified, property 'str_parameter_set' will be used.
+    #  @param parameter_set A set of parameters to be displayed in the generated string in abbreviation form
+    #  @return A character string containing the object properties specified by argument 'parameter_set' with their values   
+    def __str__( self, parameter_set = None ) : 
+        if parameter_set == None:
+            parameter_set = self.str_parameter_set
+        if parameter_set == []:
+            return ''    
+        s =   '\n'
+        s  += 'Manipulator Configuration:' + '\n' + '\n'
+        for p in parameter_set:
+            value = self.parameter_value(p)
+            param = key_dic[p]
+            s += param + " "*(45-len(param)) + ': ' + value + '\n'
+        return s
+    '''
+    
     def transfer_matrices(self):
         if self.H == None:
             geo         = self.geo_settings
@@ -136,4 +157,7 @@ class Manipulator_Geometry(configlib.Manipulator_Configuration):
             self.ajac.clear()
             return True
         else:
-            return False        
+            return False  
+            
+# \endcond
+                  

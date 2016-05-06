@@ -53,7 +53,7 @@ key_dic = {
 class Workspace_Settings():
     '''
     '''
-    all_search_criteria                 = ['Nearest to Target Pose', 'Nearest to Current Configuration', 'List Order']
+    # all_search_criteria                 = ['Nearest to Target Pose', 'Nearest to Current Configuration', 'List Order']
 
     def __init__( self, creation_method = 'JSG', grid_resolution = 2, representation_of_orientation = 'angular_spherical', number_of_search_items = 1, number_of_configs = 10, search_criteria = 'Nearest to Target Pose'):
 

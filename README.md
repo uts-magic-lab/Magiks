@@ -15,7 +15,14 @@ We are continuously working on it to provide a complete API documentation with c
 
 To install and use MAGIKS follow the installation instructions [here](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/magiks/install_magiks.md). 
 
-## A quick usage of S-PR2 under Magiks
+The [API documentation](http://uts-magic-lab.github.io/Magiks/index.html)
+for MAGIKS is available for developers but is not completed yet and is under construction. 
+
+[This example](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/magiks/example_1.md) shows how to use MAGIKS for a simple pose projection task for 
+(7 DOF) PA10 robot.
+
+
+## A quick usage of S-PR2 under MAGIKS
 
 [S-PR2](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/README.md)
 is a part of MAGIKS that is specifically designed for PR2 humanoid robot.

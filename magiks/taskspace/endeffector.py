@@ -100,11 +100,10 @@ class Endeffector(mangeolib.Manipulator_Geometry):
         # mo -- number of orientation coordinates (3 by default) 
         # ("self.mp" elements representing position error come first )
         # ("self.mo" elements representing orientation error come next) 
-        self.mp = 3
-        self.mo = 3
+        
+        (mp, mo) = self.num_task_constraints()
 
         self.clear_pose()        
-        
 
     def clear_pose(self):
         for tp in self.task_point:
@@ -251,6 +250,7 @@ class Endeffector(mangeolib.Manipulator_Geometry):
             #Creation of the vector of errors
             cnt = 0
             p   = self.pose() # This should change
+            self.num_task_constraints()
             self.current_pose_error = numpy.zeros((self.mp + self.mo))
             #For task_points
             self.all_task_points_in_target = True

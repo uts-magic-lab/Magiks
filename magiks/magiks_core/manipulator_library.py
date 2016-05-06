@@ -107,6 +107,10 @@ def PR2ARM_config_settings(joint_mapping):
     cs.limited[6] = False
     cs.joint_handling[4] = 'NM'
     cs.joint_handling[6] = 'NM'
+    
+    cs.joint_label = ['Shoulder Pan Joint', 'Shoulder Lift Joint', 'Upper Arm Roll Joint', 
+                      'Shoulder Pan Joint', 'Elbow Flex Joint', 'Forearm Roll Joint', 
+                      'Wrist Flex Joint', 'Wrist Roll Joint']
 
     cs.ql = genmath.deg_to_rad*numpy.array([- 130.00,  60.00, -180.00,   0.00, -180.00,   0.00, -180.00])
     cs.qh = genmath.deg_to_rad*numpy.array([   40.00, 170.00,   44.00, 130.00,  180.00, 130.00,  180.00])
@@ -185,7 +189,7 @@ def manip_geo_settings(manip_name):
     else: 
         assert False, "Error from manipulator_geometry(): " + manip_name + " is an Unknown Manipulator"
         
-def manip_config_settings(manip_name, joint_mapping = 'NM'): 
+def manip_config_settings(manip_name, joint_mapping = 'TM'): 
     if manip_name == 'PUMA':
         settings = PUMA_config_settings(joint_mapping)
     elif manip_name == 'PA10':

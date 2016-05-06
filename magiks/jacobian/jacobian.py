@@ -19,6 +19,7 @@ import numpy, math
 from math_tools.geometry import rotation
 from math_tools.algebra import quaternions, vectors_and_matrices as vecmatlib 
 
+# \cond
 class Analytic_Jacobian(object):
     '''
     Contains the standard analytic jacobian of a manipulator with methods for calculating it.
@@ -366,6 +367,7 @@ class Error_Jacobian(object):
         bej = self.basis_error_jacobian_for_orientation(tskfrm, ajac)
         self.value = numpy.dot(tskfrm.error.settings.weight, bej)
 
+# \endcond
 
 
 

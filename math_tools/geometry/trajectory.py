@@ -30,10 +30,6 @@ Changes from previous version:
 
 import copy, math, sys, numpy as np
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
 import general_python as genpy
 from math_tools import general_math as gen
 from math_tools.algebra import polynomials as pl, vectors_and_matrices as vm
@@ -41,7 +37,21 @@ from math_tools.geometry import geometry as geo, trigonometry as trig, geometry_
 
 all_figures = ['Position', 'Velocity', 'Acceleration', 'Jerk']
 all_ltypes  = ['-','r--', 'bs', 'g^', 'bo', 'k']
-
+all_colors  = ['black','blue', 'cyan','green', 'red', 'purple', 'orange', 'gray', 'yellow', 'magenta',
+               'firebrick', 'k',
+               '#F0E442', '#8A2BE2', '#bcbcbc', '#8b8b8b', '#b3de69', '#0072B2', '#eeeeee',
+               '#6ACC65', '#ffed6f', '#FF9F9A', '#6d904f', '#FFFEA3', '0.70'
+               '#FFB5B8', '#bc82bd', '#ccebc4', '#77BEDB', '#009E73', '#97F0AA', '#D65F5F', 
+               '.8'     , '#003FFF', '#92C6FF', '#fdb462', '#FBC15E', '#8172B2', '#B47CC7',
+               '#E5E5E5', '#CC79A7', '#E24A33', '#006374', '#EEEEEE', '#8EBA42', '0.40',
+               'w'      , '#fa8174', '#55A868', '#B0E0E6', '#C44E52', '#64B5CD', '#4C72B0', 
+               '#D0BBFF', '#f0f0f0', '#cbcbcb', '#C4AD66', '#03ED3A', '#467821', '#00FFCC',
+               '#FFC400', '#30a2da', '#988ED5', '#e5ae38', 'darkgoldenrod', '#CCB974',
+               '#348ABD', '0.8'    , '#feffb3', '#bfbbd9', '#555555', '#8dd3c7', '#777777',
+               '0.6'    , '#D55E00', '#fc4f30', '#7600A1', '#00D7FF', '#4878CF', '#017517',
+               '#001C7F', '#B8860B', '#EAEAF2', '#E8000B', '#afeeee', '#81b1d2', '#7A68A6',
+               '#8C0900', '.15'    , '#A60628', '#56B4E9']
+# all_colors  = [str(i*0.1) for i in range(10)]
 '''
 r-- : dashed line
 bs  : blue squares
@@ -494,6 +504,8 @@ def plot_list(pathlist, ncol = 1, show_limits = False, show_plot = True):
     for path in pathlist:
         assert dim == path.dim, "\n Error: All paths must have the same dimensions \n"
 
+    import matplotlib.pyplot as plt
+    
     plt.figure(1)
     nrow = dim/ncol
     
@@ -528,20 +540,22 @@ class Path_Plot_Settings():
         self.figure = 'Position'
         self.ylabel_suffix = ''
         self.ylabel_prefix = None
-        self.grid = False
-        self.dim_label = ['Axis ' + str(i) for i in range(dim)]
+        self.grid          = False
+        self.show_range    = False
+        self.axis_label    = ['Axis ' + str(i) for i in range(dim)]
+        self.plot_color    = [all_colors[i] for i in range(dim)]
     
     def ylabel(self, axis):
         if axis == None:
             dl = ''
         else:
-            assert axis < len(self.dim_label), genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, str(axis) + " is not a valid value for argument axis: Must be lower than dimension")
-            dl = self.dim_label[axis]
+            assert axis < len(self.axis_label), genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, str(axis) + " is not a valid value for argument axis: Must be lower than dimension")
+            dl = self.axis_label[axis]
 
         if self.ylabel_prefix == None:
             s = self.figure + " of "
         else:
-            s = self.plot_settings.ylabel_prefix    
+            s = self.ylabel_prefix    
         
         if self.ylabel_suffix != None:
             s += dl + self.ylabel_suffix
@@ -782,8 +796,10 @@ class Path(object):
             return self.current_acceleration[axis]
         else:
             assert False, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, field_name + " is not a valid value for field_name")
-    
+
     def plot(self, axis = 0, n = 100, show_points = False):
+        import matplotlib.pyplot as plt
+
         s = self.plot_settings.ylabel(axis)
         x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         y = []
@@ -1234,18 +1250,60 @@ class Trajectory(object):
         
         self.phi_start = phi_start    
         self.phi_end   = phi_end
-      
-    def plot(self, axis = 0, y_text = "", figure = 'Position'):
+    
+    def get_range(self, axis, figure):
+        if figure == 'Position':
+            miny = self.pos_min[axis]
+            maxy = self.pos_max[axis]
+        elif figure == 'Velocity':    
+            miny = - self.vel_max
+            maxy =   self.vel_max
+        elif figure == 'Acceleration':    
+            miny = - self.acc_max
+            maxy =   self.acc_max
+        else:
+            assert False, "Unknown figure"
 
+        return (miny, maxy)    
+        
+    def get_plot(self, plt = None, axis = 0, figure = 'Position'):
+        if plt == None:
+            import matplotlib.pyplot as plt
+        
         s = self.plot_settings.ylabel(axis)
-
+                 
         fig, ax = plt.subplots()
-        ax = self.draw_points(ax, axis = axis)
+        self.draw_points(ax, axis = axis)
+            
+        if self.plot_settings.show_range:
+            (miny, maxy) = self.get_range(axis, figure)
+            ax.annotate('Upper Bound: ' + '{:04.3f}'.format(maxy), 
+                xy = (self.phi_end, maxy), xycoords = 'data',
+                xytext = (- 150, -17), textcoords = 'offset points',
+                horizontalalignment='left', verticalalignment='bottom', 
+                color = self.plot_settings.plot_color[axis])
+            ax.annotate('Lower Bound: ' + '{:04.3f}'.format(miny), 
+                xy = (0.0, miny), xycoords = 'data',
+                xytext = (150, 17), textcoords = 'offset points',
+                horizontalalignment='right', verticalalignment='top',
+                # arrowprops=dict(facecolor='black', shrink=0.05),
+                color = self.plot_settings.plot_color[axis])
+                
+            plt.axhline(linewidth = 4, color = self.plot_settings.plot_color[axis], y = miny)    
+            plt.axhline(linewidth = 4, color = self.plot_settings.plot_color[axis], y = maxy)    
+            plt.axhspan(miny, maxy, facecolor = self.plot_settings.plot_color[axis], alpha = 0.2) 
+                   
         plt.ylabel(s)
         plt.xlabel('phi')
+        return plt
+          
+    def plot(self, axis = 0, figure = 'Position'):
+        plt = self.get_plot(axis = axis, figure = figure)
         plt.show()
 
-    def plot_all(self):
+    def plot_all(self, legend = True):
+        import matplotlib.pyplot as plt
+
         s = self.plot_settings.ylabel(axis = None)
             
         fig, ax = plt.subplots()
@@ -1257,18 +1315,31 @@ class Trajectory(object):
         '''
         plt.xlabel('phi')
         plt.ylabel(s)
+        
+        if legend:
+            ax.legend([self.plot_settings.axis_label[i] for i in range(self.dim)], loc='upper right')
         plt.show()
 
-    def draw_points(self, ax, axis = 0, ltype = '-'):
+    def __getitem__(self, axis):
+        # Returns the axis values as a vector, 
+        # if axis = -1 then it returns the phase (phi) as a vector
+        # This function can be used for plotting
         assert axis < self.dim, genpy.err_str(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, str(axis) + " is not a valid value for argument axis: Must be lower than dimension")
         px = []
-        py = []
-        for i in range(len(self.segment)):
-            for pnt in self.segment[i].point:
-                px.append(self.seg_start[i] + pnt.phi)
-                py.append(pnt.value(field_name = self.plot_settings.figure, axis = axis))
+        if axis == -1:
+            for i in range(len(self.segment)):
+                for pnt in self.segment[i].point:
+                    px.append(self.seg_start[i] + pnt.phi)
+        else:
+            for i in range(len(self.segment)):
+                for pnt in self.segment[i].point:
+                    px.append(pnt.value(field_name = self.plot_settings.figure, axis = axis))
+                    
+        return px
+        
+    def draw_points(self, ax, axis = 0, ltype = '-'):
 
-        ax.plot(px, py, ltype) 
+        ax.plot(self[-1], self[axis], ltype, color = self.plot_settings.plot_color[axis]) 
 
     def csv_str(self, n = 100, header = True):
         
@@ -1352,6 +1423,8 @@ class Trajectory(object):
         plt.show()
 
     def plot3d(self, figure = 'Position', axis_x = 0, axis_y = 1, axis_z = 2, n = 100, label = "", show_points = False):
+        import matplotlib as mpl
+        from mpl_toolkits.mplot3d import Axes3D
 
         t = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         mpl.rcParams['legend.fontsize'] = 10
@@ -1432,16 +1505,21 @@ class Trajectory_Polynomial(Trajectory):
         lsi = len(self.segment) - 1
         self.phi_end = self.seg_start[lsi] + self.segment[lsi].phi_end
 
-    def draw_polynomial(self, ax, axis = 0, n = 1000, ltype = '-'):
+    def draw_polynomial(self, ax, axis = 0, figure = None, n = 1000, ltype = '-'):
+        if figure == None:
+            figure = self.plot_settings.figure
         x = np.append(np.arange(0.0, self.phi_end, self.phi_end/n), self.phi_end)
         y = []
         for t in x:
             self.set_phi(t)
-            y.append(self.current_value(field_name = self.plot_settings.figure, axis = axis))
+            y.append(self.current_value(field_name = figure, axis = axis))
 
         ax.plot(x, y, ltype) 
             
-    def plot(self, axis = 0, n = 100, show_points = False):
+    def plot(self, axis = 0, figure = None, n = 100, show_points = False):
+        if figure == None:
+            figure = self.plot_settings.figure
+        import matplotlib.pyplot as plt
         s = self.plot_settings.ylabel(axis)
         fig, ax = plt.subplots()
         self.draw_polynomial(ax, axis = axis, n = n)
@@ -1449,6 +1527,26 @@ class Trajectory_Polynomial(Trajectory):
         if show_points:
             self.draw_points(ax, axis = axis, ltype = 'o')
 
+        if self.plot_settings.show_range:
+            
+            (miny, maxy) = self.get_range(axis, figure)
+
+            ax.annotate('Upper Bound: ' + '{:04.3f}'.format(maxy), 
+                xy = (self.phi_end, maxy), xycoords = 'data',
+                xytext = (- 150, -17), textcoords = 'offset points',
+                horizontalalignment='left', verticalalignment='bottom', 
+                color = self.plot_settings.plot_color[axis])
+            ax.annotate('Lower Bound: ' + '{:04.3f}'.format(miny), 
+                xy = (0.0, miny), xycoords = 'data',
+                xytext = (150, 17), textcoords = 'offset points',
+                horizontalalignment='right', verticalalignment='top',
+                # arrowprops=dict(facecolor='black', shrink=0.05),
+                color = self.plot_settings.plot_color[axis])
+                
+            plt.axhline(linewidth = 4, color = self.plot_settings.plot_color[axis], y = miny)    
+            plt.axhline(linewidth = 4, color = self.plot_settings.plot_color[axis], y = maxy)    
+            plt.axhspan(miny, maxy, facecolor = self.plot_settings.plot_color[axis], alpha = 0.2) 
+                   
         plt.ylabel(s)
         plt.xlabel('phi')
         plt.show()

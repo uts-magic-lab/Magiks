@@ -21,7 +21,7 @@ import math, pickle
 from math_tools.algebra import vectors_and_matrices as vecmat
 from math_tools.statistics import statistics
 
-
+# \cond
 key_dic = {
     # Forward:
     # For Test_Log_Data_Single_Run():
@@ -509,3 +509,4 @@ class Test_Log():
             CSV_FILE_HANDLE.write(x.csv_horizontal() + '\n')
         print 'Test_Log: Writing csv file ended.'
 
+# \endcond

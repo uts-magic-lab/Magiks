@@ -42,6 +42,7 @@ from magiks.taskspace  import endeffector as eflib
 
 all_algorithms = ['JI', 'JT', 'JPI', 'DLS(CDF)', 'DLS(ADF)', 'DLS(MADF)']
 
+# \cond
 # Module Dictionaries:
 key_dic = {
     'JI'            : 'Jacobian Inverse',
@@ -165,8 +166,8 @@ class Inverse_Kinematics_Settings():
         assert run_mode in self.__class__.all_run_modes, self.__class__.err_head + func_name + ": The given run_mode is not known!"
         assert algorithm in self.__class__.all_algorithms, self.__class__.err_head + func_name + ": The given algorithm is not known!"
         
-        self.ngp_active              = False  # Nullspace Gradient Projection Active?
-        self.continue_until_inrange  = False  # Continue iterations until all joints are in range?
+        self.ngp_active              = True  # Nullspace Gradient Projection Active?
+        self.continue_until_inrange  = True  # Continue iterations until all joints are in range?
         self.return_min_config       = True   # If True returns the configuration corresponding to minimum error achieved if False returnts the config of the last iteration
         self.respect_error_reduction = True   # If True the configuration is added to the trajectory only if the norm of pose error is reduced
         self.respect_limits          = True   # If True, position, velocity and acceleration limits will be respected in function moveto_target()
@@ -204,7 +205,7 @@ class Inverse_Kinematics_Settings():
     def algorithm_key(self):
         assert self.algorithm in self.__class__.all_algorithms
         return self.__class__.alg_dic[self.algorithm]
-
+# \endcond
 class Inverse_Kinematics( eflib.Endeffector ):
     '''
     Inherits all properties and methods of a "Forward_Kinematics" class 
@@ -239,6 +240,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         
         self.initial_config_list    = []
 
+    # \cond
 
     def settings_key():
         '''
@@ -284,7 +286,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             J_dag_J           = np.dot(Je_dag, Je)
             In_minus_J_dag_J  = np.eye(self.config_settings.DOF) - J_dag_J
             dq                = np.dot(In_minus_J_dag_J, u)
-            # print "Internal motion: ", dq
+            # print "Self motion: ", dq, self.qvr
             delta_qs         += dq
         
         return delta_qs       
@@ -319,6 +321,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             # print "u = ", u
         else:
             u = None    
+
         jdir     = self.ik_direction(u)
         k        = self.optimum_stepsize(jdir)
         delta_qs = k*jdir
@@ -388,7 +391,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         self.geo_jac           = copy.copy(ik.geo_jac)
         self.err_jac           = copy.copy(ik.err_jac)    
         self.run_log           = copy.deepcopy(ik.run_log)
-        
+    # \endcond    
     def js_create(self, phi_end = None, traj_capacity = 2, traj_type = 'regular'):
         '''
         '''
@@ -408,6 +411,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
         else:
             assert False, "\n Unknown Trajectory Type \n"
 
+        jt.plot_settings.axis_label = self.config_settings.joint_label
         if self.ik_settings.respect_limits_in_trajectories:
             jt.vel_max  = self.ik_settings.max_js
             jt.acc_max  = self.ik_settings.max_ja
@@ -473,20 +477,27 @@ class Inverse_Kinematics( eflib.Endeffector ):
     
             err_reduced = (self.pose_error_norm() < previous_pose_error_norm)
 
-            if err_reduced:
+            if err_reduced or self.in_target():
                 self.damping_factor /= self.ik_settings.df_gain
+                # self.damping_factor /= self.ik_settings.df_gain
             else:
                 self.damping_factor *= self.ik_settings.df_gain
-                self.set_config(previous_configuration)
+
+                if self.damping_factor < 0.001:
+                    self.set_config(previous_configuration)
+                else:
+                    self.damping_factor /= self.ik_settings.df_gain
 
             rs = self.ik_settings.continue_until_inrange
             ir = self.joints_in_range(self.free_config(self.q))
 
             not_arrived = (not self.in_target() ) or (rs and (not ir))
             have_time   = (counter < self.ik_settings.number_of_steps)
-
+        
         if self.ik_settings.generate_log:
             self.run_log.time_elapsed = time.time() - self.run_log.time_start
+    # \cond
+
 
     def run(self):
         '''
@@ -551,7 +562,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             print "Rotation Error    : ", self.task_frame[0].error.value(ra, rd)
             print "Rotation in target: ", self.task_frame[0].error.in_target(ra, rd)
             '''
-            
+
             if self.ik_settings.return_min_config:
                 '''    
                 print "Min Error Achieved: ", min_config.pose_error_norm()
@@ -583,7 +594,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             if self.ik_settings.run_mode == 'binary_run':
                 self.run_binary(True)
             elif self.ik_settings.run_mode == 'normal_run':
-                if self.ik_settings.algorithm in ["JT","JPI","DLS(CDF)", "JI"]:
+                if self.ik_settings.algorithm in ["JT","JPI","DLS(CDF)", "JI", "DLS(MADF)"]:
                     self.run()
                 elif self.ik_settings.algorithm == "DLS(ADF)":
                     self.run_dls_vdf()
@@ -604,7 +615,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             if self.ik_settings.run_mode == 'binary_run':
                 self.run_binary(True)
             elif self.ik_settings.run_mode == 'normal_run':
-                if self.ik_settings.algorithm in ["JT","JPI","DLS(CDF)", "JI"]:
+                if self.ik_settings.algorithm in ["JT","JPI","DLS(CDF)", "JI", "DLS(MADF)"]:
                     self.run()
                 elif self.ik_settings.algorithm == "DLS(ADF)":
                     self.run_dls_vdf()
@@ -614,6 +625,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
             self.start_node += 1
 
         return self.in_target()
+    # \endcond
 
     def moveto_target(self, show = False):
         ts        = time.time()
@@ -663,7 +675,7 @@ class Inverse_Kinematics( eflib.Endeffector ):
                 step_log.time_elapsed = elt
                 self.run_log.step.append(step_log)
             return True
-
+    # \cond
     def js_project(self,  pos_traj, ori_traj = None, phi_start = 0.0, phi_end = None, relative = True, traj_capacity = 2, traj_type = 'regular'):
         '''
         projects the given taskspace pose trajectory into the jointspace using the numeric inverse kinematics.
@@ -804,3 +816,4 @@ class Inverse_Kinematics( eflib.Endeffector ):
         ori_traj.add_point(phi - phi_start, self.task_frame[0].orientation(self.transfer_matrices()))
         return (pos_traj, ori_traj)
     """
+    # \endcond
