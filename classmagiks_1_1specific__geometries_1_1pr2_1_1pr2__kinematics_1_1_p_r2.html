@@ -13,6 +13,12 @@
 <script type="text/javascript">
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX","output/HTML-CSS"],
+});
+</script><script src="/home/nimasoft/Downloads/MathJax-2.6-latest/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -138,13 +144,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a1f173d7f547d4cf197daa602992ab57b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a1f173d7f547d4cf197daa602992ab57b">set_posture</a></td></tr>
 <tr class="separator:a1f173d7f547d4cf197daa602992ab57b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a31e23eae18e9bde6d59aa3298ebd3667"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a31e23eae18e9bde6d59aa3298ebd3667">all_IK_solutions</a></td></tr>
-<tr class="memdesc:a31e23eae18e9bde6d59aa3298ebd3667"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector <img class="formulaInl" alt="$ \phi $" src="form_7.png"/>.  <a href="#a31e23eae18e9bde6d59aa3298ebd3667">More...</a><br/></td></tr>
+<tr class="memdesc:a31e23eae18e9bde6d59aa3298ebd3667"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector \( \phi \).  <a href="#a31e23eae18e9bde6d59aa3298ebd3667">More...</a><br/></td></tr>
 <tr class="separator:a31e23eae18e9bde6d59aa3298ebd3667"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9524ba54025f718366f4399ce24c65ee"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a9524ba54025f718366f4399ce24c65ee">objective_function_for</a></td></tr>
 <tr class="memdesc:a9524ba54025f718366f4399ce24c65ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Use this function to get the value of the objective function for a given configuration <b><em>q</em> Why</b> has this function been written? Sometimes you want to find the value of the objective function for a configuration but you don't want to set that configuration (you don't want to take the manipulator to that configuration) In this case, you can not use function "self.objective_function()" which gives the value of the objective function for the current configuration of the robot.  <a href="#a9524ba54025f718366f4399ce24c65ee">More...</a><br/></td></tr>
 <tr class="separator:a9524ba54025f718366f4399ce24c65ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3a50c2ca9418cac811b2cca34087a40b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a3a50c2ca9418cac811b2cca34087a40b">IK_config</a></td></tr>
-<tr class="memdesc:a3a50c2ca9418cac811b2cca34087a40b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the solution of the Inverse Kinematic problem for given redundant parameter vector <img class="formulaInl" alt="$ phi $" src="form_16.png"/> in free-base mode.  <a href="#a3a50c2ca9418cac811b2cca34087a40b">More...</a><br/></td></tr>
+<tr class="memdesc:a3a50c2ca9418cac811b2cca34087a40b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the solution of the Inverse Kinematic problem for given redundant parameter vector \( phi \) in free-base mode.  <a href="#a3a50c2ca9418cac811b2cca34087a40b">More...</a><br/></td></tr>
 <tr class="separator:a3a50c2ca9418cac811b2cca34087a40b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a680f37ca8a46fccd77fde121859e3bb3"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a680f37ca8a46fccd77fde121859e3bb3">pos_rarm_grip_wrt_tor_shpan</a></td></tr>
 <tr class="memdesc:a680f37ca8a46fccd77fde121859e3bb3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Use this function to get the current position of the right gripper (Arm Endeffector) w.r.t the arm base.  <a href="#a680f37ca8a46fccd77fde121859e3bb3">More...</a><br/></td></tr>
@@ -257,7 +263,7 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a0903a189cbe112bce4b75bbc7c50357c"><td class="mdescLeft">&#160;</td><td class="mdescRight">A numpy vector of size 3 representing the desired position of the Endeffector.  <a href="#a0903a189cbe112bce4b75bbc7c50357c">More...</a><br/></td></tr>
 <tr class="separator:a0903a189cbe112bce4b75bbc7c50357c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab32efb5ee5db14194313d4477efe4ce8"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#ab32efb5ee5db14194313d4477efe4ce8">Rd</a></td></tr>
-<tr class="memdesc:ab32efb5ee5db14194313d4477efe4ce8"><td class="mdescLeft">&#160;</td><td class="mdescRight">A <img class="formulaInl" alt="$ 3 \times 3 $" src="form_0.png"/> rotation matrix specifying the desired endeffector orientation for the IK problem.  <a href="#ab32efb5ee5db14194313d4477efe4ce8">More...</a><br/></td></tr>
+<tr class="memdesc:ab32efb5ee5db14194313d4477efe4ce8"><td class="mdescLeft">&#160;</td><td class="mdescRight">A \( 3 \times 3 \) rotation matrix specifying the desired endeffector orientation for the IK problem.  <a href="#ab32efb5ee5db14194313d4477efe4ce8">More...</a><br/></td></tr>
 <tr class="separator:ab32efb5ee5db14194313d4477efe4ce8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3574231572d9cc0e22ab8749e1e209c9"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a3574231572d9cc0e22ab8749e1e209c9">ofun_computed</a></td></tr>
 <tr class="separator:a3574231572d9cc0e22ab8749e1e209c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -444,21 +450,21 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector <img class="formulaInl" alt="$ \phi $" src="form_7.png"/>. </p>
+<p>Finds all the feasible solutions of the Inverse Kinematic problem for given redundant parameter vector \( \phi \). </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">phi</td><td>Is a numpy vector of five elements containing the values of five redundant parameters in free-base mode. The values of phi specify the following parameters: <br/>
  phi[0] : The first joint angle q[0] (Shoulder-Pan joint angle) <br/>
  phi[1] : The <b>r</b> cylindrical coordinate of the wrist (wrist joint center) position w.r.t. the arm base (shoulder-pan joint center) in torso coordinate system: <p class="formulaDsp">
-<img class="formulaDsp" alt="\[ r = p_x^2 + p_y^2 \]" src="form_9.png"/>
+\[ r = p_x^2 + p_y^2 \]
 </p>
- where <img class="formulaInl" alt="$ p_x $" src="form_10.png"/> and <img class="formulaInl" alt="$ p_y $" src="form_11.png"/> are the <b>x</b> and <b>y</b> cartesian coordinates of the wrist position w.r.t. the arm base in torso coordinate system. <br/>
- phi[2] : <img class="formulaInl" alt="$ p_z $" src="form_12.png"/> or the <b>z</b> cartesian coordinate of the wrist position w.r.t. the arm base in torso coordinate system. <br/>
- phi[3] : The <b><img class="formulaInl" alt="$ \psi $" src="form_13.png"/></b> cylindrical coordinate of the wrist (wrist joint center) position w.r.t. the arm base in torso CS: <p class="formulaDsp">
-<img class="formulaDsp" alt="\[ \psi = \arctan( \frac {p_x} {p_y}) \]" src="form_14.png"/>
+ where \( p_x \) and \( p_y \) are the <b>x</b> and <b>y</b> cartesian coordinates of the wrist position w.r.t. the arm base in torso coordinate system. <br/>
+ phi[2] : \( p_z \) or the <b>z</b> cartesian coordinate of the wrist position w.r.t. the arm base in torso coordinate system. <br/>
+ phi[3] : The <b>\( \psi \)</b> cylindrical coordinate of the wrist (wrist joint center) position w.r.t. the arm base in torso CS: <p class="formulaDsp">
+\[ \psi = \arctan( \frac {p_x} {p_y}) \]
 </p>
- ( <img class="formulaInl" alt="$ p_x $" src="form_10.png"/> and <img class="formulaInl" alt="$ p_y $" src="form_11.png"/> can be determined from phi[1] and phi[3]) <br/>
- phi[4] : <b><img class="formulaInl" alt="$ \tau $" src="form_15.png"/></b> or the rotation angle of the trunc base around z axis </td></tr>
+ ( \( p_x \) and \( p_y \) can be determined from phi[1] and phi[3]) <br/>
+ phi[4] : <b>\( \tau \)</b> or the rotation angle of the trunc base around z axis </td></tr>
   </table>
   </dd>
 </dl>
@@ -741,7 +747,7 @@ argument "ofun" specifies the code of the objective function which is set to 0 b
 <p>Dumps the given partial joint values in the given full set of <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html" title="Contains properties and methods managing the kinematics of the PR2 robot. ">PR2</a> joints and returns the modified full set of joints This function does change object configuration. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">q_partial</td><td>A numpy vector of size 7 or 11. If size is 7, it should contain arm joint values and if 11, it should have arm joint values plus four trunk location parameters: <img class="formulaInl" alt="$ h_{ts} = q[7] , x = q[8], y = q[9], \theta = q[10] $" src="form_31.png"/> </td></tr>
+    <tr><td class="paramname">q_partial</td><td>A numpy vector of size 7 or 11. If size is 7, it should contain arm joint values and if 11, it should have arm joint values plus four trunk location parameters: \( h_{ts} = q[7] , x = q[8], y = q[9], \theta = q[10] \) </td></tr>
     <tr><td class="paramname">q_full</td><td>A numpy vector of size 18 containing all joint values of <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html" title="Contains properties and methods managing the kinematics of the PR2 robot. ">PR2</a>, if Null, current object configuration will be set </td></tr>
   </table>
   </dd>
@@ -798,7 +804,7 @@ THIS FUNCTION IS NOT COMPLETE AND i NEED TO WORK ON IT MORE ...
       </table>
 </div><div class="memdoc">
 
-<p>Finds the solution of the Inverse Kinematic problem for given redundant parameter vector <img class="formulaInl" alt="$ phi $" src="form_16.png"/> in free-base mode. </p>
+<p>Finds the solution of the Inverse Kinematic problem for given redundant parameter vector \( phi \) in free-base mode. </p>
 <p>In case of redundant solutions, the one corresponding to the lowest objective function is selected. Class property ofuncode specifies the objective function. legend for ofuncode: </p>
 <ul>
 <li>ofuncode = 0 (Default) the solution closest to current joint angles will be selected </li>
@@ -1627,7 +1633,7 @@ phi[4] = The rotation of the base. Same as "tau" or the 10th joint angle (phi[4]
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">target_position</td><td>A numpy array of 3 elements specifying the desired endeffector position </td></tr>
-    <tr><td class="paramname">target_orientation</td><td>A <img class="formulaInl" alt="$ 3 \times 3 $" src="form_0.png"/> numpy rotation matrix representing the desired endeffector orientation </td></tr>
+    <tr><td class="paramname">target_orientation</td><td>A \( 3 \times 3 \) numpy rotation matrix representing the desired endeffector orientation </td></tr>
   </table>
   </dd>
 </dl>
@@ -2249,7 +2255,7 @@ variables self.xd and self.Rd should not be manipulated by the user. Always use 
       </table>
 </div><div class="memdoc">
 
-<p>A <img class="formulaInl" alt="$ 3 \times 3 $" src="form_0.png"/> rotation matrix specifying the desired endeffector orientation for the IK problem. </p>
+<p>A \( 3 \times 3 \) rotation matrix specifying the desired endeffector orientation for the IK problem. </p>
 <p>Recommended not to be set directly. Always use function <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#ab9adddbab17cda8cfa88101a8c47ad0c" title="Sets the endeffector target to a desired position and orientation. ">set_target()</a> to change this property. </p>
 
 <p>Definition at line <a class="el" href="pr2__kinematics_8py_source.html#l00139">139</a> of file <a class="el" href="pr2__kinematics_8py_source.html">pr2_kinematics.py</a>.</p>
@@ -2363,7 +2369,7 @@ variables self.xd and self.Rd should not be manipulated by the user. Always use 
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Jan 29 2016 00:52:05 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Sun May 8 2016 19:53:38 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

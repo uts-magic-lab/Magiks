@@ -1,5 +1,9 @@
 var searchData=
 [
-  ['single_5frun_5flog',['Single_Run_Log',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html',1,'magiks::magiks_core::log_manager']]],
-  ['skilled_5fpr2',['Skilled_PR2',['../classmagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2_1_1_skilled___p_r2.html',1,'magiks::specific_geometries::pr2::skilled_pr2']]]
+  ['manipulator_5fconfiguration',['Manipulator_Configuration',['../classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html',1,'magiks::jointspace::manipulator_configuration']]],
+  ['manipulator_5fconfiguration_5fsettings',['Manipulator_Configuration_Settings',['../classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration___settings.html',1,'magiks::jointspace::manipulator_configuration']]],
+  ['manipulator_5fgeometry',['Manipulator_Geometry',['../classmagiks_1_1geometry_1_1manipulator__geometry_1_1_manipulator___geometry.html',1,'magiks::geometry::manipulator_geometry']]],
+  ['manipulator_5fgeometry_5fsettings',['Manipulator_Geometry_Settings',['../classmagiks_1_1geometry_1_1manipulator__geometry_1_1_manipulator___geometry___settings.html',1,'magiks::geometry::manipulator_geometry']]],
+  ['metric',['Metric',['../classmath__tools_1_1geometry_1_1pose__metric_1_1_metric.html',1,'math_tools::geometry::pose_metric']]],
+  ['metric_5fsettings',['Metric_Settings',['../classmath__tools_1_1geometry_1_1pose__metric_1_1_metric___settings.html',1,'math_tools::geometry::pose_metric']]]
 ];

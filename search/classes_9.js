@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['zghal_5ffunction',['Zghal_Function',['../classmagiks_1_1magiks__core_1_1function__library_1_1_zghal___function.html',1,'magiks::magiks_core::function_library']]]
+  ['quaternion',['Quaternion',['../classmath__tools_1_1algebra_1_1quaternions_1_1_quaternion.html',1,'math_tools::algebra::quaternions']]]
 ];

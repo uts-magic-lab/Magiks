@@ -13,6 +13,12 @@
 <script type="text/javascript">
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX","output/HTML-CSS"],
+});
+</script><script src="/home/nimasoft/Downloads/MathJax-2.6-latest/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -86,6 +92,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
       <li><a href="functions_func_e.html#index_e"><span>e</span></a></li>
       <li><a href="functions_func_f.html#index_f"><span>f</span></a></li>
       <li><a href="functions_func_g.html#index_g"><span>g</span></a></li>
+      <li><a href="functions_func_h.html#index_h"><span>h</span></a></li>
       <li><a href="functions_func_i.html#index_i"><span>i</span></a></li>
       <li class="current"><a href="functions_func_j.html#index_j"><span>j</span></a></li>
       <li><a href="functions_func_k.html#index_k"><span>k</span></a></li>
@@ -94,12 +101,15 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
       <li><a href="functions_func_n.html#index_n"><span>n</span></a></li>
       <li><a href="functions_func_o.html#index_o"><span>o</span></a></li>
       <li><a href="functions_func_p.html#index_p"><span>p</span></a></li>
+      <li><a href="functions_func_q.html#index_q"><span>q</span></a></li>
       <li><a href="functions_func_r.html#index_r"><span>r</span></a></li>
       <li><a href="functions_func_s.html#index_s"><span>s</span></a></li>
       <li><a href="functions_func_t.html#index_t"><span>t</span></a></li>
       <li><a href="functions_func_u.html#index_u"><span>u</span></a></li>
       <li><a href="functions_func_v.html#index_v"><span>v</span></a></li>
       <li><a href="functions_func_w.html#index_w"><span>w</span></a></li>
+      <li><a href="functions_func_y.html#index_y"><span>y</span></a></li>
+      <li><a href="functions_func_z.html#index_z"><span>z</span></a></li>
     </ul>
   </div>
 </div><!-- top -->
@@ -121,16 +131,24 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 &#160;
 
 <h3><a class="anchor" id="index_j"></a>- j -</h3><ul>
+<li>joint_damping_weights()
+: <a class="el" href="classmagiks_1_1taskspace_1_1endeffector_1_1_endeffector.html#a5a544a82a8c817076fb92c054b7fa976">Endeffector</a>
+</li>
 <li>joint_in_range()
-: <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m___configuration.html#a83720e74bfd15e86965bbe5e43d4d62e">PR2_ARM_Configuration</a>
+: <a class="el" href="classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html#a83720e74bfd15e86965bbe5e43d4d62e">Manipulator_Configuration</a>
+, <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m___configuration.html#a83720e74bfd15e86965bbe5e43d4d62e">PR2_ARM_Configuration</a>
 , <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a83720e74bfd15e86965bbe5e43d4d62e">PR2</a>
 </li>
 <li>joint_redundancy_jacobian()
 : <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#ad17c8f3a5a5505565c4814867ce48a2a">PR2_ARM</a>
 </li>
 <li>joint_stepsize_interval()
-: <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m___configuration.html#a061a675f0491758562181048dca901b3">PR2_ARM_Configuration</a>
+: <a class="el" href="classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html#a061a675f0491758562181048dca901b3">Manipulator_Configuration</a>
+, <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m___configuration.html#a061a675f0491758562181048dca901b3">PR2_ARM_Configuration</a>
 , <a class="el" href="classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a061a675f0491758562181048dca901b3">PR2</a>
+</li>
+<li>joints_in_range()
+: <a class="el" href="classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html#aaded1585bda78fa5830497acae1cdec2">Manipulator_Configuration</a>
 </li>
 <li>js_create()
 : <a class="el" href="classmagiks_1_1magiks__core_1_1inverse__kinematics_1_1_inverse___kinematics.html#aa35465ca93becfd680387d86a351bf21">Inverse_Kinematics</a>
@@ -142,7 +160,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Jan 29 2016 00:52:07 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Sun May 8 2016 19:53:52 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

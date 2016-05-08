@@ -9,7 +9,5 @@ var searchData=
   ['kc_5fptd',['kc_ptd',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#adbd34a8b5c0b8fc49aae24a13f6e3eb8',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['kc_5fservice_5fcnt',['kc_service_cnt',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#a73b16c8bc53d69931af104911317e19e',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['kc_5ftime',['kc_time',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#ae3dca871dc08f26ffcef742c01e20734',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
-  ['key_5fdic',['key_dic',['../namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a4fe58d8004f76cb9e5bbe2c9e1904958',1,'magiks.magiks_core.kinematic_manager.key_dic()'],['../namespacemagiks_1_1magiks__core_1_1log__manager.html#a4fe58d8004f76cb9e5bbe2c9e1904958',1,'magiks.magiks_core.log_manager.key_dic()']]],
-  ['key_5fparameter_5fset',['key_parameter_set',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html#add50283bfe0497db0215793125d22957',1,'magiks::magiks_core::kinematic_manager::Kinematic_Manager_Settings']]],
-  ['km_5flog',['km_log',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager.html#a5436f626ae1e95dd2364f06bd8e31193',1,'magiks::magiks_core::kinematic_manager::Kinematic_Manager']]]
+  ['key_5fdic',['key_dic',['../namespacemath__tools_1_1geometry_1_1pose__metric.html#a4fe58d8004f76cb9e5bbe2c9e1904958',1,'math_tools::geometry::pose_metric']]]
 ];

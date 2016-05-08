@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['geometric_5fjacobian',['Geometric_Jacobian',['../classmagiks_1_1jacobian_1_1jacobian_1_1_geometric___jacobian.html',1,'magiks::jacobian::jacobian']]]
+  ['function',['Function',['../classmath__tools_1_1algebra_1_1functions_1_1_function.html',1,'math_tools::algebra::functions']]]
 ];

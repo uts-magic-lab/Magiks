@@ -13,6 +13,12 @@
 <script type="text/javascript">
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX","output/HTML-CSS"],
+});
+</script><script src="/home/nimasoft/Downloads/MathJax-2.6-latest/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -112,9 +118,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;</div>
 <div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="keyword">import</span> numpy, math</div>
 <div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;</div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="keyword">import</span> magiks.geometry.manipulator_geometry <span class="keyword">as</span> geolib </div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="keyword">import</span> math_tools.general_math <span class="keyword">as</span> genmath <span class="comment"># A library of mathemathical global variables </span></div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="keyword">import</span> magiks.jointspace.manipulator_configuration <span class="keyword">as</span> conflib </div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="keyword">import</span> <a class="code" href="namespacemagiks_1_1geometry_1_1manipulator__geometry.html">magiks.geometry.manipulator_geometry</a> <span class="keyword">as</span> geolib </div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="keyword">import</span> <a class="code" href="namespacemath__tools_1_1general__math.html">math_tools.general_math</a> <span class="keyword">as</span> genmath <span class="comment"># A library of mathemathical global variables </span></div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="keyword">import</span> <a class="code" href="namespacemagiks_1_1jointspace_1_1manipulator__configuration.html">magiks.jointspace.manipulator_configuration</a> <span class="keyword">as</span> conflib </div>
 <div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;</div>
 <div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="comment"># Geometry of PUMA:</span></div>
 <div class="line"><a name="l00028"></a><span class="lineno"><a class="line" href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#abec959f68598f14797d0672543e39a1d">   28</a></span>&#160;PUMA_geometry_settings         = geolib.Manipulator_Geometry_Settings(6, <span class="stringliteral">&#39;PUMA&#39;</span>)</div>
@@ -281,7 +287,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;    <span class="keywordflow">else</span>: </div>
 <div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;        <span class="keyword">assert</span> <span class="keyword">False</span>, <span class="stringliteral">&quot;Error from manipulator_geometry(): &quot;</span> + manip_name + <span class="stringliteral">&quot; is an Unknown Manipulator&quot;</span></div>
 <div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;        </div>
-<div class="line"><a name="l00192"></a><span class="lineno"><a class="line" href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a20fae5cbc7897148b31f11286a21849b">  192</a></span>&#160;<span class="keyword">def </span><a class="code" href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a20fae5cbc7897148b31f11286a21849b">manip_config_settings</a>(manip_name, joint_mapping = &#39;NM&#39;): </div>
+<div class="line"><a name="l00192"></a><span class="lineno"><a class="line" href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a20fae5cbc7897148b31f11286a21849b">  192</a></span>&#160;<span class="keyword">def </span><a class="code" href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a20fae5cbc7897148b31f11286a21849b">manip_config_settings</a>(manip_name, joint_mapping = &#39;TM&#39;): </div>
 <div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;    <span class="keywordflow">if</span> manip_name == <span class="stringliteral">&#39;PUMA&#39;</span>:</div>
 <div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;        settings = <a class="code" href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a03c060345d20fbb09f87a7b2837fa60a">PUMA_config_settings</a>(joint_mapping)</div>
 <div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;    <span class="keywordflow">elif</span> manip_name == <span class="stringliteral">&#39;PA10&#39;</span>:</div>
@@ -301,18 +307,21 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160;        </div>
 <div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;    <span class="keywordflow">return</span> settings</div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a4ed4a6739ee8ebebffbf89c2e7a1ff58"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a4ed4a6739ee8ebebffbf89c2e7a1ff58">magiks.magiks_core.manipulator_library.PR2ARM_config_settings</a></div><div class="ttdeci">def PR2ARM_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00104">manipulator_library.py:104</a></div></div>
+<div class="ttc" id="namespacemagiks_1_1jointspace_1_1manipulator__configuration_html"><div class="ttname"><a href="namespacemagiks_1_1jointspace_1_1manipulator__configuration.html">magiks.jointspace.manipulator_configuration</a></div><div class="ttdef"><b>Definition:</b> <a href="manipulator__configuration_8py_source.html#l00001">manipulator_configuration.py:1</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a6e6591094608e5a2011102bf4b310fcd"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a6e6591094608e5a2011102bf4b310fcd">magiks.magiks_core.manipulator_library.manip_geo_settings</a></div><div class="ttdeci">def manip_geo_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00174">manipulator_library.py:174</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_af98cbf35ef285e820543065287867056"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#af98cbf35ef285e820543065287867056">magiks.magiks_core.manipulator_library.ROT_config_settings</a></div><div class="ttdeci">def ROT_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00168">manipulator_library.py:168</a></div></div>
+<div class="ttc" id="namespacemath__tools_1_1general__math_html"><div class="ttname"><a href="namespacemath__tools_1_1general__math.html">math_tools.general_math</a></div><div class="ttdef"><b>Definition:</b> <a href="general__math_8py_source.html#l00001">general_math.py:1</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a737303af6e1850034f8eca7bd53183dc"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a737303af6e1850034f8eca7bd53183dc">magiks.magiks_core.manipulator_library.EXO_config_settings</a></div><div class="ttdeci">def EXO_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00129">manipulator_library.py:129</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a20fae5cbc7897148b31f11286a21849b"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a20fae5cbc7897148b31f11286a21849b">magiks.magiks_core.manipulator_library.manip_config_settings</a></div><div class="ttdeci">def manip_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00192">manipulator_library.py:192</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a70b5ed2b65dc84b3e1dbe06764b41c86"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a70b5ed2b65dc84b3e1dbe06764b41c86">magiks.magiks_core.manipulator_library.PA10_config_settings</a></div><div class="ttdeci">def PA10_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00082">manipulator_library.py:82</a></div></div>
+<div class="ttc" id="namespacemagiks_1_1geometry_1_1manipulator__geometry_html"><div class="ttname"><a href="namespacemagiks_1_1geometry_1_1manipulator__geometry.html">magiks.geometry.manipulator_geometry</a></div><div class="ttdef"><b>Definition:</b> <a href="manipulator__geometry_8py_source.html#l00001">manipulator_geometry.py:1</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a03c060345d20fbb09f87a7b2837fa60a"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a03c060345d20fbb09f87a7b2837fa60a">magiks.magiks_core.manipulator_library.PUMA_config_settings</a></div><div class="ttdeci">def PUMA_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00120">manipulator_library.py:120</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a565142e4c465e510e7a4164b1cff1d2b"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a565142e4c465e510e7a4164b1cff1d2b">magiks.magiks_core.manipulator_library.AILA_config_settings</a></div><div class="ttdeci">def AILA_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00161">manipulator_library.py:161</a></div></div>
 <div class="ttc" id="namespacemagiks_1_1magiks__core_1_1manipulator__library_html_a3dbe7e55462ee306ecc05ee3e53bae13"><div class="ttname"><a href="namespacemagiks_1_1magiks__core_1_1manipulator__library.html#a3dbe7e55462ee306ecc05ee3e53bae13">magiks.magiks_core.manipulator_library.PA10R_config_settings</a></div><div class="ttdeci">def PA10R_config_settings</div><div class="ttdef"><b>Definition:</b> <a href="manipulator__library_8py_source.html#l00095">manipulator_library.py:95</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Jan 29 2016 00:52:01 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Sun May 8 2016 19:53:34 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

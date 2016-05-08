@@ -1,14 +1,20 @@
 var searchData=
 [
+  ['dbl2str',['dbl2str',['../namespacemath__tools_1_1algebra_1_1quaternions.html#ae7ed13b2ed31bc03efcc6ff94326f1b3',1,'math_tools::algebra::quaternions']]],
   ['deactivate_5fbase_5flaser',['deactivate_base_laser',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a7f3d94d8de0822045c2d6f8af8cff368',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['deactivate_5fkc',['deactivate_kc',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#aff0c4c03b21280d2dd8bd4d3688d82b1',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['deactivate_5ftilt_5flaser',['deactivate_tilt_laser',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a279d9520eabe2bf037b409dda4c1e194',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['deactivate_5ftrajectory_5finput',['deactivate_trajectory_input',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a3b6b965a017ef9c21ba7cd7d04129205',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['delta_5fphi_5finterval',['delta_phi_interval',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#afd2442248471e82ef9778fba48ea3086',1,'magiks::specific_geometries::pr2::pr2_arm_kinematics::PR2_ARM']]],
+  ['diag_5fold',['diag_old',['../namespacemath__tools_1_1algebra_1_1vectors__and__matrices.html#abdadd092ef6a013a7f82ef7a6871bc9a',1,'math_tools::algebra::vectors_and_matrices']]],
+  ['dist',['dist',['../classmath__tools_1_1geometry_1_1geometry_1_1_point__3_d.html#a53fa925a5860954806cd25073774b190',1,'math_tools::geometry::geometry::Point_3D']]],
+  ['distance_5ffrom_5fellipsoid',['distance_from_ellipsoid',['../namespacemath__tools_1_1algebra_1_1optimization.html#ad05554552e719124f7cd0682447a57e0',1,'math_tools::algebra::optimization']]],
   ['div_5fphi_5ferr',['div_phi_err',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#afa3fc34205bba4ba2d69411cea65224e',1,'magiks.specific_geometries.pr2.pr2_arm_kinematics.PR2_ARM.div_phi_err()'],['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#afa3fc34205bba4ba2d69411cea65224e',1,'magiks.specific_geometries.pr2.pr2_kinematics.PR2.div_phi_err()']]],
   ['div_5fphi_5fofun',['div_phi_ofun',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#ab2f798d0e27c009a064b7e7ef8b07524',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
   ['div_5ftheta_5ferr',['div_theta_err',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#ab07aad3707ab81430a546fb66f5cf6a2',1,'magiks.specific_geometries.pr2.pr2_arm_kinematics.PR2_ARM.div_theta_err()'],['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#ab07aad3707ab81430a546fb66f5cf6a2',1,'magiks.specific_geometries.pr2.pr2_kinematics.PR2.div_theta_err()']]],
   ['div_5ftheta_5fofun',['div_theta_ofun',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a26835ea3f3cf036d4a2db7d1caed9e08',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
   ['draw_5ffrom_5fcanvas',['draw_from_canvas',['../classmagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2_1_1_skilled___p_r2.html#a7a7d4a9ef51bfc18460e5f8a29330a34',1,'magiks::specific_geometries::pr2::skilled_pr2::Skilled_PR2']]],
+  ['draw_5fpoints',['draw_points',['../classmath__tools_1_1geometry_1_1trajectory_1_1_trajectory.html#a05efc4fe6f070d330ba816f6b4528646',1,'math_tools::geometry::trajectory::Trajectory']]],
+  ['draw_5fpolynomial',['draw_polynomial',['../classmath__tools_1_1geometry_1_1trajectory_1_1_trajectory___polynomial.html#a2be70bdb0baad4c886ab16c4cc4baa54',1,'math_tools::geometry::trajectory::Trajectory_Polynomial']]],
   ['draw_5fshape',['draw_shape',['../classmagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2_1_1_skilled___p_r2.html#a50a6c16b7f6c98350f5a095e582fc5d9',1,'magiks::specific_geometries::pr2::skilled_pr2::Skilled_PR2']]]
 ];

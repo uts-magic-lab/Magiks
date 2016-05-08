@@ -1,8 +1,6 @@
 var searchData=
 [
-  ['pr2_5farm_5fkinematics_2epy',['pr2_arm_kinematics.py',['../pr2__arm__kinematics_8py.html',1,'']]],
-  ['pr2_5fkinematics_2epy',['pr2_kinematics.py',['../pr2__kinematics_8py.html',1,'']]],
-  ['pr2_5fsymbolics_2epy',['pr2_symbolics.py',['../pr2__symbolics_8py.html',1,'']]],
-  ['pyride_5finterpreter_2epy',['pyride_interpreter.py',['../pyride__interpreter_8py.html',1,'']]],
-  ['pyride_5fsynchronizer_2epy',['pyride_synchronizer.py',['../pyride__synchronizer_8py.html',1,'']]]
+  ['license_2emd',['License.md',['../_license_8md.html',1,'']]],
+  ['link_5fpoint_2epy',['link_point.py',['../link__point_8py.html',1,'']]],
+  ['log_5fmanager_2epy',['log_manager.py',['../log__manager_8py.html',1,'']]]
 ];

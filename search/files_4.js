@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['_5f_5finit_5f_5f_2epy',['__init__.py',['../jacobian_2____init_____8py.html',1,'']]],
-  ['jacobian_2epy',['jacobian.py',['../jacobian_8py.html',1,'']]]
+  ['general_5fmagiks_2epy',['general_magiks.py',['../general__magiks_8py.html',1,'']]],
+  ['general_5fmath_2epy',['general_math.py',['../general__math_8py.html',1,'']]],
+  ['geometry_2epy',['geometry.py',['../geometry_8py.html',1,'']]],
+  ['geometry_5fdefinition_2emd',['geometry_definition.md',['../geometry__definition_8md.html',1,'']]]
 ];

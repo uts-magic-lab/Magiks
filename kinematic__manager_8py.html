@@ -13,6 +13,12 @@
 <script type="text/javascript">
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX","output/HTML-CSS"],
+});
+</script><script src="/home/nimasoft/Downloads/MathJax-2.6-latest/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -87,9 +93,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a> &#124;
 <a href="#namespaces">Namespaces</a> &#124;
-<a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
 <div class="title">kinematic_manager.py File Reference</div>  </div>
@@ -101,35 +105,15 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <p><a href="kinematic__manager_8py_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
-Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html">Kinematic_Manager_Settings</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager.html">Kinematic_Manager</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:namespacemagiks_1_1magiks__core_1_1kinematic__manager"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html">magiks.magiks_core.kinematic_manager</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
-Functions</h2></td></tr>
-<tr class="memitem:a5a53edd3dba376924567f4e6e6bcdd94"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a5a53edd3dba376924567f4e6e6bcdd94">generate_orientation_metric_settings</a></td></tr>
-<tr class="separator:a5a53edd3dba376924567f4e6e6bcdd94"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d513aff7130bcba68255029657fe2db"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a0d513aff7130bcba68255029657fe2db">generate_position_metric_settings</a></td></tr>
-<tr class="separator:a0d513aff7130bcba68255029657fe2db"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:a0d28fe58d887fec1272c0e81acff91f3"><td class="memItemLeft" align="right" valign="top">list&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a0d28fe58d887fec1272c0e81acff91f3">all_application_scenarios</a> = ['PPS', 'TGS', 'TPS']</td></tr>
 <tr class="separator:a0d28fe58d887fec1272c0e81acff91f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4fe58d8004f76cb9e5bbe2c9e1904958"><td class="memItemLeft" align="right" valign="top">dictionary&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a4fe58d8004f76cb9e5bbe2c9e1904958">key_dic</a></td></tr>
-<tr class="separator:a4fe58d8004f76cb9e5bbe2c9e1904958"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae7df5aa22df06c8f1de017be93b0835b"><td class="memItemLeft" align="right" valign="top">dictionary&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#ae7df5aa22df06c8f1de017be93b0835b">nkc_dic</a></td></tr>
-<tr class="separator:ae7df5aa22df06c8f1de017be93b0835b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6b71f16c28db6dabd447e6a0d3313dc9"><td class="memItemLeft" align="right" valign="top">dictionary&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a6b71f16c28db6dabd447e6a0d3313dc9">param_dic</a></td></tr>
-<tr class="separator:a6b71f16c28db6dabd447e6a0d3313dc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>This module contains the main class for handling the kinematics of a manipulator. </p>
@@ -148,7 +132,7 @@ Variables</h2></td></tr>
 </div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Jan 29 2016 00:52:01 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Sun May 8 2016 19:53:34 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>

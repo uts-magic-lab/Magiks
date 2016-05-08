@@ -1,13 +1,26 @@
 var searchData=
 [
   ['f',['F',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#a1fd406685cbdee605d0a7bebed56fdb0',1,'magiks.specific_geometries.pr2.pr2_arm_kinematics.PR2_ARM.F()'],['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a1fd406685cbdee605d0a7bebed56fdb0',1,'magiks.specific_geometries.pr2.pr2_kinematics.PR2.F()']]],
+  ['f0',['f0',['../namespacemath__tools_1_1general__math.html#ad843fae7a40cbca16737e1e9a99f0300',1,'math_tools::general_math']]],
+  ['f1',['f1',['../namespacemath__tools_1_1general__math.html#af1920028372254e9d9851c8b1529aea0',1,'math_tools::general_math']]],
+  ['fdc_5fa',['FDC_a',['../namespacemath__tools_1_1geometry_1_1trajectory.html#a31113f31887a540d9c7f121cfd687494',1,'math_tools::geometry::trajectory']]],
+  ['fdc_5fv',['FDC_v',['../namespacemath__tools_1_1geometry_1_1trajectory.html#a0066fb74f0d443b14aa76813d1dbb525',1,'math_tools::geometry::trajectory']]],
   ['feasible_5fjoint_5fstepsize',['feasible_joint_stepsize',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#a11701ce06ed75dc9434ee0507581261f',1,'magiks::specific_geometries::pr2::pr2_arm_kinematics::PR2_ARM']]],
-  ['final_5fconfig_5fstr',['final_config_str',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#a42ef35dd789838f61ced0d136f464691',1,'magiks::magiks_core::log_manager::Single_Run_Log']]],
-  ['final_5fpose_5fstr',['final_pose_str',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_single___run___log.html#afc9e4018d6ff111a626d5c1e14cb1179',1,'magiks::magiks_core::log_manager::Single_Run_Log']]],
+  ['feasible_5fposition',['feasible_position',['../namespacemath__tools_1_1geometry_1_1trajectory.html#a3c4fb063a1d696ff293964822c9af502',1,'math_tools::geometry::trajectory']]],
+  ['feasible_5fstepsize',['feasible_stepsize',['../namespacemath__tools_1_1algebra_1_1vectors__and__matrices.html#a08abc891d51c8c92178e72a7bb193f1a',1,'math_tools::algebra::vectors_and_matrices']]],
+  ['figure',['figure',['../classmath__tools_1_1geometry_1_1trajectory_1_1_path___plot___settings.html#a391e34f2de441d79152a7b3d6e4c9c86',1,'math_tools::geometry::trajectory::Path_Plot_Settings']]],
+  ['file_5fname',['file_name',['../classmagiks_1_1taskspace_1_1workspace_1_1_workspace.html#a58ed1f4fc05e40edea694d9f889da543',1,'magiks::taskspace::workspace::Workspace']]],
+  ['find_5fcoefficients',['find_coefficients',['../classmath__tools_1_1algebra_1_1polynomials_1_1_polynomial1___interpolator.html#a7bdd840e853f7c39db7ef53230a2926c',1,'math_tools.algebra.polynomials.Polynomial1_Interpolator.find_coefficients()'],['../classmath__tools_1_1algebra_1_1polynomials_1_1_polynomial2___interpolator.html#a7bdd840e853f7c39db7ef53230a2926c',1,'math_tools.algebra.polynomials.Polynomial2_Interpolator.find_coefficients()'],['../classmath__tools_1_1algebra_1_1polynomials_1_1_polynomial3___interpolator.html#a7bdd840e853f7c39db7ef53230a2926c',1,'math_tools.algebra.polynomials.Polynomial3_Interpolator.find_coefficients()']]],
   ['finished',['finished',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#ada3794ef77e1fd1b28f31ff056a3e659',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
-  ['footer',['footer',['../classmagiks_1_1magiks__core_1_1log__manager_1_1_test___log.html#ac7cc32a9cfdf8f693f4e066681ce5cc6',1,'magiks::magiks_core::log_manager::Test_Log']]],
+  ['finite_5fdifference_5festimate',['finite_difference_estimate',['../namespacemath__tools_1_1geometry_1_1trajectory.html#ac7c9c5561fb58265a0f77960c5cefdc9',1,'math_tools::geometry::trajectory']]],
+  ['frame_5faxis',['frame_axis',['../classmath__tools_1_1geometry_1_1geometry_1_1_orientation__3_d.html#a761635ef5a19312ea84f3ffa5dd4f10b',1,'math_tools::geometry::geometry::Orientation_3D']]],
+  ['free',['free',['../classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration___settings.html#a21ea2c9c6c1ba23efaf7efaeb118a065',1,'magiks::jointspace::manipulator_configuration::Manipulator_Configuration_Settings']]],
+  ['free_5fconfig',['free_config',['../classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html#ad0f9570072d4238314aed38bbeeb6c66',1,'magiks::jointspace::manipulator_configuration::Manipulator_Configuration']]],
   ['front_5fline_5fbase',['front_line_base',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#acc54afa07b037e10d6fcf668bcccc949',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['front_5fline_5ftilt',['front_line_tilt',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#a9d21decde9d96038a2fe93b5c3340c65',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['full_5fconfig',['full_config',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#aecefbf096d75dccc5e6792f98b30b39f',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
-  ['function_5flibrary_2epy',['function_library.py',['../function__library_8py.html',1,'']]]
+  ['function',['Function',['../classmath__tools_1_1algebra_1_1functions_1_1_function.html',1,'math_tools::algebra::functions']]],
+  ['function',['function',['../classmagiks_1_1taskspace_1_1cost__function_1_1_cost___function.html#a97eeeed8b0b043ac0c43ba166d195b3c',1,'magiks::taskspace::cost_function::Cost_Function']]],
+  ['function_5flibrary_2epy',['function_library.py',['../function__library_8py.html',1,'']]],
+  ['functions_2epy',['functions.py',['../functions_8py.html',1,'']]]
 ];

@@ -2,9 +2,11 @@ var searchData=
 [
   ['objective_5ffunction',['objective_function',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m___configuration.html#affe246b1b04676ed6498c559bcb007b2',1,'magiks.specific_geometries.pr2.pr2_arm_kinematics.PR2_ARM_Configuration.objective_function()'],['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#affe246b1b04676ed6498c559bcb007b2',1,'magiks.specific_geometries.pr2.pr2_kinematics.PR2.objective_function()']]],
   ['objective_5ffunction_5ffor',['objective_function_for',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a9524ba54025f718366f4399ce24c65ee',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
+  ['offset',['offset',['../classmath__tools_1_1geometry_1_1pose__metric_1_1_metric___settings.html#a7a229a4786deeddd59c6091247a8c8a6',1,'math_tools::geometry::pose_metric::Metric_Settings']]],
   ['ofun',['ofun',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a0e41a0fa618f59d8b691a2b320fb304e',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
   ['ofun_5fcomputed',['ofun_computed',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a3574231572d9cc0e22ab8749e1e209c9',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
   ['ofuncode',['ofuncode',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#a9dc1d2649ed96dd542822850b5eadbec',1,'magiks.specific_geometries.pr2.pr2_arm_kinematics.PR2_ARM.ofuncode()'],['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a9dc1d2649ed96dd542822850b5eadbec',1,'magiks.specific_geometries.pr2.pr2_kinematics.PR2.ofuncode()']]],
+  ['omega',['omega',['../classmath__tools_1_1geometry_1_1geometry_1_1_orientation__3_d.html#af6396b826521dad19a1761d9e32d5f82',1,'math_tools::geometry::geometry::Orientation_3D']]],
   ['on_5fbase_5flaser',['on_base_laser',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a305c6d760285b2139d9df2074ac28aba',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['on_5fmove_5farm_5ffailed',['on_move_arm_failed',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a315e925d79ac6a27bf5141ea63084edd',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['on_5fmove_5farm_5ffinished',['on_move_arm_finished',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#a9a60f61d732962cd3be1ec2cf721c2a2',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
@@ -13,8 +15,16 @@ var searchData=
   ['on_5ftilt_5flaser',['on_tilt_laser',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#af86313049dc5f0294112156fd6225e70',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['on_5ftrajectory_5freceived',['on_trajectory_received',['../namespacemagiks_1_1specific__geometries_1_1pr2_1_1pyride__interpreter.html#abc08b2946d4eff705c6d8daf696c1540',1,'magiks::specific_geometries::pr2::pyride_interpreter']]],
   ['optimal_5fconfig',['optimal_config',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#ac077fbfc7a210f53c768b64b8cbc1706',1,'magiks::specific_geometries::pr2::pr2_arm_kinematics::PR2_ARM']]],
+  ['optimization_2epy',['optimization.py',['../optimization_8py.html',1,'']]],
   ['optimize_5fconfig',['optimize_config',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#a3fd2137e85fa9c0842c737ab95c053d4',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
   ['optimum_5fjoint_5fstepsize',['optimum_joint_stepsize',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__kinematics_1_1_p_r2.html#ac4210dca6ba6af8ae93bd75534534ae8',1,'magiks::specific_geometries::pr2::pr2_kinematics::PR2']]],
-  ['orientation_5fconstraint',['orientation_constraint',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html#a9eb1cd5664a33e2194c42ca65577f62b',1,'magiks::magiks_core::kinematic_manager::Kinematic_Manager_Settings']]],
-  ['orientation_5frespected',['orientation_respected',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#a1564326e00158d968af44c1b83848e0a',1,'magiks::specific_geometries::pr2::pr2_arm_kinematics::PR2_ARM']]]
+  ['orientation',['orientation',['../classmagiks_1_1taskspace_1_1task__reference_1_1_task___frame.html#a0d094efee38dd8775e4593eaa0aa611c',1,'magiks::taskspace::task_reference::Task_Frame']]],
+  ['orientation_5f3d',['Orientation_3D',['../classmath__tools_1_1geometry_1_1geometry_1_1_orientation__3_d.html',1,'math_tools::geometry::geometry']]],
+  ['orientation_5fmetric',['orientation_metric',['../classmath__tools_1_1geometry_1_1pose__metric_1_1_pose___metric.html#ae4dd8dbc550fd673d233d49e81fe4d68',1,'math_tools::geometry::pose_metric::Pose_Metric']]],
+  ['orientation_5fmetric',['Orientation_Metric',['../classmath__tools_1_1geometry_1_1pose__metric_1_1_orientation___metric.html',1,'math_tools::geometry::pose_metric']]],
+  ['orientation_5fpath',['Orientation_Path',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___path.html',1,'math_tools::geometry::trajectory']]],
+  ['orientation_5fpath_5fpolynomial',['Orientation_Path_Polynomial',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___path___polynomial.html',1,'math_tools::geometry::trajectory']]],
+  ['orientation_5frespected',['orientation_respected',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pr2__arm__kinematics_1_1_p_r2___a_r_m.html#a1564326e00158d968af44c1b83848e0a',1,'magiks::specific_geometries::pr2::pr2_arm_kinematics::PR2_ARM']]],
+  ['orientation_5ftrajectory',['Orientation_Trajectory',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___trajectory.html',1,'math_tools::geometry::trajectory']]],
+  ['orientation_5ftrajectory_5fpolynomial',['Orientation_Trajectory_Polynomial',['../classmath__tools_1_1geometry_1_1trajectory_1_1_orientation___trajectory___polynomial.html',1,'math_tools::geometry::trajectory']]]
 ];

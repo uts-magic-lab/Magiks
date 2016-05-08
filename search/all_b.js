@@ -11,10 +11,7 @@ var searchData=
   ['kc_5fservice_5fcnt',['kc_service_cnt',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#a73b16c8bc53d69931af104911317e19e',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['kc_5ftime',['kc_time',['../classmagiks_1_1specific__geometries_1_1pr2_1_1pyride__synchronizer_1_1_py_ride___p_r2.html#ae3dca871dc08f26ffcef742c01e20734',1,'magiks::specific_geometries::pr2::pyride_synchronizer::PyRide_PR2']]],
   ['keep_5freference',['keep_reference',['../classmagiks_1_1specific__geometries_1_1pr2_1_1skilled__pr2_1_1_skilled___p_r2.html#a17eb046dcfee067a53f38934383f5732',1,'magiks::specific_geometries::pr2::skilled_pr2::Skilled_PR2']]],
-  ['key_5fdic',['key_dic',['../namespacemagiks_1_1magiks__core_1_1kinematic__manager.html#a4fe58d8004f76cb9e5bbe2c9e1904958',1,'magiks.magiks_core.kinematic_manager.key_dic()'],['../namespacemagiks_1_1magiks__core_1_1log__manager.html#a4fe58d8004f76cb9e5bbe2c9e1904958',1,'magiks.magiks_core.log_manager.key_dic()']]],
-  ['key_5fparameter_5fset',['key_parameter_set',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html#add50283bfe0497db0215793125d22957',1,'magiks::magiks_core::kinematic_manager::Kinematic_Manager_Settings']]],
-  ['kinematic_5fmanager',['Kinematic_Manager',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager.html',1,'magiks::magiks_core::kinematic_manager']]],
-  ['kinematic_5fmanager_2epy',['kinematic_manager.py',['../kinematic__manager_8py.html',1,'']]],
-  ['kinematic_5fmanager_5fsettings',['Kinematic_Manager_Settings',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager___settings.html',1,'magiks::magiks_core::kinematic_manager']]],
-  ['km_5flog',['km_log',['../classmagiks_1_1magiks__core_1_1kinematic__manager_1_1_kinematic___manager.html#a5436f626ae1e95dd2364f06bd8e31193',1,'magiks::magiks_core::kinematic_manager::Kinematic_Manager']]]
+  ['key_5fdic',['key_dic',['../namespacemath__tools_1_1geometry_1_1pose__metric.html#a4fe58d8004f76cb9e5bbe2c9e1904958',1,'math_tools::geometry::pose_metric']]],
+  ['key_5fpoint',['Key_Point',['../classmath__tools_1_1geometry_1_1trajectory_1_1_key___point.html',1,'math_tools::geometry::trajectory']]],
+  ['kinematic_5fmanager_2epy',['kinematic_manager.py',['../kinematic__manager_8py.html',1,'']]]
 ];
