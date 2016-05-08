@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['link_5fpoint',['Link_Point',['../classmagiks_1_1taskspace_1_1link__point_1_1_link___point.html',1,'magiks::taskspace::link_point']]]
+  ['inverse_5fkinematics',['Inverse_Kinematics',['../classmagiks_1_1magiks__core_1_1inverse__kinematics_1_1_inverse___kinematics.html',1,'magiks::magiks_core::inverse_kinematics']]]
 ];

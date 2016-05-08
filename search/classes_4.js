@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['key_5fpoint',['Key_Point',['../classmath__tools_1_1geometry_1_1trajectory_1_1_key___point.html',1,'math_tools::geometry::trajectory']]]
+  ['geometric_5fjacobian',['Geometric_Jacobian',['../classmagiks_1_1jacobian_1_1jacobian_1_1_geometric___jacobian.html',1,'magiks::jacobian::jacobian']]]
 ];

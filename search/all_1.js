@@ -41,6 +41,7 @@ var searchData=
   ['all_5ftaskframes_5fin_5ftarget',['all_taskframes_in_target',['../classmagiks_1_1taskspace_1_1endeffector_1_1_endeffector.html#a4c45c9a1e18a99805ad3788ebc820f68',1,'magiks::taskspace::endeffector::Endeffector']]],
   ['all_5ftaskpoints_5fin_5ftarget',['all_taskpoints_in_target',['../classmagiks_1_1taskspace_1_1endeffector_1_1_endeffector.html#aabe19b13c91dcf6a746ff88febb30720',1,'magiks::taskspace::endeffector::Endeffector']]],
   ['alpha',['alpha',['../classmagiks_1_1geometry_1_1manipulator__geometry_1_1_manipulator___geometry___settings.html#a62197192f0fbf4e0675eb37be1c4c175',1,'magiks::geometry::manipulator_geometry::Manipulator_Geometry_Settings']]],
+  ['analytic_5fjacobian',['Analytic_Jacobian',['../classmagiks_1_1jacobian_1_1jacobian_1_1_analytic___jacobian.html',1,'magiks::jacobian::jacobian']]],
   ['analytic_5fjacobian',['analytic_jacobian',['../classmagiks_1_1taskspace_1_1task__point_1_1_task___point.html#a4992bf224da9d8d46083587096f7594a',1,'magiks::taskspace::task_point::Task_Point']]],
   ['angle',['angle',['../classmath__tools_1_1geometry_1_1geometry_1_1_orientation__3_d.html#a56c904aa7bea39f359642f337dcad2e5',1,'math_tools::geometry::geometry::Orientation_3D']]],
   ['angle_5faxis',['angle_axis',['../classmath__tools_1_1geometry_1_1geometry_1_1_orientation__3_d.html#a6a2cfb0cb8b646c2bc5fad3b185bdfc0',1,'math_tools::geometry::geometry::Orientation_3D']]],

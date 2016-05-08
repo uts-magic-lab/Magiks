@@ -155,6 +155,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:af32b39b64064572c8f7012d860930c48"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html#af32b39b64064572c8f7012d860930c48">random_config</a></td></tr>
 <tr class="memdesc:af32b39b64064572c8f7012d860930c48"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a random joint configuration in the defined feasible range in the settings.  <a href="#af32b39b64064572c8f7012d860930c48">More...</a><br/></td></tr>
 <tr class="separator:af32b39b64064572c8f7012d860930c48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a96a12b2bc6258194dd5e0819cb4838b6"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmagiks_1_1jointspace_1_1manipulator__configuration_1_1_manipulator___configuration.html#a96a12b2bc6258194dd5e0819cb4838b6">grid_config</a></td></tr>
+<tr class="memdesc:a96a12b2bc6258194dd5e0819cb4838b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">If The feasible range of each joint is divided into a number of equal intervals, a joint-space lattice or grid is established.  <a href="#a96a12b2bc6258194dd5e0819cb4838b6">More...</a><br/></td></tr>
+<tr class="separator:a96a12b2bc6258194dd5e0819cb4838b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -277,6 +280,48 @@ Public Attributes</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>A numpy vector of size <code>DOF</code> containing the values of free joints </dd></dl>
 
 <p>Definition at line <a class="el" href="manipulator__configuration_8py_source.html#l00407">407</a> of file <a class="el" href="manipulator__configuration_8py_source.html">manipulator_configuration.py</a>.</p>
+
+</div>
+</div>
+<a class="anchor" id="a96a12b2bc6258194dd5e0819cb4838b6"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def grid_config </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>config_number</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>number_of_intervals</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>If The feasible range of each joint is divided into a number of equal intervals, a joint-space lattice or grid is established. </p>
+<p>If a manipulator has \( n \) degrees of freedom, and each joint is divided to \( N + 1 \) intervals, a typical lattice \( \boldsymbol{\Lambda}_N \) in the joint space can be generated in the following form: </p>
+<p class="formulaDsp">
+\[ \boldsymbol{\Lambda}_N = \bigg \lbrace \boldsymbol{q}_o + \sum _{i = 1} ^{n} k_i \cdot a_i \cdot \boldsymbol{b}_i \quad \bigg \arrowvert \quad k_i \in \mathbb{Z}_N \bigg \rbrace \]
+</p>
+<p> This function creates a lattice in which <em>N</em> is specified by argument <code> number_of_intervals </code> and returns the joint configuration corresponding to a specific node of the grid. This node is specified by argument <code> config_number </code> which is the order of the configuration in the gridded joint-space. The function does not change manipulator configuration. </p>
+<dl class="section return"><dt>Returns</dt><dd>A numpy array of length <code>DOF</code> containing the joint values of the specified node of the generated grid. </dd></dl>
+
+<p>Definition at line <a class="el" href="manipulator__configuration_8py_source.html#l00491">491</a> of file <a class="el" href="manipulator__configuration_8py_source.html">manipulator_configuration.py</a>.</p>
 
 </div>
 </div>
@@ -785,7 +830,7 @@ This function must be called whenever you change joint limits or change type of 
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sun May 8 2016 19:53:36 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Sun May 8 2016 22:15:15 for MAGIKS by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.6
 </small></address>
