@@ -35,17 +35,17 @@ We are continuously working on it to provide a complete API documentation with c
 
 ## Installation and Use
 
-To install and use *MAGIKS*, follow the installation instructions [here](http://uts-magic-lab/Magiks/tree/master/documentation/magiks/install_magiks.md). 
+To install and use *MAGIKS*, follow the installation instructions [here](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/magiks/install_magiks.md). 
 
 The [API documentation](http://uts-magic-lab.github.io/Magiks/index.html)
 for *MAGIKS* is available for developers but is not completed yet and is under construction. 
 
-[This example](http://uts-magic-lab/Magiks/tree/master/documentation/magiks/example_1.md) shows how to use MAGIKS for a simple pose projection task for 
+[This example](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/magiks/example_1.md) shows how to use MAGIKS for a simple pose projection task for 
 (7 DOF) PA10 robot.
 
 ## A quick usage of S-PR2 under MAGIKS
 
-[S-PR2](http://uts-magic-lab/Magiks/tree/master/documentation/s-pr2/README.md)
+[S-PR2](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/README.md)
 is a part of MAGIKS that is specifically designed for PR2 humanoid robot.
 It supports an analytic-closed form kinematic control in addition to the numeric IK solver embedded in *MAGIKS*. 
 
@@ -56,6 +56,6 @@ for S-PR2 is available for developers.
 
 To start quickly with *S-PR2*, see the following example:
 
-* [How to write a simple script to control PR2 robot via S-PR2](http://uts-magic-lab/Magiks/tree/master/documentation/s-pr2/example_1.md)
+* [How to write a simple script to control PR2 robot via S-PR2](https://github.com/uts-magic-lab/Magiks/blob/master/documentation/s-pr2/example_1.md)
 
 
