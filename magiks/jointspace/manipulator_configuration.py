@@ -1,4 +1,3 @@
-#~ 
 # HEADER
 '''   
 @file:          manipulator_configuration.py
@@ -42,18 +41,24 @@ class Manipulator_Configuration_Settings:
 	#  @param DOF A positive integer specifying the number of degrees of freedom
     #  @param joint_mapping A string specifying the default mapping function.
     #         This parameter must be chosen among these options:
-    #         * NM: No Mapping (Identity mapping function)
-    #         * LM: Linear Mapping
-    #         * TM: Trigonometric Mapping   
+    #         * \c NM: No Mapping (Identity mapping function)
+    #         * \c LM: Linear Mapping
+    #         * \c TM: Trigonometric Mapping   
     def __init__(self, njoint = 0, DOF= 0, joint_mapping = 'NM'):
         self.njoint = njoint
-        # An integer: Is a short form of Degrees of Freedom and represents the number of free joints
+        ## An integer: Is a short form of Degrees of Freedom and represents the number of free joints
         self.DOF = DOF
-        # An array of string containing the specific mapping function for each joint
+
+        ## An array of string containing the specific mapping function for each joint
+        #  The array is of length \c DOF and is defined only for free joints.
         self.joint_handling = [joint_mapping for i in range(DOF)]
-        # An array of booleans specifying which joints are limited
+
+        ## An array of booleans specifying which joints are limited. The array is of length \c DOF and is defined only for free joints.
+        #  The array is of length \c DOF and is defined only for free joints.
         self.limited        = [True for i in range(0, DOF)]
-        # An array of string containing indivifual labels or names the for each joint
+
+        ## An array of string containing indivifual labels or names the for each joint. 
+        #  The array is of length \c DOF and is defined only for free joints.
         self.joint_label    = ['Joint ' + str(i) for i in range(DOF)]
 
         ## A boolean specify if the joint limits must be respected when new joint values are being set.
@@ -62,12 +67,16 @@ class Manipulator_Configuration_Settings:
         #  If False, any value for the joints are accepted.
         self.joint_limits_respected = True
 
-        # A vector of real numbers representing lower bounds for the joint configuration
+        ## A vector of real numbers representing lower bounds for the joint configuration. 
+        #  The array is of length /c njoint and is defined for both fixed and free joints.
         self.ql   = [-math.pi for i in range(0, njoint)]
-        # A vector of real numbers representing higher bounds for the joint configuration
+        ## A vector of real numbers representing higher bounds for the joint configuration
+        #  The array is of length /c njoint and is defined for both fixed and free joints.
         self.qh   = [math.pi for i in range(0, njoint)]
 
-        # A list of booleans representing the type of the corresponding joint number. If True the joint is prismatic, if False it is revolute
+        ## A list of booleans representing the type of the corresponding joint number. 
+        #  If True, the joint is prismatic, if False it is revolute.
+        #  The array is of length /c njoint and is defined for both fixed and free joints.
         self.prismatic = [False for i in range(0, njoint)]
 
         # A list of booleans representing whether the corresponding joint is free or fixed at a certain value. The default is True for all joints
@@ -101,13 +110,17 @@ class Manipulator_Configuration(object):
 
         self.mapto_virtual()
         self.update_virtual_jacobian_multipliers()
-    
-    # \cond  
+        
+    ## Only use this function to set the joint limits. Do not change the properties directly.
+    #  @param ql A numpy array of length \c njoint containing the lower bounds of the joints 
+    #  @param qh A numpy array of length \c njoint containing the upper bounds of the joints 
     def set_joint_bounds(self, ql, qh):
         self.config_settings.ql = copy.copy(ql)
         self.config_settings.qh = copy.copy(qh)
         self.initialize()
 
+    ## Use this function to see the current configuration of the manipulator
+    #  @return A string containing the current values of joints in degrees
     def config_str(self):
         s = "q = "
         s += vecmat.vector_to_str((180.0/math.pi)*self.q, format="%.2f")
@@ -118,6 +131,7 @@ class Manipulator_Configuration(object):
         
         return s
 
+    # \cond  
     ## protected
     def bring_revolute_joints_to_standard_range(self):
         '''
@@ -149,11 +163,10 @@ class Manipulator_Configuration(object):
                 flag = flag and self.joint_in_range(i, qd[i])
         return flag
 
-    # \cond
+	## This function converts the free joint values from unlimited virtual joint-space into their actual values.
+    #  @param qs A numpy array of length \c DOF containing the values of free joints in the virtual joint-space.
+    #  @return A numpy array of length \c DOF containing the actual values of free joints equivalent to the given argument \c qs.
     def mapfrom_virtual(self, qs):
-        '''
-        map from unlimited to limited jointspace. Get mapped values in the unlimited jointspace (property: qvr) and return the main joint configuration vector
-        '''
         qq = np.zeros((self.config_settings.DOF))
         for i in range(self.config_settings.DOF):
             if self.config_settings.limited[i]:
@@ -174,11 +187,10 @@ class Manipulator_Configuration(object):
         # return self.free_config_inv(qq)
         return qq
 
+	## This function converts the current actual free joint values (picked from property \c q) 
+    #  into their equivalent values in the unlimited virtual joint-space.
+    #  @return A numpy array of length \c DOF containing the current values of free joints in the unlimited virtual joint-space.
     def mapto_virtual(self):
-        '''
-        or sync_qvr  or sync_vjs vjs: Virtual Joint Space
-        map from limited to unlimited jointspace. Get main joint values in the limited jointspace (property: q) and updates the joint values in the unlimited space (property: qvr)
-        '''
         qf = self.free_config(self.q)
 
         self.qvr = np.zeros((self.config_settings.DOF))
@@ -204,6 +216,7 @@ class Manipulator_Configuration(object):
                 print 'Wrong Joint Handling (Free Joint ' + str(i) + '): ' + self.config_settings.joint_handling[i]
                 assert False, genpy.err_str(__name__, self.__class__.__name__, 'q_to_q', self.config_settings.joint_handling[i] + " is not a valid value for joint_handling")
 
+    # \cond
     ## protected            
     def update_virtual_jacobian_multipliers(self):
         '''
@@ -234,7 +247,8 @@ class Manipulator_Configuration(object):
 
     # \endcond
     
-    # If you changed any joint from fixed to free or vice-versa you need to call this function
+    # This function is implemented once when a new instance of the object is constructed.
+    # If you chang any joints from fixed to free or vice-versa, after the construction of the object, you will need to call this function.
     def initialize(self):
         '''
         Everything regarding joint parameters needed to be done before running kinematic calculations
@@ -333,14 +347,14 @@ class Manipulator_Configuration(object):
             in_range = in_range and (self.q[i] + dq[i] <= self.qh[i]) and (self.q[i] + dq[i] >= self.ql[i]) 
             i = i + 1
         return in_range
+    # \endcond
 
+    ## Sets the configuration given values of the free joints in the virtual joint-space.
+    #  This function changes and updates the values of the joint configuration in the unlimited virtual space (property \c qvr).
+    #  The actual joint values (property \c q) is then calculated and updated as well.
+    #  This method changes the joint configuration. Therefore a forward kinematics update will be implemented.
+    #  @param qvrd A numpy array of length \c DOF containing the desired values of the free joints in the unlimited space.
     def set_config_virtual(self, qvrd):
-        '''
-        Changes and updates the values of the joint configuration in the unlimited space ("qvr") after correction by "delta_qs".
-        The real joint values ("q") is then calculated and updated as well.
-        "delta_qs" should contain only the correction values for the free joints in the unlimited space.
-        This method changes the joint configuration. Therefore a forward kinematics update should be implemented after it.
-        '''
         self.qvr   = qvrd
         qd         =  self.mapfrom_virtual(qvrd)
         permission = not self.config_settings.joint_limits_respected
@@ -353,22 +367,18 @@ class Manipulator_Configuration(object):
         else:
             assert False, genpy.err_str(__name__, self.__class__.__name__, 'set_config_virtual', 'The joint values computed from qvr are out of range while joint limits are respected.')
             return False
-    # \endcond
         
-	## This function gives an interval for the magnitude of the joint angles correction vector. 
-	#  @param direction A numpy array of size 7 specifying the direction of change	
-	#  @param max_speed A float parameter specifying the maximum feasible speed for a joint change. (Set by infinity by default)	
+	## The correction of joints is always restricted by joint limits and maximum feasible joint speed
+    #  If you want to move the joints in a desired direction, how much are you allowed to move in order to respect joint position and speed limits?	
+    #  This function returns a feasible interval for the stepsize in the given direction. 
+    #  In other words, it gives an interval for the magnitude of the joint angles correction vector 
+    #  so that both joint position and speed limits are fulfilled. 
+    #  The joint direction of change must be multiplied by a scalar value in this range so that the applied changes are feasible.
+	#  @param direction A numpy array of size \c DOF specifying the direction of change	
+	#  @param max_speed A float parameter specifying the maximum feasible speed for a joint change. (Set as infinity by default)	
 	#  @param delta_t The step time in which the change(correction) is to be applied.
 	#  @return An instance of type <a href="http://pyinterval.googlecode.com/svn/trunk/html/index.html">Interval()</a>
     def joint_stepsize_interval(self, direction, max_speed = gen.infinity, delta_t = 0.001):
-        
-        '''
-        The correction of joints is always restricted by joint limits and maximum feasible joint speed
-        If you want to move the joints in a desired direction, how much are you allowed to move?	
-        This function returns a feasible interval for the stepsize in the given direction. 
-        The joint direction of change must be multiplied by a scalar value in this range so that the applied changes
-        are feasible.
-        '''
         etta_l = []
         etta_h = []
 
@@ -390,11 +400,11 @@ class Manipulator_Configuration(object):
         else:
             return (max(etta_l), min(etta_h))
 
-    # \cond
+    
+    ## This function picks and returns the values of free joints among all the joints in the given argument \c q.
+    #  @param A numpy vector of size \c njoint containing the actual values of all the joints
+    #  @return A numpy vector of size \c DOF containing the values of free joints
     def free_config(self, q):
-        '''
-        return a vector (DOF elements) containing the values of free joints. 
-        '''
         fc = np.zeros((self.config_settings.DOF))
         j = 0
         for jj in range(0,self.config_settings.njoint):
@@ -403,6 +413,7 @@ class Manipulator_Configuration(object):
                 j = j + 1
         return fc
 
+    # \cond
     def free_config_inv(self, qs):
         '''
         puts the values of free joints in their proper place in the main config vector. Return the main config vector
@@ -423,11 +434,6 @@ class Manipulator_Configuration(object):
 	#  @param qd A numpy array of size 7 containing the desired joint values to be set
 	#  @return A boolean: True if the given joints are in range and the configuration is set, False if not	
     def set_config(self, qd, set_virtual = True):
-        '''
-        This function sets the robot joint configuration to the given "qd"
-        This function should not be called by the end user. 
-        Always use function "set_config" to change the values of the joints 
-        '''    
         len_qd = len(qd)
         assert len_qd == self.config_settings.DOF, genpy.err_str(__name__, self.__class__.__name__,'set_config','Length of given config vector is '+str(len_qd)+' which does not match the settings DOF('+str(self.config_settings.DOF)+')')
         permission = not self.config_settings.joint_limits_respected
@@ -459,7 +465,7 @@ class Manipulator_Configuration(object):
                     print "Upper Limit  :", self.qh[i]
             return False
     
-    # Generates a random joint configuration in the defined feasible range in the settings.
+    ## Generates a random joint configuration in the defined feasible range in the settings.
     # This function does not change manipulator configuration.
     # @return An array of real numbers containing the joint values of the generated random configuration. 
     def random_config(self):
@@ -469,12 +475,20 @@ class Manipulator_Configuration(object):
             q_rnd[j] = self.ql[j] + random.random()*(self.qh[j] - self.ql[j])
         return q_rnd
     
-    # \cond
+    ## If The feasible range of each joint is divided into a number of equal intervals,
+    #  a joint-space lattice or grid is established.
+    #  If a manipulator has \f$ n \f$ degrees of freedom, and each joint is divided to \f$ N + 1 \f$ intervals,   
+    #  a typical lattice \f$ \boldsymbol{\Lambda}_N \f$ in the joint space 
+    #  can be generated in the following form:
+    #  \f[
+    #  \boldsymbol{\Lambda}_N = \bigg \lbrace \boldsymbol{q}_o + \sum _{i = 1} ^{n} k_i \cdot a_i \cdot  \boldsymbol{b}_i \quad \bigg \arrowvert \quad  k_i \in \mathbb{Z}_N \bigg \rbrace 
+    #  \f]
+    #  This function creates a lattice in which \a N is specified by argument <tt> number_of_intervals </tt> 
+    #  and returns the joint configuration corresponding to a specific node of the grid.
+    #  This node is specified by argument <tt> config_number </tt> which is the order of the configuration in the gridded joint-space.
+    #  The function does not change manipulator configuration.
+    #  @return A numpy array of length \c DOF containing the joint values of the specified node of the generated grid. 
     def grid_config(self, config_number, number_of_intervals):
-        '''
-        Replaces joint configuration with the configuration in a gridded jointspace with "number_of_intervals" divisions for each joint 
-        The order of the configuration in the gridded jointspace is identified by "config_number",
-        '''
         q_grd = np.zeros(self.config_settings.DOF)
         A     = discrete.number_in_base(N = config_number, base = number_of_intervals, n_digits = self.config_settings.DOF)
 
@@ -483,6 +497,7 @@ class Manipulator_Configuration(object):
 
         return q_grd
 
+# \cond    
     def objective_function_gradient(self, k = 1.0):
         dof = self.config_settings.DOF
         qh  = self.qh

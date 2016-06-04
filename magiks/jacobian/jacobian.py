@@ -19,27 +19,33 @@ import numpy, math
 from math_tools.geometry import rotation
 from math_tools.algebra import quaternions, vectors_and_matrices as vecmatlib 
 
-# \cond
+## This class contains the standard analytic jacobian of a manipulator with required methods for calculating it.
 class Analytic_Jacobian(object):
-    '''
-    Contains the standard analytic jacobian of a manipulator with methods for calculating it.
-    '''
+    
+	## The Class Constructor:
+	#  @param config_settings An instance of class 
+    #         \link magiks.jointspace.manipulator_configuration.Manipulator_Configuration_Settings Manipulator_Configuration_Settings \endlink 
+    #         containing the configuration settings of the manipulator
     def __init__(self, config_settings):
-        '''
         
-        U : A two dimensional list of 4 X 4 matrices. U[i][j] represents the partial derivative of T[i] (Transformation matrix of link i) with respect to j-th joint variation (q[j])
-        '''
+        
         self.config_settings = config_settings    
         self.clear()
-
+    
+        
+# \cond
+    ##  Clears the transfer matrices and their derivatives (properties \c H and \c U)
     def clear(self):
+        ## A two dimensional list of <tt> 4 X 4 </tt> hemogeneous matrices. 
+        #  <tt> U[i][j] </tt> represents the partial derivative of <tt> T[i] </tt>  
+        #  (Transformation matrix of link \a i) with respect to the j-th joint variation (q[j])
         self.U      = [ None for i in range(0, self.config_settings.njoint) ]
+        
         self.H      = None
 
+    ## Returns the analytic jacobian for a specified link
+    #  @param link_number An integer specifying the link number for which the analytic Jacobian is required
     def __getitem__(self, link_number):
-        '''
-        Returns the analytic jacobian for one link identified by link_number
-        '''
         if self.U[link_number] == None:
             self.U[link_number] = [numpy.eye(4) for j in range(0, link_number + 1)]
             j = 0
@@ -73,16 +79,22 @@ class Analytic_Jacobian(object):
                     j = j + 1
                     
         return self.U[link_number]    
+# \endcond
 
+## Contains the Geometric jacobian of an end-effector that can be established of a number of reference positions (Task Points) or 
+#  reference orientations (Task Frames) with methods for creating and calculating them.
 class Geometric_Jacobian(object):
-    '''
-    Contains the Geometric jacobian of a reference_position or reference_orientation with methods for creating and calculating it
-    '''    
+    
+	## The Class Constructor:
+	#  @param config_settings An instance of class 
+    #         \link magiks.jointspace.manipulator_configuration.Manipulator_Configuration_Settings Manipulator_Configuration_Settings \endlink 
+    #         containing the configuration settings of the manipulator
     def __init__(self, config_settings):
         "Definition of the geometric jacobian matrix"
         self.value    = numpy.zeros((3 , config_settings.DOF))
         self.config_settings  = config_settings
 
+# \cond
     def clear(self):
         self.value = None
 
@@ -131,11 +143,12 @@ class Geometric_Jacobian(object):
                 self.value[1,i] = v[1]
                 self.value[2,i] = v[2]
                 i = i + 1
+# \endcond
 
+##  Contains the Error Jacobian of an end-effector established from one or more reference positions (Task Points) 
+#   or reference orientations (Task Framess) with required methods for creating and calculating it
 class Error_Jacobian(object):
-    '''
-    Contains the Error jacobian of a reference_position or reference_orientation with methods for creating and calculating it
-    '''    
+# \cond
     def __init__(self, config_settings):
         self.config_settings = config_settings
         #Creation of the error jacobian matrix

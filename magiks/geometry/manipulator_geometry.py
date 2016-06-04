@@ -30,29 +30,26 @@ import numpy, math
 
 from magiks.jacobian import jacobian as jaclib
 
-from magiks.jointspace import manipulator_configuration as configlib
+from magiks.jointspace import manipulator_configuration
 from math_tools.geometry import rotation
 
 ## @brief This class contains geometrical properties and dimensional settings of a chained-link manipulator.
-#  These settings mainly include the standard DH parameters that specify the geometry of the manipulator.          
-#  /f$ \theta, \alpha, a/f$ and /f$ d /f$ are vectors of real numbers by which the geometry of the manipulator is defined.
-#  These values are based on Denavit Hartenberg standrad representation (Please refer to reference 1, pages 36 to 40)
+#  These settings mainly include the standard DH parameters by which the geometry of the manipulator is specified.          
+#  These values are based on <em> Denavit Hartenberg </em>  standrad representation.
 #  The transformation matrices are calculated based on this standard.
-#  If the joint is revoulte, the value of theta[i] is added to q[i] in the transformation matrix
-#  If the joint is prismatic, the value of d[i] is added by q[i]  in the transformation matrix
+#  If the joint is revoulte, the value of <tt> theta[i] </tt>  is added to <tt> q[i] </tt> in the transformation matrix
+#  If the joint is prismatic, the value of <tt> d[i] </tt> is added by <tt> q[i] </tt> in the transformation matrix
 class Manipulator_Geometry_Settings(object):
 	## The Class Constructor:
 	#  @param nlink A positive integer specifying the number of links of the manipulator 	
-	#  @param manip_name A character string specifying the name of a manipulator. Example: 'PR2ARM' or 'PA10' 
-    
+	#  @param manip_name A character string specifying the name of a manipulator. Examples: \b PR2ARM or \b PA10
     def __init__(self, nlink, manip_name):
-		##  A string containing the name of the manipulator
         self.name = manip_name
 		##  A positive integer containing the number of links of the manipulator
         self.nlink = nlink
 
 		##  A numpy vector containing the \f$ \theta \f$ values of the DH parameters
-        #   If the proximal joint of the link is revoulte, the value of theta[i] is added to q[i] in the transformation matrix
+        #   If the proximal joint of the link is revoulte, the value of <tt> theta[i] </tt> is added to <tt> q[i] </tt> in the transformation matrix
         self.theta      = numpy.zeros((nlink))
         
 		##  A numpy vector containing the \f$ \alpha \f$ values of the DH parameters
@@ -62,42 +59,41 @@ class Manipulator_Geometry_Settings(object):
         self.a          = numpy.zeros((nlink))
         
 		##  A numpy vector containing the \f$ d \f$ values of the DH parameters
-        #   If the joint is prismatic, the value of d[i] is added to q[i] in the transformation matrix
+        #   If the joint is prismatic, the value of <tt> d[i] </tt> is added to <tt> q[i] </tt> in the transformation matrix
         self.d          = numpy.zeros((nlink))
 
-# \cond
-class Manipulator_Geometry(configlib.Manipulator_Configuration):
-    '''
-    This class contains a list of relative and absolute transfer matrices which represent the forward kinematics of a manipulator. 
-    Method "update" calculates each transfer matrix according to the given joint configuration and replaces old "T" and "H" values with new.
-    '''
+## @brief This class contains a list of relative and absolute transfer matrices representing the forward kinematics of a manipulator.
+#
+class Manipulator_Geometry(manipulator_configuration.Manipulator_Configuration):
 
+	## The Class Constructor:
+	#  @param config_settings An instance of class 
+    #         \link magiks.jointspace.manipulator_configuration.Manipulator_Configuration_Settings Manipulator_Configuration_Settings \endlink 
+    #         containing the configuration settings of the manipulator
+	#  @param geo_settings An instance of class Manipulator_Geometry_Settings containing the geometric settings of the manipulator
     def __init__(self, config_settings, geo_settings):
-        '''
-        '''
         super(Manipulator_Geometry, self).__init__(config_settings)
+        
+        ## An instance of class Manipulator_Geometry_Settings
+        #  containing geometry and dimensions of the manipulator in terms of DH parameters
         self.geo_settings      = geo_settings
 
-        # "self.analytic_jacobian" is an instance of class "Analytic_Jacobian" in package "jacobian"
-        # This class contains a two-dimensional list of matrices which are the derivatives of absolute transfer matrices in respect with each of the joint parameters
+        ## An instance of class 
+        #  \link magiks.jacobian.Analytic_Jacobian Analytic_Jacobian \endlink.
+        #  This class contains a two-dimensional list of derivatives of absolute homogeneous transfer matrices with respect to each of the joints
         self.ajac  = jaclib.Analytic_Jacobian(self.config_settings)
 
-
-        '''
-        T  : A list of transformation matrices. T[i] represents i-1 to i transformation matrix. Elements of the list, are 4 X 4 matrices.
-        '''
+        ## A list of homogeneous transformation matrices. 
+        #  <tt> T[i] </tt> represents <em> i-1 </em> to \a i transformation matrix. Elements of the list, are <tt> 4 X 4 </tt> matrices.
         self.T = None
 
-        '''
-        H  : A list of transformation matrices. H[i] represents ground (-1) to i transformation matrix. Elements of the list, are 4 X 4 matrices.
-        '''
+        ## A list of transformation matrices. <tt> H[i] </tt> represents ground (-1) to i transformation matrix. Elements of the list, are <tt> 4 X 4 </tt> matrices.
         self.H = None
         
-    '''
-    ## This function is used to generate a string containing a set of properties of the object and their values.
-    #  If the set of displayed parameters is not specified, property 'str_parameter_set' will be used.
+    ## This function is used to generate a string representing a set of selected object properties and their values.
+    #  If the set of displayed parameters is not specified, property <tt> str_parameter_set </tt> will be used.
     #  @param parameter_set A set of parameters to be displayed in the generated string in abbreviation form
-    #  @return A character string containing the object properties specified by argument 'parameter_set' with their values   
+    #  @return A character string containing the object properties specified by argument <tt> parameter_set </tt>  with their values   
     def __str__( self, parameter_set = None ) : 
         if parameter_set == None:
             parameter_set = self.str_parameter_set
@@ -110,18 +106,16 @@ class Manipulator_Geometry(configlib.Manipulator_Configuration):
             param = key_dic[p]
             s += param + " "*(45-len(param)) + ': ' + value + '\n'
         return s
-    '''
     
+    ## Use this function to get the current homogeneous transfer matrices of the manipulator.
+    #  Values of the transfer matrices depend on the manipulator configuration.
+    #  @return A list of homogeneous <tt> 4 X 4 </tt> matrices. The i-th element of the list represents the position and orientation of the i-th link.
     def transfer_matrices(self):
         if self.H == None:
             geo         = self.geo_settings
             self.T      = [numpy.eye(4) for i in range(0, geo.nlink) ]
             self.H      = [numpy.eye(4) for i in range(0, geo.nlink) ]
             
-            '''
-            This function calculates the transformation matrices (H[i] and T[i]) which represent the
-            position and orientation of i-th link of the model.
-            '''
             if self.config_settings.prismatic[0]:
                 self.T[0] = rotation.DH_transfer_matrix(geo.theta[0], geo.alpha[0], geo.a[0], geo.d[0] + self.q[0])
             else:
@@ -140,6 +134,8 @@ class Manipulator_Geometry(configlib.Manipulator_Configuration):
 
             self.ajac.H = self.H
         return self.H
+
+# \cond
 
     def set_config_virtual(self, qvrd):
         if super(Manipulator_Geometry, self).set_config_virtual(qvrd):
