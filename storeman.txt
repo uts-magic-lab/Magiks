@@ -1,0 +1,2095 @@
+DESCRIPTION:
+
+Package: nira.storeman
+Type: Package
+Title: A package for inventory(store) management
+Import: timeDate, niragen, nira.timser
+Version: 4.4.2
+Date: 2016-09-14
+Author: Nima Ramezani
+Maintainer: Nima Ramezani <nima.ramezani@cba.com.au>
+Description: Managing a store and timely ordering of required goods is a challenge for many businesses. This package contains methods for simulation and order optimization of a general store. It provides objects containing all required information of the store including history usage and orders. The object enables you to walk in the timeline, and see various metrics such as current balance, order, demand, holding and order costs. The object has methods to simulate and run the model by moving through the time and see changes. It also provides an active run method that automatically sets the orders whenever the balance is deminished. It respects lead time and can follow a defined fortnightly roster for replenishment of goods. It also can design an optimal roster plan for the replenishment of a group of stores. 
+License: MIT
+RoxygenNote: 5.0.1
+Collate:
+    'inv.tools.R'
+    'store.group.R'
+    'opt.rost.plan.R'
+    'virtual.store.R'
+    'nira.storeman.R'
+
+nira.storeman.R:
+
+#' nira.storeman: This wonderul package is an ideal tool-box for working with stores.
+#'
+#' @section Class VIRTUAL.STORE:
+#' This R reference class contains multiple fields and methods that help to:
+#' 1 - simulate inventory given actual demand and orders 
+#' 2 - Forecast the demand according to the history data considering trands and seasonalities
+#' 3 - Manage and control inventory balance and base stock level
+#' 4 - Optimize orders to minimize the overall holding and order cost
+#'
+#' @section Class STORE.GROUP:
+#' This R reference class contains multiple fields and methods for managing a group of virtual stores
+#' 
+#' @docType package
+#' @name nira.storeman
+#' 
+#' @import timeDate
+#' @import niragen
+#' @import nira.timser
+#' @importClassesFrom nira.timser TSP.MODEL TIME.SERIES
+
+#' @include inv.tools.R
+#' @include virtual.store.R
+#' @include opt.rost.plan.R
+#' @include store.group.R
+
+# Start Date:     22 December 2015
+# Last Revision:  14 September 2016
+# Version:        4.4.2
+
+# Version History:
+
+# Version   Date              Action
+# ----------------------------------
+# 4.3.2     29 July 2016      store.group.R changed to ver 2.1.1
+# 4.3.3     02 August 2016    store.group.R changed to ver 2.1.1
+# 4.4.0     29 July 2016      virtual.store.R changed to ver 4.4.19
+# 4.4.1     02 September 2016 virtusl.store.R changed to ver 4.6.0
+# 4.4.2     14 September 2016 store.group.R changed to ver 2.2.2
+
+
+
+NULL
+#> NULL
+
+inv.tools.R:
+
+# Header
+# Filename:      inv.tools.R
+# Description:   Contains various functions including some 
+#                inventory cost prediction models and optimal roster planners.
+# Author:        Nima Ramezani Taghiabadi
+# Email :        N.RamezaniTaghiabadi@uws.edu.au
+# Start Date:    13 January 2016
+# Last Revision: 15 July 2016
+# Version:       4.3.1
+
+# Version History:
+#
+# Version    Date          Actions
+# ----------------------------------------------------
+# 4.3.1      15 July 2016  function opt.roster() exported
+
+#' @export
+futureCostPI <- function (N, B, mu, sigma, P, h, base = 0) {
+  # Given stochastic usage mean and standard deviation and associated costs, predicts future cost per unit time for a desired
+  # replenishment amount after a given amount of time
+  # Input 1: N Number of time intervals ahead from now until the replenishment
+  # Input 2: B Current opening balance or Current amount of inventory (cash in the ATM) (Only used if argument replenish = FALSE)
+  
+  p     = rep(0,N)
+  f     = rep(0,N)
+  s.penalty = 0
+  s.holding = 0
+  
+  for (i in 1:N){
+    mu.i    = B - i*mu
+    sigma.i = sqrt(i)*sigma
+    z0      = (base - mu.i)/sigma.i
+    
+    f[i] = pnorm(z0)
+    if (i == 1){
+      p[i] = f[i]
+    } else{
+      p[i] = f[i] - f[i-1]
+    }
+    s.penalty = s.penalty + (N - i + 1)*p[i]
+    s.holding = s.holding + i*p[i]
+  }
+  
+  mu.N    = B - N*mu
+  sigma.N = sqrt(N)*sigma
+  z0      = (base - mu.N)/sigma.N
+  PHI     = pnorm(z0)
+  phi     = exp(- 0.5*z0*z0)/sqrt(2*pi)
+  
+  I       = (B + mu.N)*(1 - PHI) + sigma.N*phi
+  
+  cost.N  = P*s.penalty + 0.5*h*B*s.holding + 0.5*N*h*I
+  cost    = cost.N/N
+  return(cost)
+}
+
+#' @export
+futureCostsPI <- function (N, B, mu, sigma, P, h, base = 0) {
+  # Given stochastic usage mean and standard deviation and associated costs, predicts future cost per unit time for a desired
+  # replenishment amount after a given amount of time
+  # Input 1: Q - The amount of replenishment (Only used if argument replenish is TRUE)
+  # Input 2: N - number of time intervals in the future from now for prediction
+  # Input 3: B - cur opening balance or cur amount of inventory (cash in the ATM) (Only used if argument replenish = FALSE)
+  
+  assert(length(mu) == N, "Error")
+  assert(length(sigma) == N, "Error")
+  
+  p     = rep(0,N)
+  f     = rep(0,N)
+  s.penalty = 0
+  s.holding = 0
+  
+  for (i in 1:N){
+    z0      = (base - mu[i])/sigma[i]
+    
+    f[i] = pnorm(z0)
+    if (i == 1){
+      p[i] = f[i]
+    } else{
+      p[i] = f[i] - f[i-1]
+    }
+    s.penalty = s.penalty + (N - i + 1)*p[i]
+    s.holding = s.holding + i*p[i]
+  }
+  
+  # mu.N    = mu[N]
+  # sigma.N = sqrt(sum(sigma[1:N]^2))
+  
+  # z0      = (base - mu.N)/sigma.N
+  PHI     = pnorm(z0)
+  phi     = exp(- 0.5*z0*z0)/sqrt(2*pi)
+  
+  I       = (B + mu[N])*(1 - PHI) + sigma[i]*phi
+  
+  cost.N  = P*s.penalty + 0.5*h*B*s.holding + 0.5*N*h*I
+  cost    = cost.N/N
+  return(cost)
+}
+
+# fr : 1  1  NA  NA  1  0  NA
+# a  : 1  0  0   1   1  0  1
+# out: 1  0  NA  NA  0  1  NA
+int.to.roster = function(x, fr){
+  a = as.integer(intToBits(x))
+  y = fr
+  y[!is.na(fr)] = a[sequence(length(y[!is.na(fr)]))]
+  return(y)
+}
+
+# roster.to.int
+
+roster.cost = function(r, q = NA, demands = rep(1.0, 14)){
+  r = as.logical(r)
+  s = numeric()
+  j = 1
+  for (i in 1:14){
+    if (!is.na(r[i])){
+      if (r[i]) {j = j + 1}  
+    }
+    
+    s[j] = add(s[j], demands[i])
+  }
+  
+  s[1] = add(s[1], s[j])
+  s    = s[-j]
+  # if (is.na(q)){return(sd(s))} else {return(sum((s - q) > 0)*1000000 + mean((q - s)^2))}
+  
+  if (is.na(q)){return(sd(s))} else {
+    cost = mean((q - s)^2) + roster.cost.sim(r, q, demands = demands)
+    return(cost)
+  }
+}
+
+
+# r: fortnight roster
+# p: pernalty
+# q: order(replenishment) amount
+roster.cost.sim = function(r, q, p = 1000*q, oc = 133, hcr = 0.0225/365, demands = rep(1.0, 14)){
+  r[is.na(r)] <- 0
+  assert(sum(r) > 0, "Given roster adds up to zero")
+  r     = as.logical(r)
+  st    = which(r)[1] 
+  b     = numeric()
+  
+  b[st] = q - demands[st]
+  if (st < 14){for (i in (st + 1):14){b[i] = ifelse(r[i], q, b[i - 1]) - demands[i]}}
+  if (st > 1) {b[1] = ifelse(r[1],q, b[14]) - demands[1]}
+  if (st > 2) {for (i in 2:(st - 1)) {b[i] = ifelse(r[i], q, b[i - 1]) - demands[i]}}
+  b[b < 0] = p
+  cost     = sum(b*hcr) + sum(r*oc)
+  return(cost)
+}
+
+#' @export
+opt.roster = function(demands, freq = 2, q = NA, fr = c(1,1,1,1,1,NA,NA,1,1,1,1,1,NA,NA)){
+  N   = 2^length(fr[!is.na(fr)]) - 1
+  cst = numeric()
+  RST = numeric()
+  for (i in sequence(N)){
+    rst    = int.to.roster(i, fr)
+    if (is.na(freq)){
+      cst = c(cst, roster.cost(rst, q = q, demands = demands))
+      RST = rbind(RST, rst)
+    } else {
+      if (sum(rst, na.rm = T) == freq){
+        cst = c(cst, roster.cost(rst, q = q, demands = demands))
+        RST = rbind(RST, rst)
+      }
+    }
+  }
+  if (length(cst) < 1){return(rep(NA, 14))} else {
+    min.i = order(cst)[1]
+    return(RST[min.i,])
+  }
+}
+
+
+opt.rost.plan.R:
+
+# Header
+# Filename:      opt.rost.plan.R
+# Description:   This module contains tools to plan an optimal seasonal roster for store replenishments 
+#                according to the given seasonal usage
+# Author:        Nima Ramezani Taghiabadi
+# Email :        N.RamezaniTaghiabadi@uws.edu.au
+# Start Date:    17 January 2016
+# Last Revision: 19 February 2016
+# Version:       1.2.0
+
+# Version History:
+
+# Version   Date                Action
+# -------------------------------------
+# 1.2.0     19 February 2016    function roster.cost() changed. Roster cost is now computed in a different way
+
+opt.bin.split = function(v, free = rep(1, length(v))){
+  N = length(v)
+  r.min = 1
+  for (i in 2:N){
+    nom = sum(v[i:N])
+    den = sum(v[1:(i-1)])
+    permit = (den > 0) & free[i]
+    if (permit){
+      r = abs(nom/den - 1)
+      if (r < r.min) {
+        r.min = r
+        i.min = i
+      }
+    }
+  }  
+  return(i.min)
+}
+
+#  r: vector of length 14: given roster
+# fr: vector of length 14: Any feasible fortnightly roster 
+is.feasible = function(r, fr){
+  sum(r[is.na(fr)], na.rm = T) == 0
+}
+
+# fr : 1  1  NA  NA  1  0  NA
+# a  : 1  0  0   1   1  0  1
+# out: 1  0  NA  NA  0  1  NA
+int.to.roster = function(x, fr){
+  a = as.integer(intToBits(x))
+  y = fr
+  y[!is.na(fr)] = a[sequence(length(y[!is.na(fr)]))]
+  return(y)
+}
+
+# roster.to.int
+
+roster.cost = function(r, q = NA, demands = rep(1.0, 14)){
+  r = as.logical(r)
+  s = numeric()
+  j = 1
+  for (i in 1:14){
+    if (!is.na(r[i])){
+      if (r[i]) {j = j + 1}  
+    }
+    
+    s[j] = add(s[j], demands[i])
+  }
+  
+  s[1] = add(s[1], s[j])
+  s    = s[-j]
+  # if (is.na(q)){return(sd(s))} else {return(sum((s - q) > 0)*1000000 + mean((q - s)^2))}
+  
+  if (is.na(q)){return(sd(s))} else {
+    cost = mean((q - s)^2) + roster.cost.sim(r, q, demands = demands)
+    return(cost)
+  }
+}
+
+
+# r: fortnight roster
+# p: pernalty
+# q: order(replenishment) amount
+roster.cost.sim = function(r, q, p = 1000*q, oc = 133, hcr = 0.0225/365, demands = rep(1.0, 14)){
+  r[is.na(r)] <- 0
+  assert(sum(r) > 0, "Given roster adds up to zero")
+  r     = as.logical(r)
+  st    = which(r)[1] 
+  b     = numeric()
+  
+  b[st] = q - demands[st]
+  if (st < 14){for (i in (st + 1):14){b[i] = ifelse(r[i], q, b[i - 1]) - demands[i]}}
+  if (st > 1) {b[1] = ifelse(r[1],q, b[14]) - demands[1]}
+  if (st > 2) {for (i in 2:(st - 1)) {b[i] = ifelse(r[i], q, b[i - 1]) - demands[i]}}
+  b[b < 0] = p
+  cost     = sum(b*hcr) + sum(r*oc)
+  return(cost)
+}
+
+opt.roster = function(demands, freq = 2, q = NA, fr = c(1,1,1,1,1,NA,NA,1,1,1,1,1,NA,NA)){
+  N   = 2^length(fr[!is.na(fr)]) - 1
+  cst = numeric()
+  RST = numeric()
+  for (i in sequence(N)){
+    rst    = int.to.roster(i, fr)
+    if (is.na(freq)){
+      cst = c(cst, roster.cost(rst, q = q, demands = demands))
+      RST = rbind(RST, rst)
+    } else {
+      if (sum(rst, na.rm = T) == freq){
+        cst = c(cst, roster.cost(rst, q = q, demands = demands))
+        RST = rbind(RST, rst)
+      }
+    }
+  }
+  if (length(cst) < 1){return(rep(NA, 14))} else {
+    min.i = order(cst)[1]
+    return(RST[min.i,])
+  }
+}
+
+
+store.group.R:
+
+# Header
+# Filename:       store.group.R
+# Description:    This file mainly defines a reference class named STORE.GROUP that Contains
+#                 the data of a number of stores and manages them. 
+#                 For more information about the class, read the class documentation.
+# Author:         Nima Ramezani Taghiabadi
+# Email:          nima.ramezani@cba.com.au
+# Start Date:     29 January 2016
+# Last Revision:  14 September 2016
+# Version:        2.2.2
+# 
+
+
+# Version History:
+
+# Version   Date               Action
+# ----------------------------------
+# 2.1.1     29 July 2016       Availability data added. Method get.store() modified to accommodate availability as a new data column
+# 2.1.2     30 August 2016     Property nDays Ahead added to sg.settings. Compatible to virtual.store version 4.5.0
+# 2.1.3     12 September 2016  Argument 'store.ids' added to method run.optimal()
+# 2.2.0     13 September 2016  Method get.store() modified: Specific settings are read from 'spec' table and put in store settings
+# 2.2.1     13 September 2016  Method save.settings() added. Saves SEG and Base Stock parameters for each store in the list in a given csv file
+# 2.2.2     14 September 2016  Argument 'base' added to method gen.report()
+
+
+library(timeDate)
+library(niragen)
+library(nira.timser)
+
+
+defaultSpecColumns = list(ID = "ID", Capacity = 'Capacity', Initial.Balance = "InitialBalance", 
+                            Order.Fee.InRoster = "Standard", Order.Fee.OffRoster = "Emergency")
+
+# Definition of Store Group Settings:
+#' @exportClass SG.SETTINGS
+#' @export SG.SETTINGS
+SG.SETTINGS <- setRefClass("SG.SETTINGS", fields = list(
+  # Store IDs are supposed to be rownames of the spec table
+  capacities = 'numeric',
+  costs      = 'matrix', 
+  weights    = 'matrix', 
+  roster     = 'matrix', 
+  lead.time  = 'integer',
+  max.off.srv = 'integer',
+  nDaysAhead  = 'integer',
+  hc.rate    = 'numeric',
+  base.stock = 'numeric',
+  es.penalty = 'numeric',
+  serr.gain  = 'numeric',
+  top.up     = 'numeric')  , methods = list(
+    
+    initialize = function(row_names = c(), col_names = c(), ...){
+      callSuper(...)
+      if (!is.empty(row_names)){
+        rownames(costs)   <<- row_names
+        rownames(weights) <<- row_names
+        rownames(roster)  <<- row_names
+      }
+      if (!is.empty(col_names)){
+        colnames(costs)   <<- col_names
+        colnames(weights) <<- col_names
+        colnames(roster)  <<- col_names
+        names(capacities) <<- col_names
+      }
+    }, 
+    
+    ext.vs.settings = function(sid){
+      vss = VS.SETTINGS(
+        capacity     = capacities[sid],
+        order.capacity = capacities[sid],
+        order.fee    = costs[,sid],
+        order.weight = weights[,sid],
+        order.roster = as.logical(roster[,sid]),
+        hc.rate      = hc.rate,
+        lead.time    = lead.time,
+        max.off.srv  = max.off.srv,
+        nDaysAhead   = nDaysAhead,
+        es.penalty   = es.penalty,
+        serr.gain    = serr.gain,
+        top.up       = top.up,
+        base.stock   = base.stock)
+      names(vss$order.roster) <- names(roster[,sid])
+      return(vss)
+    },
+    
+    embedd.vs.settings = function(vss, sid){
+      capacities[sid] <<- vss$capacity
+      costs[,sid]     <<- vss$order.fee
+      weights[,sid]   <<- vss$order.weight
+      roster[,sid]    <<- vss$order.roster
+      #hc.rate        <<- vss$hc.rate
+      #lead.time      <<- vss$lead.time
+      #es.penalty     <<- vss$es.penalty
+      #top.up         <<- vss$top.up
+      #base.stock     <<- vss$base.stock
+    },
+
+    read.roster = function(filename, ...){
+      RSTR  = read.csv(filename, as.is = T, row.names = 1, check.names = F)
+      dates = char2Time(rownames(RSTR))
+      rownames(RSTR) <- time2Char(dates)
+      verify(as.matrix(RSTR), names_include = names(roster), varname = filename)
+      rows = intersect(rownames(RSTR),rownames(roster))
+      cols = intersect(colnames(RSTR),colnames(roster))
+      roster[rows, cols] <<- as.matrix(RSTR[rows, cols])
+      apply.roster(rost = roster, ...)
+    },
+    
+    write.roster = function(filename, period = sequence(nrow(roster)), store_ids = colnames(roster), update = F){
+      r = roster[period, store_ids, drop = F]
+      if (update){RSTR  = read.csv(filename, as.is = T, row.names = 1, check.names = F)
+        for (sid in store_ids){RSTR[rownames(r), sid] <- r[, sid]}
+        write.csv(RSTR, filename)        
+      } else {write.csv(r, filename)}
+    },
+    
+    # argument f_rost is a matrix of logicals nrow = N.store, ncol = 14
+    # todo: verfications
+    apply.roster.fortnightly = function(time, start, end, f_rost, in_roster_fee, off_roster_fee, in_roster_weight, off_roster_weight){
+      ns   = nrow(f_rost)
+      sids = rownames(f_rost)
+      if (length(in_roster_fee) == 1){in_roster_fee = rep(in_roster_fee, ns)} else {assert(length(in_roster_fee) == ns, "The length of argument 'in_roster_fee' does not match 'f_rost'", match.call()[[1]])}
+      if (length(off_roster_fee) == 1){off_roster_fee = rep(off_roster_fee, ns)} else {assert(length(off_roster_fee) == ns, "The length of argument 'off_roster_fee' does not match 'f_rost'", match.call()[[1]])}
+      if (length(in_roster_weight) == 1){in_roster_weight = rep(in_roster_weight, ns)} else {assert(length(in_roster_weight) == ns, "The length of argument 'in_roster_weight' does not match 'f_rost'", match.call()[[1]])}
+      if (length(off_roster_weight) == 1){off_roster_weight = rep(off_roster_weight, ns)} else {assert(length(off_roster_weight) == ns, "The length of argument 'off_roster_weight' does not match 'f_rost'", match.call()[[1]])}
+      names(in_roster_fee) = sids
+      names(off_roster_fee) = sids
+      names(in_roster_weight) = sids
+      names(off_roster_weight) = sids
+      
+      for (i in sids){
+        vss = ext.vs.settings(i)
+        vss$apply.roster.fortnightly(time, start = start, end = end, f_rost = f_rost[i,], in_roster_fee = in_roster_fee[i], off_roster_fee = off_roster_fee[i], in_roster_weight = in_roster_weight[i], off_roster_weight = off_roster_weight[i])
+        embedd.vs.settings(vss, i)
+      }
+    } ,
+    
+    apply.roster = function(rost, in_roster_fee, off_roster_fee, in_roster_weight, off_roster_weight){
+      verify(rost, c('data.frame','matrix', 'numeric', 'integer', 'logical'), dims = dim(costs), varname = 'rost', names_identical = names(costs), rownames_identical = rownames(costs))
+      ns   = ncol(rost)
+      sids = colnames(rost)
+      if (length(in_roster_fee) == 1){in_roster_fee = rep(in_roster_fee, ns)} else {assert(length(in_roster_fee) == ns, "The length of argument 'in_roster_fee' does not match 'f_rost'", match.call()[[1]])}
+      if (length(off_roster_fee) == 1){off_roster_fee = rep(off_roster_fee, ns)} else {assert(length(off_roster_fee) == ns, "The length of argument 'off_roster_fee' does not match 'f_rost'", match.call()[[1]])}
+      if (length(in_roster_weight) == 1){in_roster_weight = rep(in_roster_weight, ns)} else {assert(length(in_roster_weight) == ns, "The length of argument 'in_roster_weight' does not match 'f_rost'", match.call()[[1]])}
+      if (length(off_roster_weight) == 1){off_roster_weight = rep(off_roster_weight, ns)} else {assert(length(off_roster_weight) == ns, "The length of argument 'off_roster_weight' does not match 'f_rost'", match.call()[[1]])}
+      names(in_roster_fee) = sids
+      names(off_roster_fee) = sids
+      names(in_roster_weight) = sids
+      names(off_roster_weight) = sids
+      
+      for (i in sids){
+        vss = ext.vs.settings(i)
+        vss$apply.roster(rost = rost[,i], in_roster_fee = in_roster_fee[i], off_roster_fee = off_roster_fee[i], in_roster_weight = in_roster_weight[i], off_roster_weight = off_roster_weight[i])
+        embedd.vs.settings(vss, i)
+      }
+    },
+    
+    forbid_weekends = function(time){
+      dow = dayOfWeek(time)
+      roster[dow %in% c('Sat', 'Sun'),] <<- NA
+    },
+    
+    free.roster = function(cost = NULL){
+      roster[,] <<- T
+      if (!is.null(cost)){costs[,]  <<- cost}
+    }
+  ))
+
+#' @export
+build.spec = function(specset, spec_columns){
+  verify(spec_columns, c("list", "character"))
+  
+  permit = names(defaultSpecColumns) %in% names(spec_columns)
+  assert(sum(!permit) == 0, 
+         "Argument 'spec_columns' must specify all required fields. These columns are missing: " 
+         %+% paste(names(defaultSpecColumns[!permit]), collapse = " , "), err_src = match.call()[[1]])
+  verify(specset, 'data.frame')
+  names.specset = names(specset)
+  
+  permit = spec_columns %in% names.specset
+  assert(sum(!permit) == 0, 
+         "Argument 'specset' must contain all the fields specified by argument 'spec_columns'. These columns are missing: " 
+         %+% paste(spec_columns[!permit], collapse = " , "), err_src = match.call()[[1]])
+  
+  names(names.specset) <- names.specset
+  names.specset[names.specset[as.character(spec_columns)]] <- names(spec_columns)
+  names(specset) <- names.specset
+  rownames(specset) <- specset$ID
+  return(specset)  
+}
+
+
+# Creating a STORE.GROUP class
+#' A Reference Class representing a group of stores.
+#'
+#' @field N.store An integer representing the number of stores in the group
+# N.store: integer containing the number of stores in the group
+# demand: a time series object containing the demands of all the stores in the group
+# order: a time series object containing the orders of all the stores in the group
+# spec: a data.frame containing the specifications of each store
+#' 
+#' @export STORE.GROUP
+#' @exportClass STORE.GROUP
+STORE.GROUP <- setRefClass("STORE.GROUP", 
+    fields = list(
+    name              = "character",
+    time.zone         = "character",
+    N.store           = "integer",
+    demand            = "TIME.SERIES",
+    order             = "TIME.SERIES",
+    balance           = "TIME.SERIES",
+    order.return      = "TIME.SERIES",
+    holding.cost      = "TIME.SERIES",
+    order.cost        = "TIME.SERIES",
+    total.cost        = "TIME.SERIES",
+    
+    pred              = "TIME.SERIES",
+    error             = "TIME.SERIES",
+    
+    spec              = "data.frame",
+    report            = "data.frame",
+    availability      = "data.frame",
+    selected          = "character",
+    
+    settings          = "SG.SETTINGS",
+    stores            = 'list'
+    ),
+    
+    methods = list(
+    # The constructor can either get a list of virtual stores or
+    # a list containing spec, demand and orders
+    # the vs_list must be a list. Any other type is not accepted.
+    initialize = function(timeset = NULL, demandset = numeric(), orderset = numeric(), specset = data.frame(),
+                         balances = NULL, returns = NULL, predset = numeric(), errorset = numeric(), time_format = "%d/%m/%Y", vs_list = list(), 
+                         sg_settings = NULL, spec_columns = defaultSpecColumns, time_zone = "GMT", ...){
+     # todo: verifications
+     
+     callSuper(...)
+     
+     if (!is.null(timeset)){
+       N.store <<- nrow(specset)
+       N.int = length(timeset)
+       
+       timeset   = verify(timeset, c('NULL', 'character', 'factor', 'timeDate', 'Date', 'POSIXt', 'POSIXct', 'POSIXlt'))
+       demandset = verify(demandset, c('numeric', 'data.frame', 'matrix'), dims = c(N.int, N.store))
+       orderset  = verify(orderset, c('numeric', 'data.frame', 'matrix'), dims = c(N.int, N.store))
+       balances  = verify(balances, c('NULL', 'numeric', 'data.frame', 'matrix'), dims = c(N.int, N.store))
+       returns   = verify(returns, c('NULL', 'numeric', 'data.frame', 'matrix'), dims = c(N.int, N.store))
+       
+       spec    <<- build.spec(specset, spec_columns)
+       store.ids = rownames(spec)
+       demandset = try(demandset[, store.ids, drop = F], silent = T)
+       verify(demandset, err_msg = "Store IDs do not match: demandset and specset!", err_src = match.call()[[1]])
+       orderset  = try(orderset[, store.ids, drop = F], silent = T)
+       verify(demandset, err_msg = "Store IDs do not match: orderset and specset!", err_src = match.call()[[1]])
+       
+       if (!class(balances) == 'NULL'){
+         balances = try(balances[, store.ids, drop = F], silent = T)
+         verify(balances, err_msg = "Store IDs do not match: balances and specset!", err_src = match.call()[[1]])
+       }
+       if (!class(returns)  == 'NULL'){
+         returns = try(returns[, store.ids, drop = F], silent = T)
+         verify(returns, err_msg = "Store IDs do not match: returns and specset!", err_src = match.call()[[1]])
+       }
+       
+       # dfempty <- data.frame.na(nrow = length(timeset), ncol = N.store, col_names = spec[, 'ID'])
+       time.zone <<- time_zone
+       tc = time2Char(timeset)
+       
+       demand  <<- TIME.SERIES(timeset = timeset, dataset = demandset[tc, store.ids], format = time_format, name = 'demand', zone = time.zone, center = time.zone)
+       order   <<- TIME.SERIES(timeset = timeset, dataset = orderset[tc, store.ids], format  = time_format, name = 'order', zone = time.zone, center = time.zone)
+       
+       pred    <<- TIME.SERIES(timeset = timeset, dataset = predset[tc, intersect(store.ids, names(predset))],  format = time_format, name = 'demand.pred', zone = time.zone, center = time.zone)
+       error   <<- TIME.SERIES(timeset = timeset, dataset = errorset[tc, intersect(store.ids, names(predset))], format = time_format, name = 'demand.pred.error', zone = time.zone, center = time.zone)
+       
+       selected <<- rownames(spec)[1]
+       reset(balances, returns)
+       
+       if(class(sg_settings) == "SG.SETTINGS"){settings <<- sg_settings} 
+       else {
+         settings    <<- new('SG.SETTINGS',
+           capacities = spec$Capacity, 
+           costs   = repeat.row(spec$Order.Fee.InRoster, demand$N.int), 
+           weights = repeat.row(spec$Order.Fee.OffRoster, demand$N.int), 
+           roster  = matrix(1, demand$N.int, ncol = N.store), hc.rate = 0.0225/365, 
+           lead.time = as.integer(1), max.off.srv = as.integer(60), nDaysAhead = as.integer(60), es.penalty   = 10000,  top.up  = 0, base.stock = 0, serr.gain = 1.0, 
+           row_names = rownames(demand$data), col_names = rownames(spec))
+       }
+       
+       clear.stores()
+     } # if timeset is not given an empty object is created
+     # todo: add construction from vs_list from previous versions
+    },
+    
+    remove.stores = function(store_ids = sequence(N.store)){
+      verify(store_ids, 'character', varname = 'store_ids')
+      NC = which(rownames(spec) %in% store_ids)
+      if (length(NC) > 0){spec <<- spec[- NC, , drop = F]}
+      demand$remove.figures(store_ids)
+      balance$remove.figures(store_ids)
+      order$remove.figures(store_ids)
+      order.return$remove.figures(store_ids)
+      holding.cost$remove.figures(store_ids)
+      order.cost$remove.figures(store_ids)
+      total.cost$remove.figures(store_ids)
+      pred$remove.figures(store_ids)
+      error$remove.figures(store_ids)
+
+      NC = which(colnames(settings$roster) %in% store_ids)
+      if (length(NC) > 0){
+        settings$costs   <<- settings$costs[, - NC, drop = F]
+        settings$roster  <<- settings$roster[, - NC, drop = F]
+        settings$weights <<- settings$weights[, - NC, drop = F]
+      }
+      N.store <<- nrow(spec)
+    
+      for (sid in store_ids){stores[[sid]] <<- NULL}
+    },
+    
+    fortnight.order.counts = function(period = order$stn:order$etn){
+     foc = matrix(nrow = 0, ncol = 14)
+     for (sid in colnames(data$demand)){
+       FDY    = fday(demand$time)[period]
+       t      = tabulate(1 + FDY[which(order$data[period, sid] > 0)])
+       foc = rbind(foc, c(t[-1], rep(0, 14 - length(t)), t[1]))
+     }
+     colnames(foc)   = fdlabel
+     rownames(foc)   = rownames(spec)
+     return(foc)
+    },
+    
+    fit.fortnight.roster = function(period = order$stn:order$etn, threshold = 0.7, forbid_weekends = T){
+     roster = matrix(0, nrow = N.store, ncol = 14)
+     if (forbid_weekends){roster[, c(6,7,13,14)] = NA}
+     colnames(roster) = fdlabel
+     rownames(roster) = rownames(spec)
+     
+     foc = fortnight.order.counts(period = period)
+     
+     for (i in 1:N.store){
+       ttc = tab.top.cumulative(foc[i,], threshold = threshold)
+       roster[i, ttc] = 1
+     }
+     return(roster)
+    },
+    
+    fill.stores = function(store_ids = rownames(spec)){
+     assert(store_ids, 'character', range = rownames(spec), varname = 'store_ids')  
+     for (sid in store_ids){stores[[sid]] <<- get.store(sid)}
+    },
+    
+    get.store = function(store_id, silent = F, ...){
+     verify(store_id, 'character', range = rownames(spec), varname = 'store_id', lengths = 1)      
+     
+     if (!silent){cat(store_id,': Convert to VIRTUAL.STORE object ... ')}
+     
+     config = settings$ext.vs.settings(store_id)
+     
+     # Specific Settings:
+     s1 = spec[ATM_id, 'SEG']
+     s2 = spec[ATM_id, 'Base']
+     if (!is.null(s1)) {if (!is.na(s1)) {config$serr.gain   = s1}}  
+     if (!is.null(s2)) {if (!is.na(s2)) {config$base.stock  = s2}}  
+     
+     peri   = spec[store_id,'IB.Date.Num']:length(demand$time)
+     
+     config$order.fee   = config$order.fee[peri]
+     config$order.weight = config$order.weight[peri]
+     config$order.roster = config$order.roster[peri]
+     
+     vs = VIRTUAL.STORE(demand$time[peri], demand$data[peri, store_id], initial_balance = spec[store_id, 'Initial.Balance'], 
+                        orderset = order$data[peri, store_id], ID = store_id, 
+                        name = as.character(spec[store_id, 'Name']), vs_settings = config, center = time.zone, ...)
+     if (!inherits(pred$data[peri, store_id], 'NULL') & !inherits(error$data[peri,store_id], 'NULL')){
+       vs$data$forec = pred$data[peri, store_id]
+       vs$data$forec[vs$data$forec < 0] <- 0
+       vs$data$fserr = error$data[peri, store_id]*config$serr.gain
+     }
+     # todo: jump to store group ctn (transfer balances, returns and costs to the get.store) before returning the get.store object
+     # Availability:
+     Ak      <- availability[availability$STOREID == store_id,]
+     dates.A <- as.character(Ak$Date)
+     Ak      <- Ak[!duplicated(dates.A),]
+     dates.A <- unique(dates.A)
+     rownames(Ak) <- dates.A
+     vs$feed(Ak[,'Availability', drop = F])
+     
+     if (!silent){cat('Done ! \n')}
+     return(vs)
+    },
+    
+    # Argument: srv_cap is a single numeric or a numeric vector of 14 elements
+    # and contains the daily order replenishment capacities 
+    # (Maximum how many stores can be serviced for each fortnight day)
+    optimal.fortnight.roster = function(hist = sequence(length(demand)), srv_cap = NULL, gain = 1.0, feasible_roster = NULL){
+     # The default value for 'hist' will change later 
+     # todo: This function has been customized for special needs of CBA ATM cash optimization project, 
+     #       and needs to be more generic (i.e. order.cost and hold.cost.rate can be a time series for each store)
+     # todo: support weekly and monthly and annual rosters
+     # todo: support special days in year
+
+     verify(feasible_roster, c('matrix', 'numeric', 'logical', 'integer', 'data.frame'), rownames_include = rownames(spec), names_identical = fdlabel, varname = 'feasible_roster') 
+     if (is.null(feasible_roster)){
+       feasible_roster = repeat.row(c(1,1,1,1,1,NA,NA,1,1,1,1,1,NA,NA), N.store)  
+       colnames(feasible_roster) <- fdlabel
+       rownames(feasible_roster) <- rownames(spec)
+     }
+     
+     feasible_roster <- as.matrix(feasible_roster)
+     feasible_roster[feasible_roster == 0]  <- NA
+      
+     oc = colMeans(settings$costs, na.rm = T)
+     mds  = gain*apply(demand$data[hist, ,drop = F], 2, function(x) high.pass.mean(x, threshold = 10, na.rm = TRUE))
+     sds  = apply(demand$data[hist, ,drop = F], 2, function(x) high.pass.sd(x, threshold = 10, na.rm = TRUE))
+     
+     QSS = sqrt(2*oc*mds/settings$hc.rate)
+     idx = QSS > spec$Capacity 
+     QSS[idx]  = spec$Capacity[idx]
+     strength  = spec$Capacity/mds
+     freq      = ceiling((14*mds + 2.0*sqrt(14)*sds)/QSS)
+     freq[is.na(freq)] = 1
+     
+     # freq = QSS/mds
+     #      for (i in 1:N.store){
+     #        if (mds[i] > 0){
+     #          if (freq[i] > 14){freq[i] = 1} 
+     #          else if (freq[i] > 7) {freq[i] = 2} 
+     #          else if (freq[i] > 4) {freq[i] = 3} 
+     #          else if (freq[i] > 3) {freq[i] = 4} 
+     #          else {freq[i] = 6}
+     #        } else {freq[i] = 0}
+     #      }
+     
+     if (class(srv_cap) == 'NULL'){
+       srv_cap = as.integer(2 + sum(freq)/8)
+     }
+     if (length(srv_cap) == 1){srv_cap = rep(srv_cap, 14)} else {assert(length(srv_cap) == 14)}
+     
+     from  = '04-Jan-2010'  # It is a Monday.1
+     until = '17-Jan-2010'  # It is a Sunday.2
+     ts    = timeSequence(from = from, to = until, by = 'day')
+     
+     ord    = order(strength)
+     forca  = rep(1, 14)
+     RSTR   = c()
+     DF     = demand$aggregate.seasonal(hist, func = high.pass.mean, seasonality = 'dof') #*****
+     ordids = rownames(spec)[ord]
+     for (i in sequence(length(ord))){
+       frost = feasible_roster[ordids[i], ] & forca
+       m     = ord[i]
+       u     = distribute.seasonality(ts, season.values = DF[,m, drop = F], seasonality = 'dof')
+       r     = opt.roster(demands = gain*u, freq = freq[m], q = QSS[m], fr = frost)
+       indx  = (!is.na(r)) & (r == 1)
+       srv_cap[indx] = srv_cap[indx] - 1
+       forca[srv_cap < 1] = NA
+       r[is.na(r) & !is.na(frost)] = 0
+       RSTR = rbind(RSTR, r)
+     }        
+     colnames(RSTR) = fdlabel
+     rownames(RSTR) = ordids
+     rsms = rowSums(RSTR, na.rm = T)
+     if ((sum(freq[ord] - rsms != 0) > 0) | (sum(rsms == 0) > 0)) {cat('Warning: Some stores may have not received adequate service \n')}
+     return(RSTR)
+    },
+    
+    reset = function(balances = NULL, returns = NULL){
+     report       <<- data.frame()
+
+     dfempty       <- data.frame.na(nrow = length(demand$time), ncol = N.store, col_names = rownames(spec))
+     if (class(balances) == 'NULL'){
+      balance      <<- TIME.SERIES(timeset = demand$time, dataset = dfempty, name = "Balance", center = time.zone)          
+     } else {
+      balances = verify(balances, 'data.frame') 
+      assert(nrow(balances) == length(demand$time), "Dimension mismatch!")
+      assert(ncol(balances) == N.store, "Dimension mismatch!")
+      balance  <<- TIME.SERIES(timeset = demand$time, dataset = balances, name = "Balance", center = time.zone)          
+     }
+     
+     if (class(returns) == 'NULL'){
+       order.return      <<- TIME.SERIES(timeset = demand$time, dataset = dfempty, name = "Return", center = time.zone)          
+     } else {
+       returns = verify(returns, 'data.frame') 
+       assert(nrow(returns) == length(demand$time), "Dimension mismatch!")
+       assert(ncol(returns) == N.store, "Dimension mismatch!")
+       order.return  <<- TIME.SERIES(timeset = demand$time, dataset = returns, name = "Return", center = time.zone)          
+     }
+
+     holding.cost <<- TIME.SERIES(timeset = demand$time, dataset = dfempty, name = "Holding Cost", center = time.zone)
+     order.cost   <<- holding.cost$copy()
+     total.cost   <<- holding.cost$copy()
+     order.cost$name   <<- "Service Cost"
+     total.cost$name   <<- "Total Cost"
+     
+     # for (st in rownames(spec)){balance$data[1,st] <<- spec[st, 'Initial.Balance']}
+    },
+    
+    clear.stores = function(){
+     stores <<- list()
+    },
+    
+    run.optimal = function(start = 1, end = length(demand), fixed_roster = T, silent = T){
+      if (class(start) %in% valid.time.classes){
+        start <- try(as.timeDate(start))
+        verify(start, lengths = 1, err_src = match.call()[[1]])
+      } else {
+        verify(start, c('numeric', 'integer'), lengths = 1, range = c(1, length(demand)), err_src = match.call()[[1]])  
+        start = demand$time[start]
+      }
+      
+      if (class(end) %in% valid.time.classes){
+        end <- try(as.timeDate(end))
+        verify(end, lengths = 1, err_src = match.call()[[1]])
+      } else {
+        verify(end, c('numeric', 'integer'), lengths = 1, err_src = match.call()[[1]])
+        end = demand$time[end]
+      }
+      
+      for (i in rownames(spec)){
+       vs  = stores[[i]]
+       if ('VIRTUAL.STORE' %in% class(vs)){
+         cat('Run optimization for Store: ', vs$ID, ' started .... \n')
+         vs$goto(start)
+         if (vs$now() == start){# can't run if creation time is after start time
+           vs$reset()
+           vs$jump.optimal(until = end, fixed_roster = fixed_roster, show = !silent)
+           cat('Run optimization for Store: ', vs$ID, ' finished! \n')
+         } 
+       }
+     }  
+    },
+    
+    gen.report = function(store.ids = NULL, clear = T, base = NULL){
+      store.ids  = verify(store.ids, 'character', range = names(stores), default = names(stores), varname = 'store.ids')
+      base       = verify(base, 'numeric', range = c(0, Inf), default = settings$base.stock, varname = 'base')
+      rstr  = c()
+      if (clear)(reset())
+      for (id in store.ids){
+       vs  = stores[[id]]
+         
+       peri  = vs$stn:vs$ctn
+       timc  = time2Char(vs$time[peri])
+       rstr  = rbind(rstr, vs$fortnight.order.counts())
+       
+       report[id, "HOLD.COST"] <<- vs$data$Hold.Cost[vs$ctn]
+       report[id, "SRV.COST"]    <<- vs$data$Order.Cost[vs$ctn]
+       report[id, "TOT.COST"]    <<- vs$data$Total.Cost[vs$ctn]
+       report[id, "FILL.RATE.BASE"] <<- vs$fill.rate(threshold = base)
+       report[id, "FILL.RATE.ZERO"] <<- vs$fill.rate(threshold = 1)
+       report[id, "MIN.BALANCE"] <<- min(vs$data$Balance[peri], na.rm = T)
+       report[id, "PLANNED"]     <<- sum(vs$settings$order.roster[peri], na.rm = T)
+       report[id, "CANCELLED"]   <<- sum((vs$data$Order[peri] == 0) & (vs$settings$order.roster[peri]), na.rm = T)
+       report[id, "EMERGENCY"]   <<- sum((vs$data$Order[peri] > 0) & (!vs$settings$order.roster[peri]), na.rm = T)
+       order$data[timc, id]   <<- vs$data$Order[peri]
+       balance$data[timc, id] <<- vs$data$Balance[peri]
+       order.return$data[timc, id]  <<- vs$data$Return[peri]
+       holding.cost$data[timc, id]  <<- vs$data$Hold.Cost[peri]
+       order.cost$data[timc, id]    <<- vs$data$Order.Cost[peri]
+       total.cost$data[timc, id]    <<- vs$data$Total.Cost[peri]
+     }
+     
+     columns = c(colnames(report), fdlabel)
+     report <<- cbind(report, rstr)
+     colnames(report) <<- columns
+    },      
+    
+    save.stores = function(path){
+     for (i in names(stores)){
+       vs  = stores[[i]]
+       if ('VIRTUAL.STORE' %in% class(vs)){
+         write.csv(vs$gen.report(vs$stn:vs$ctn), file = paste0(path, '/', vs$ID, '.csv'), row.names = F)
+       }
+     }  
+    },
+    
+    save.report = function(path, ...){
+     write.csv(report, file  = paste0(path, '/', name, '.report', '.csv'), ...)
+     
+     TC = total.cost$data
+     TC = TC[!(rowSums(!is.na(TC)) == 0),]
+     tc = rownames(TC)
+     
+     write.csv(TC, file = paste0(path, '/', name, '.costs', '.csv'), ...)
+     write.csv(sg$demand$data[tc,, drop = F],  file = paste0(path, '/', name, '.demands', '.csv'), ...)
+     write.csv(sg$balance$data[tc,, drop = F],  file = paste0(path, '/', name, '.balances', '.csv'), ...)
+     write.csv(sg$order$data[tc,, drop = F],  file = paste0(path, '/', name, '.orders', '.csv'), ...)
+     write.csv(sg$order.return$data[tc,, drop = F],  file = paste0(path, '/', name, '.returns', '.csv'), ...)
+    },
+    
+    save.settings = function(settings_fn, store_ids = NULL){
+      store.ids = verify(store_ids, 'character', range = names(stores), default = names(stores), varname = 'store_ids')
+      options(warn = -1)
+      sts       = try(read.csv(settings_fn, row.names = 1, as.is = T), silent = T)
+      options(warn = 0)
+      if (!inherits(sts, 'data.frame')){sts = data.frame()}
+      for (i in store.ids){
+        sts[i, 'SEG']  = stores[[i]]$settings$serr.gain
+        sts[i, 'Base'] = stores[[i]]$settings$base.stock
+      }
+      write.csv(sts, file = settings_fn)
+    },
+
+    save.forecasts = function(forecast_fn, forerror_fn, store_ids = NULL, from_stores = T){
+      store.ids = verify(store_ids, 'character', range = names(stores), default = names(stores), varname = 'store_ids')
+      options(warn = -1)
+      frc       = try(read.csv(forecast_fn, row.names = 1, as.is = T, check.names = F), silent = T)
+      err       = try(read.csv(forerror_fn, row.names = 1, as.is = T, check.names = F), silent = T)
+      options(warn = 0)
+      if (!inherits(frc, 'data.frame')){frc = data.frame()}
+      if (!inherits(err, 'data.frame')){err = data.frame()}
+      
+      tcf = rownames(pred$data)
+      tce = rownames(error$data)
+      for (i in store.ids){
+        if (from_stores){
+           a = stores[[i]]$data[, 'forec', drop = F]
+           e = stores[[i]]$data[, 'fserr', drop = F]/stores[[i]]$settings$serr.gain
+           names(a) <- i
+           names(e) <- i
+           a = a[!is.na(a[,i]), ,drop = F]
+           e = e[!is.na(e[,i]), ,drop = F]
+           pred$feed(a)
+           error$feed(e)
+        }
+        
+        frc[tcf, i]  = pred$data[tcf, i]
+        err[tce, i]  = error$data[tce, i]
+      }
+      write.csv(frc, file = forecast_fn)
+      write.csv(err, file = forerror_fn)
+    },
+    
+    read.forecasts = function(forecast_fn, forerror_fn, store_ids = NULL, to_stores = T){
+      store.ids = verify(store_ids, 'character', range = names(stores), default = names(stores), varname = 'store_ids')
+      options(warn = -1)
+      frc       = try(read.csv(forecast_fn, row.names = 1, as.is = T, check.names = F), silent = T)
+      err       = try(read.csv(forerror_fn, row.names = 1, as.is = T, check.names = F), silent = T)
+      options(warn = 0)
+      assert(inherits(frc, 'data.frame'), 'File ' %+% forecast_fn %+% 'not found or not valid!')
+      assert(inherits(err, 'data.frame'), 'File ' %+% forerror_fn %+% 'not found or not valid!')
+      pred$feed(frc)      
+      error$feed(err)      
+      
+      if (to_stores){
+        for (i in store.ids){
+          a = pred$data[, i, drop = F]
+          e = error$data[, i, drop = F]
+          names(a) <- 'forec'
+          names(e) <- 'fserr'
+
+          a = a[!is.na(a[,'forec']), ,drop = F]
+          e = e[!is.na(e[,'fserr']), ,drop = F]
+          
+          tce <- rownames(stores[[i]]$data) %^% rownames(e)
+          
+          stores[[i]]$feed(a)
+          stores[[i]]$feed(e)
+          
+          stores[[i]]$data[tce, 'fserr'] <<- stores[[i]]$data[tce, 'fserr']*stores[[i]]$settings$serr.gain
+        }
+      }  
+    },
+    
+    run = function(start = 1, end = length(demand), silent = F){
+     if (class(start) %in% valid.time.classes){
+       start <- try(as.timeDate(start))
+       verify(start, lengths = 1, err_src = match.call()[[1]])
+     } else {
+       verify(start, c('numeric', 'integer'), lengths = 1, range = c(1, length(demand)), err_src = match.call()[[1]])  
+       start = demand$time[start]
+     }
+     
+     if (class(end) %in% valid.time.classes){
+       end <- try(as.timeDate(end))
+       verify(end, lengths = 1, err_src = match.call()[[1]])
+     } else {
+       verify(end, c('numeric', 'integer'), lengths = 1, err_src = match.call()[[1]])
+       end = demand$time[end]
+     }
+     
+     for (i in names(stores)){
+       vs  = stores[[i]]
+       if ('VIRTUAL.STORE' %in% class(vs)){
+         if (!silent){cat('Run simulation for Store: ', vs$ID, '.... ')}
+         vs$goto(start)
+         vs$reset()
+         vs$goto(end)
+         if (!silent){cat('Done! \n')}
+       }
+     }
+    },
+    
+    goto = function(...){
+     for (i in names(stores)){
+       vs  = stores[[i]]
+       vs$goto(...)
+     }
+    },
+    
+    recommend.orders = function(...){
+     RO = data.frame()
+     for (i in 1:N.store){
+       vs  = stores[[i]]
+       if (inherits(vs, 'VIRTUAL.STORE')){
+         u = vs$recommend.order(...)
+         if ("list" %in% class(u)){
+           RO[vs$ID, 'Date']   = time.to.cahr(u$time)
+           RO[vs$ID, 'Amount'] = u$amount
+         }
+       }
+     }
+     return(RO)
+    },
+
+    extend.stores = function(...){
+      for (i in names(stores)){
+        vs  = stores[[i]]
+        m   = vs$N.int
+        vs$extend(vs_settings = settings$ext.vs.settings(i), ...)
+      }
+    },
+    
+    extend = function(forecast_demand = T, fort_roster = NULL, extend_stores = F, ...){
+      m = demand$N.int
+      demand$extend(...)
+      balance$extend(...)
+      order$extend(...)
+      order.return$extend(...)
+      holding.cost$extend(...)
+      order.cost$extend(...)
+      total.cost$extend(...)
+      pred$extend(...)
+      error$extend(...)
+      settings$roster  <<- mat.extend(settings$roster, demand$N.int)
+      settings$weights <<- mat.extend(settings$weights, demand$N.int)
+      settings$costs   <<- mat.extend(settings$costs, demand$N.int)
+      new.date.labels = rownames(demand$data)[(m + 1):demand$N.int]
+      rownames(settings$roster)  <<- rownames(demand$data)
+      rownames(settings$weights) <<- rownames(demand$data)
+      rownames(settings$costs)   <<- rownames(demand$data)
+      
+      if (extend_stores){extend.stores(forecast_demand = forecast_demand, ...)}
+      
+      if (!is.null(fort_roster)){ 
+        settings$apply.fort.roster(demand$time, start = m + 1, end = demand$N.int, f_rost = fort_roster,
+                                   in_roster_fee = spec$Order.Fee.InRoster, off_roster_fee = spec$Order.Fee.OffRoster,
+                                   in_roster_weight = settings$OrderWeightInRoster, off_roster_weight = settings$OrderWeightOffRoster)  
+      }
+    }, 
+    
+    gglvis.motion = function(period = balance$stn:balance$ctn, store_ids = rownames(spec)){
+     assert(length(period) > 1, "Given period must have more than one element!", err_src = match.call()[[1]])
+     V = TIME.SERIES(center = time.zone)
+     for(k in store_ids){
+       ST = demand[period, k]
+       names(ST$data) = 'Demand'
+       ST$append(balance$data[period, k], 'Balance')
+       ST$append(holding.cost$data[period, k], 'Holding.Cost')
+       ST$append(order.cost$data[period, k], 'Order.Cost')
+       ST$append(total.cost$data[period, k], 'Total.Cost')
+       ST$ID = k
+       V = V | ST
+     }  
+     V$gglvis.motion(xvar = 'Holding.Cost', yvar = 'Order.Cost', sizevar = 'Total.Cost', colorvar = 'Demand')
+    }
+))
+
+#' @export
+'[.STORE.GROUP' = function(obj, store_ids){
+  if (class(store_ids) %in% c('numeric', 'integer')){store_ids = rownames(obj$spec)[store_ids]}
+  verify(store_ids, 'character', range = rownames(obj$spec), varname = 'store_ids')
+  
+  vsl = list()
+  for (sid in store_ids){
+    if (sid %in% names(obj$stores)){vsl = c(vsl, obj$stores[[sid]])} else {
+      vs  = obj$get.store(sid)
+      vsl = c(vsl, vs)
+      obj$stores[[vs$ID]] = vs
+    }
+  }  
+  if (length(vsl) == 1){vsl = vsl[[1]]}
+  return(vsl)
+}
+
+virtual.store.R
+
+# Header
+# Filename:       virtual.store.R
+# Description:    Contains a class for simulating various inventory management strategies on a virtual store
+# Author:         Nima Ramezani Taghiabadi
+# Email :         nima.ramezani@cba.com.au
+# Start Date:     22 December 2015
+# Last Revision:  02 September 2016
+# Version:        4.6.0
+
+
+# Version History:
+
+# Version   Date            Action
+# ----------------------------------
+# 4.4.1     05 July 2016    method goto changed name to goto.active() as goto() runs the inactive method of the super class: TIME.SERIES
+# 4.4.2     05 July 2016    forec and fserr transferred as extra columns of data
+# 4.4.3     05 July 2016    method cost.piuno() changed. It now, subtracts the before-replenishment part of usage on the order date from the previous estimate of balance when estimating the cost
+# 4.4.4     05 July 2016    method clearFutureForecasts() added
+# 4.4.5     18 July 2016    A logical column named as 'submitted' is added to the data structure showing which orders have been submitted. 
+#                           Pre-filled by True for all history data and False for calls to set.order() in optimization.
+# 4.4.6     18 July 2016    A logical argument named as 'submit' (default False) added to method set.order() 
+# 4.4.7     18 July 2016    A logical argument named as 'submited_only' (default False) added to method last.order() 
+# 4.4.8     18 July 2016    Method jump.optimal() changed                           
+# 4.4.9     18 July 2016    method gen.report() eliminated
+# 4.4.10    18 July 2016    A character column named as 'Order.Date' is added to the data structure showing the time stamp in which the order is set or submitted. 
+# 4.4.11    18 July 2016    method set.order() modified and now fills column 'Order.Date' 
+# 4.4.12    18 July 2016    All data column names now start with capitals and order.return renamed to Return
+# 4.4.13    29 July 2016    Adjusted Demand added taking into account the availability data
+# 4.4.14    03 August 2016  Method jump.optimal() modified: Orders can never be set on forbidden days. 
+# 4.4.15    15 August 2016  Method recommend.order() modified: When only_fontial is TRUE, the function does not return NULL if next day is a forbidden day. 
+#                           This modification is required in association with change made in version 4.4.14
+# 4.4.16    15 August 2016  Method next.order.report() modified: Usage includes both the first and next order days and all days between them 
+#                           respecting ard ratios on the first and next order days. 
+# 4.4.17    19 August 2016  Some errors in Method cost.piuno() fixed.
+# 4.4.18    19 August 2016  In method recommend.orders(), if cost is greater than penalty, the loop breaks and 'j.min' next intervals is selected for the next service
+# 4.5.0     30 August 2016  Setting property 'nDaysAhead' added. Specifies number of days to predict ahead each time forecast values are missing. Default is 60.
+# 4.5.1     30 August 2016  Methods predict.demand(), predict.demand.serr(), predict.balance() and predict.balance.serr(0 eliminated
+# 4.5.1     30 August 2016  Figure 'Demand.Adjusted'renamed to 'Demand.Adj'
+# 4.5.2     30 August 2016  Default forecast is defined for figure 'Demand.Adj' as an abstract instance of class TSP.MODEL()
+# 4.6.0     02 Spetember 2016 Method updateDemandForecast() added.
+
+
+# --- --- --- --- --- --- -
+#' @export VS.SETTINGS
+#' @exportClass VS.SETTINGS
+VS.SETTINGS <- setRefClass("VS.SETTINGS", fields = list(
+  capacity     = 'numeric',
+  order.capacity = 'numeric',
+  order.fee   = 'numeric',
+  order.weight = 'numeric',
+  order.roster = 'logical',
+  hc.rate      = 'numeric',
+  lead.time    = 'integer',
+  max.off.srv  = 'integer',
+  nDaysAhead   = 'integer',
+  es.penalty   = 'numeric',
+  top.up       = 'numeric',
+  serr.gain    = 'numeric',
+  base.stock   = 'numeric'), methods = list(
+  # Ordering Roster Data
+  # todo: order.fee may not be flat, support order cost per good
+  # todo: support for the other return policy (No return)
+    
+  apply.roster.fortnightly = function(time, start, end, f_rost, in_roster_fee, off_roster_fee, in_roster_weight = NA, off_roster_weight = NA){
+      # Changes the roster plan, costs and weights based on the given order rules.
+      # todo: should change from ctn to N.int, currently changes the roster for all the life time
+      # Verifying in_roster_fee:
+      assert(in_roster_fee >= 0.0, "Argument 'in_roster_fee' cannot be negative!", err_src = match.call()[[1]])
+      peri = start:end
+      if (is.na(in_roster_weight)){in_roster_weight = in_roster_fee} 
+      if (is.na(off_roster_weight)){off_roster_weight = off_roster_fee}
+      f_rost     = as.logical(f_rost)
+      ord.roster = f_rost
+      ord.cost   = in_roster_fee*f_rost
+      ord.weight = in_roster_weight*f_rost
+      
+      # Emergencies:
+      ord.cost[f_rost == 0]   = off_roster_fee
+      ord.weight[f_rost == 0] = off_roster_weight
+      
+      order.fee[peri]    <<- date.adjust(ord.cost, time[peri])
+      order.roster[peri] <<- date.adjust(ord.roster, time[peri])
+      order.weight[peri] <<- date.adjust(ord.weight, time[peri])
+  },
+
+  apply.roster = function(rost, in_roster_fee, off_roster_fee, in_roster_weight = NA, off_roster_weight = NA){
+    # Changes the roster plan, costs and weights based on the given roster.
+    # todo: should change from ctn to N.int, currently changes the roster for all the life time
+    # Verifying in_roster_fee:
+    assert(in_roster_fee >= 0.0, "Argument 'in_roster_fee' cannot be negative!", err_src = match.call()[[1]])
+    verify(rost, c("logical", "numeric", "integer"), lengths = length(order.fee), varname = 'rost')
+    names(rost) <- names(in_roster_fee)
+    
+    if (is.na(in_roster_weight)){in_roster_weight = in_roster_fee} 
+    if (is.na(off_roster_weight)){off_roster_weight = off_roster_fee}
+    rost       = as.logical(rost)
+    order.fee   <<- in_roster_fee*rost
+    order.weight <<- in_roster_weight*rost
+    
+    # Emergencies:
+    order.fee[!rost]    <<- off_roster_fee
+    order.weight[!rost] <<- off_roster_weight
+    order.roster        <<- rost
+  },
+  
+  get.fortnightly.roster = function(time){
+    dof = fday(time)
+    x   = data.frame(cost = order.fee, weight = order.weight, roster = order.roster)
+    R   = aggregate(x, by = list(f.day = dof), FUN = mean)
+    rownames(R) = R[, 1]
+    R[,-1]
+  },
+  
+  get.weekly.roster = function(time){
+    dow = dayOfWeek(time)
+    x   = data.frame(cost = order.fee, weight = order.weight, roster = order.roster)
+    R   = aggregate(x, by = list(week.day = dow), FUN = mean)
+    rownames(R) = R[, 1]
+    R[,-1]
+  },
+  
+  forbid.weekends = function(time, cost = NA, weight = NA){
+    # assert length(time) == length(order.weight)
+    forbidden = dayOfWeek(time) %in% c('Sat', 'Sun')
+    order.roster[forbidden] <<- NA
+    if (!is.na(cost)){order.fee[forbidden] <<- cost}
+    if (!is.na(weight)){order.weight[forbidden] <<- weight}
+  }
+  ))
+  
+default.vs.settings <<- VS.SETTINGS(
+  capacity       = 10000,
+  order.capacity = Inf,
+  hc.rate        = 0.01/365, 
+  lead.time    = as.integer(1),
+  es.penalty   = 10,
+  max.off.srv  = as.integer(60),
+  nDaysAhead   = as.integer(60),
+  serr.gain    = 1.0,
+  top.up       = 0,
+  base.stock   = 0)
+
+
+#' @include inv.tools.R
+
+# Creating a VIRTUAL.STORE class
+#' A Reference Class representing a store or inventory.
+#'
+#' @field N.int An integer representing the number of time intervals in the time series
+#' @field ctn An integer representing the current time interval number
+#' @field stn An integer representing the starting time interval number of the control window
+#' @field etn An integer representing the end time interval number of the control window
+#' @export VIRTUAL.STORE
+#' @exportClass VIRTUAL.STORE
+VIRTUAL.STORE <- setRefClass("VIRTUAL.STORE", contains = 'TIME.SERIES',
+  fields = list(
+    address    = "character", 
+    ard.ratio  = "numeric",
+    initial.balance = "numeric",
+    settings   = "VS.SETTINGS"
+    ),
+  
+  methods = list(
+    initialize = function(timeset = NULL, demandset = NULL, orderset = NULL, initial_balance = 0, vs_settings = NULL, ard_ratio = NULL, availability = NULL, ...){
+      # Argument verifications:
+      timeset   = verify(timeset, valid.time.classes)
+      
+      if (is.null(timeset) | (length(timeset) == 0)){
+        callSuper(timeset = NULL, dataset = NULL, ...)
+      } else {
+        N  = length(timeset)
+        # Argument verifications:
+        settings <<- verify(vs_settings, "VS.SETTINGS", varname = "vs_settings", default = default.vs.settings)
+        
+        demandset = verify(demandset, c('integer', 'numeric'), range = c(0, 10*settings$capacity), lengths = N, varname = "demandset")
+        orderset  = verify(orderset,  c('integer', 'numeric'), range = c(0, 20*settings$order.capacity), lengths = N, varname = "orderset") # change it later to 1.0
+        initial_balance <- verify(initial_balance, c("integer", "numeric"), lengths = 1, range = c(0, 10*settings$capacity), varname = "initial_balnce")
+        if (is.null(initial_balance)){initial.balance <<- 0} else {initial.balance <<- as.numeric(initial_balance)}
+        
+        ard_ratio = verify(ard_ratio, c('numeric'), range = c(0, 1), lengths = N)
+        if (is.null(ard_ratio)){ard.ratio <<- rep(0.5, N)} else {ard.ratio <<- ard_ratio}
+        if (!is.null(availability)){
+          assert(length(availability) == N, "Argument 'avaialability' does not match length!" )
+          data$Availability <<- availability
+        }
+        ard.ratio[is.na(ard.ratio)] <<- mean(ard.ratio, na.rm = T)
+        
+        # Set defaults for optional columns and assign fields:
+        if (is.null(orderset)){orderset <- rep(0, N)}
+        
+        dataset = data.frame(
+          Demand       = demandset, 
+          Order        = orderset,
+          Order.Date   = rep(NA, N),
+          Balance      = rep(NA, N),
+          Return       = rep(NA, N),
+          Hold.Cost    = rep(NA, N),
+          Order.Cost   = rep(NA, N),
+          Total.Cost   = rep(NA, N),
+          Availability = rep(NA, N),
+          Demand.Adj = rep(NA, N),
+          forec        = rep(NA, N),
+          fserr        = rep(NA, N),
+          Submitted    = rep(TRUE, N),
+          stringsAsFactors = F)
+        
+        callSuper(dataset = dataset, timeset = timeset, ...)
+        
+        # todo: transfer to the validity method of class VS.SETTINGS
+        # err.lead.time = make.err.msg("lead_time can not be negative", err_src = match.call()[[1]])
+        # assert(settings$lead.time >= 0, err.lead.time)
+        if (is.null(vs_settings)){settings$apply.roster.fortnightly(time, f_rost = c(T,T,T,T,T,T,T,T,T,T,T,T,T,T), in_roster_fee = 0, off_roster_fee = 0, in_roster_weight = 1, off_roster_weight = 1)}
+        # forecast[['Demand.Adj']] <<- TSP.MODEL(seasonalities = c('moy'))
+        forecast[['Demand.Adj']] <<- TSP.MODEL(seasonalities = character())
+        update(1)
+        adjust.demand()
+      }
+    },
+
+    adjust.demand = function(threshold_high = 0.8, threshold_low = 0.2){
+      missing = which(is.na(data$Availability))
+      high    = which(data$Availability >= threshold_high)
+      low     = which((data$Availability >= threshold_low) & (data$Availability < threshold_high))
+      zero    = which(data$Availability < threshold_low)
+      
+      s       = aggregate(data$Demand, by = list(DOW = dayOfWeek(time)), FUN = max)
+      rownames(s) <- s$DOW
+      
+      data$Demand.Adj[missing] <<- data$Demand[missing]
+      data$Demand.Adj[high]    <<- data$Demand[high]/data$Availability[high]
+      for (i in low){
+        data$Demand.Adj[i]    <<- max(data$Demand[i], min(data$Demand[i]/data$Availability[i], s[dayOfWeek(time[i]), 'x']))
+      }
+      
+      for (i in zero){
+        data$Demand.Adj[i]    <<- max(0.5*data$Demand[i]/threshold_low, s[dayOfWeek(time[i]), 'x'])
+      }
+    },
+    
+    reset = function(){
+      stn <<- ctn
+      if (ctn > 1){
+        data$Hold.Cost[ctn] <<- data$Balance[ctn]*settings$hc.rate
+        data$Order.Cost[ctn]   <<- (data$Order[ctn] > 0)*settings$order.fee[ctn]
+        if (is.na(data$Order.Cost[ctn])){data$Order.Cost[ctn] <<- 0}
+        data$Total.Cost[ctn]   <<- data$Hold.Cost[ctn] + data$Order.Cost[ctn]
+      }
+    },
+    
+    # removes missing values from time series
+    remove.missing = function(give_missing = F, ...){
+      misindex = callSuper(..., give_missing = T)
+      ard.ratio             <<- ard.ratio[!misindex]
+      settings$order.fee   <<- settings$order.fee[!misindex]
+      settings$order.weight <<- settings$order.weight[!misindex]
+      settings$order.roster <<- settings$order.roster[!misindex]
+    },
+    
+    extend = function(..., period = 86400, vs_settings = NULL, R = NULL, forecast_demand = T, demands = NULL, orders = NULL){
+      m = N.int
+      callSuper(period = period, ...)
+      data$Order[(m + 1):N.int] <<- 0
+      if (is.null(vs_settings)){
+        if(is.null(R)){R = settings$get.fortnightly.roster(time = time)}
+        dof = fday(time)
+        dof = dof[(m + 1):N.int]
+        nr  = rep(NA, length(dof)) # new roster
+        nc  = rep(NA, length(dof)) # new costs
+        nw  = rep(NA, length(dof)) # new weigthts
+        for (fd in rownames(R)){
+          nr[dof == fd ] = R[fd, 'roster']  
+          nw[dof == fd ] = R[fd, 'weight']  
+          nc[dof == fd ] = R[fd, 'cost']  
+        }
+        settings$order.roster <<- c(settings$order.roster, as.logical(nr))
+        settings$order.weight <<- c(settings$order.weight, nw)
+        settings$order.fee   <<- c(settings$order.fee, nc)
+      } else {
+        verify(vs_settings, 'VS.SETTINGS', varname = 'settings')
+        dates = rownames(data)
+        verify(vs_settings$order.roster, names_include = dates, varname = 'vs_settings$order.roster')
+        verify(vs_settings$order.fee, names_include = dates, varname = 'vs_settings$order.fee')
+        verify(vs_settings$order.weight, names_include = dates, varname = 'vs_settings$order.weight')
+        
+        settings$order.roster[dates]  <<- vs_settings$order.roster[dates]
+        settings$order.fee[dates]     <<- vs_settings$order.fee[dates]
+        settings$order.weight[dates] <<- vs_settings$order.weight[dates]
+      }
+      ard.ratio             <<- c(ard.ratio, rep(ard.ratio[m], N.int - m))
+      
+      if (forecast_demand){
+        forecast.arima(figure = 'Demand.Adj', from = ctn + 1, jumper = N.int - ctn + 2)
+        peri = (ctn + 1):N.int
+        tc = as.character(time[peri])
+        data$forec[peri] <<- forecast[['Demand.Adj']]$pred[tc]
+        data$fserr[peri] <<- settings$serr.gain*forecast[['Demand.Adj']]$serr[tc]
+        data$forec[peri][data$forec[peri] < 0] <<- 0
+      }
+      
+      peri = (m + 1):N.int
+      
+      if (sum(is.na(data$forec[peri])) == 0){etn <<- N.int}
+      
+      if (!is.null(demands)){
+        verify(demands, c('integer','numeric'), lengths = N.int - m)
+        assert(feasible(demands), "Given demand values are not feasible! Check for missing values.", err_src = match.call()[[1]])
+        data$Demand[peri] <<- demands
+      }
+      
+      if (!is.null(orders)){
+        verify(orders, c('integer','numeric'), lengths = N.int - m)
+        assert(feasible(orders), "Given order values are not feasible! Check for missing values.", err_src = match.call()[[1]])
+        data$Order[peri] <<- orders
+      } else {data$Order[peri] <<- 0}
+    },
+    
+    subset = function(period = stn:etn, settings = settings){
+      if (class(period) %in% c('numeric', 'integer')){sort(period)}
+      if (is.na(data$Balance[period[1]])){jump(period[1])}
+      VIRTUAL.STORE(timeset = time[period], demandset = data$Demand[period], orderset = data$Order[period], 
+                    initial_balance = data$Balance[period[1]], vs_settings = settings)
+    },
+
+    set.order = function(amount = NA, N.next = settings$lead.time, persist = TRUE, submit = FALSE){
+      # If order is set, the day number in which order is set is returned otherwise FALSE is returned
+      # Check Input Arguments:
+      err.amount.neg = make.err.msg("Negative value chained to argument amount", err_src = match.call()[[1]])
+      assert (amount >= 0, err.amount.neg)
+      if (N.next < settings$lead.time){
+        print("Warning: N.next is lower than lead_time! Changed to lead_time.")
+        N.next = settings$lead.time
+      }
+      
+      dtn = ctn + N.next # Delivery Time Number
+      if (dtn > N.int){return(FALSE)}
+      # Make sure order time is not a restricted date-time:
+      while (is.na(settings$order.roster[dtn]) & (dtn < N.int) & persist){N.next = N.next + 1}
+      if (!is.na(settings$order.roster[dtn])){
+        mx = min(N.int, dtn + settings$lead.time)
+        data$Order[(ctn + 1):mx] <<- 0
+        data$Order[dtn]      <<- min(settings$order.capacity, roundto.multiple(amount + settings$top.up, 2000, adjust = 'top'))
+        data$Submitted[dtn]  <<- submit
+        data$Order.Date[dtn] <<- as.character(time[ctn])
+        return(dtn)
+      } else {return(FALSE)}
+    },
+    
+    fit.fortnight.roster = function(period = stn:ctn, threshold = 0.8, forbid_weekends = T){
+      roster = rep(0, 14)
+      if (forbid_weekends){roster[c(6,7,13,14)] = NA}
+      names(roster) = fdlabel
+      
+      foc = fortnight.order.counts(period = period)
+
+      ttc = tab.top.cumulative(foc, threshold = threshold)
+      roster[ttc] = 1
+      # roster[names(roster) %in% ttc] = 1
+      roster = as.logical(roster)
+      names(roster) = fdlabel
+      return(roster)
+    },
+
+    close.order = function(N.next = 1){
+      # I tested, only the first line is read/use markdown format
+      "
+      Closes all orders \n
+      \n
+      Arguments: \n
+        N.next integer specifies the number of time intervals after the current time interval on which the order must be closed  \n
+      Returns: closes the order on the specified time interval \n
+      Example: \n
+        x$close.order(5) \n
+      "
+      dtn = ctn + N.next
+
+      err.order.np = make.err.msg("Order is not possible for the specified date", err_src = match.call()[[1]])
+      assert ( dtn <= N.int, err.order.np)
+      data$Order[ctn + N.next] <<- amount
+    },
+
+    fill.rate = function(threshold = settings$base.stock){
+      threshold = threshold + 0.0001
+      return(1.0 - sum(data$Balance[stn:ctn] < threshold)/(ctn - stn + 1))
+    },
+
+    holding.cost  = function(){return(sum(data$Balance[stn:ctn]*settings$hc.rate))},
+
+    ordering.cost = function(){return(sum((data$Order[stn:ctn] > 0)*settings$order.fee[stn:ctn], na.rm = TRUE))},
+
+    # Note: interval i-1 must have been updated prior to running this method for i
+    update = function(i){
+
+      if (i == 1){
+        if (data$Order[i] == 0){
+          data$Balance[i]      <<- max(0, initial.balance - data$Demand[i])
+          data$Return[i] <<- 0
+          data$Order.Cost[i]   <<- 0
+        } else {
+          stock    = data$Order[i] + initial.balance - data$Demand[i]*(1.0 - ard.ratio[i])
+          trimmed  = min(stock, settings$capacity)
+          data$Balance[i]      <<- max(0, trimmed - data$Demand[i]*ard.ratio[i])
+          data$Return[i] <<- stock - trimmed
+          data$Order.Cost[i]   <<- settings$order.fee[i]
+        }
+        data$Hold.Cost[i] <<- settings$hc.rate*data$Balance[i]
+      } else{
+        if (is.na(data$Demand[i])){data$Demand[i] <<- min(data$forec[i], data$Balance[i - 1])}
+        if (data$Order[i] == 0){
+          data$Balance[i]      <<- max(0, data$Balance[i - 1] - data$Demand[i])
+          data$Return[i] <<- 0
+          data$Order.Cost[i]   <<- data$Order.Cost[i - 1]
+        } else {
+          stock    = data$Order[i] + data$Balance[i - 1] - data$Demand[i]*(1.0 - ard.ratio[i])
+          trimmed  = min(stock, settings$capacity)
+          data$Balance[i]      <<- max(0, trimmed - data$Demand[i]*ard.ratio[i])
+          data$Return[i] <<- stock - trimmed
+          data$Order.Cost[i]   <<- data$Order.Cost[i - 1] + settings$order.fee[i]
+        }
+        data$Hold.Cost[i] <<- data$Hold.Cost[i - 1] + settings$hc.rate*data$Balance[i]
+      }
+      data$Total.Cost[i]   <<- data$Hold.Cost[i] + data$Order.Cost[i]
+    },
+
+    cost.piuno = function(Q, N){
+      # cpiuno: Cost per interval until the next order
+      # If the store is replenished the next N time intervals (days) with Q amount of goods,
+      # how much is the cost per time interval(day) from now until the nect N intervals
+      # According to the cur status of the store, this function returns the expected cost if first replenishment is done N days(intervals) after cur time
+      # For example if N = 1 it returns the expected cost if replenishment takes place tomorrow
+      # the cost is estimated per unit time(day) until the first interval after the next replenishment from cur time
+      # taking property settings$lead.time and settings$order.roster into considerations. If replenishment if not possible after N days NA is returned
+      if ((N < settings$lead.time) | is.na(settings$order.roster[N + ctn])){return(NA)}
+      if (N > 1){
+        FD = data$forec[(ctn+1):(ctn+N-1)]
+        FE = data$fserr[(ctn+1):(ctn+N-1)]
+        if (sum(is.na(FD+FE))>0){
+          updateForecast('Demand.Adj')
+          res = predictNext(N - 1 + settings$nDaysAhead, 'Demand.Adj', 'arima')
+          tcx = names(res$pred)
+          data[tcx, 'forec'] <<- res$pred
+          data[tcx, 'fserr'] <<- res$serr*settings$serr.gain
+          data[tcx, 'forec'][data[tcx, 'forec'] < 0] <<- 0
+          FD = data$forec[(ctn+1):(ctn+N-1)]
+          FE = data$fserr[(ctn+1):(ctn+N-1)]
+        }
+        mu = c()
+        sd = c()
+        ss = 0
+        B  = current('Balance')
+        for (i in 1:(N-1)){
+          B  = B - FD[i]
+          mu = c(mu, B)
+          ss = ss + FE[i]*FE[i]
+          sd = c(sd, sqrt(ss))
+        }
+        cost.before = (N - 1)*futureCostsPI(N = N - 1, B = current('Balance'), mu = mu, sigma = sd, P = settings$es.penalty, h = settings$hc.rate, base = settings$base.stock)
+      } else {cost.before = 0}
+      
+      cost.after   = Q*settings$hc.rate  + settings$order.weight[N + ctn]
+      return((cost.before + cost.after)/N)
+    },
+    
+    cost.piuno.2 = function(Q, N){
+      # cpiuno: Cost per interval until the next order
+      # If the store is replenished the next N time intervals (days) with Q amount of goods,
+      # how much is the cost per time interval(day) from now until the nect N intervals
+      # According to the cur status of the store, this function returns the expected cost if first replenishment is done N days(intervals) after cur time
+      # For example if N = 1 it returns the expected cost if replenishment takes place tomorrow
+      # the cost is estimated per unit time(day) until the first interval after the next replenishment from cur time
+      # taking property settings$lead.time and settings$order.roster into considerations. If replenishment if not possible after N days NA is returned
+      if ((N < settings$lead.time) | is.na(settings$order.roster[N + ctn])){return(NA)}
+      if (N > 1){
+        sqn = sequence(N)
+        FD  = data$forec[ctn + sqn]
+        FE  = data$fserr[ctn + sqn]
+        if (sum(is.na(FD+FE))>0){
+          updateForecast('Demand.Adj')
+          res = predictNext(N + settings$nDaysAhead, 'Demand.Adj', 'arima')
+          tcx = names(res$pred)
+          data[tcx, 'forec'] <<- res$pred
+          data[tcx, 'fserr'] <<- res$serr*settings$serr.gain
+          data[tcx, 'forec'][data[tcx, 'forec'] < 0] <<- 0
+          FD = data$forec[(ctn+1):(ctn+N-1)]
+          FE = data$fserr[(ctn+1):(ctn+N-1)]
+        }
+        mu = c()
+        sd = c()
+        ss = 0
+        B  = current('Balance')
+        for (i in sequence(N)){
+          B  = B - (1.0 - ard.ratio[ctn + i])*FD[i]
+          mu = c(mu, B)
+          B  = B - ard.ratio[ctn + i]*FD[i]
+          ss = ss + FE[i]*FE[i]
+          sd = c(sd, sqrt(ss))
+        }
+        cost.before = N*futureCostsPI(N = N, B = current('Balance'), mu = mu, sigma = sd, P = settings$es.penalty, h = settings$hc.rate, base = settings$base.stock)
+      } else {cost.before = 0}
+      
+      FDN = data$forec[ctn+N]
+      if (is.na(FDN)){FDN = predict.demand(N)}
+      FDN = FDN*ard.ratio[N + ctn]
+      cost.after   = (Q - FDN)*settings$hc.rate  + settings$order.weight[N + ctn]
+      return((cost.before + cost.after)/N)
+    },
+    
+    next.order.opportunities = function(N.next){
+      err.nahead = make.err.msg("Argument 'N.next' must be greater than 'settings$lead.time'" , err_src = match.call()[[1]])
+      assert(N.next > settings$lead.time, err.nahead)
+
+      if (ctn + settings$lead.time > N.int){return(c())}
+
+      period = (ctn + settings$lead.time):(min(N.int, ctn + N.next))
+      flag   = is.na(settings$order.roster[period])
+      return (period[! flag])
+    },
+    
+    roster.days  = function(from = NA, until = NA){
+      if (is.na(from)){from = ctn + settings$lead.time}
+      if (is.na(until)){until = N.int}
+
+      if (from > N.int){return(c())}
+      if (until > N.int){until = N.int}
+
+      assert((from > 0) & (until >= from), "Argument 'until' must be after 'from'", match.call()[[1]])
+
+      period = from:until
+      flag   = (settings$order.roster[period] == 0) | (is.na(settings$order.roster[period]))
+      return (period[! flag])
+    },
+    
+    free.days  = function(from = NA, until = NA){
+      if (is.na(from)){from = ctn + settings$lead.time}
+      if (is.na(until)){until = N.int}
+      
+      if (from > N.int){return(c())}
+      if (until > N.int){until = N.int}
+      
+      assert((from > 0) & (until >= from), "Argument 'until' must be after 'from'", match.call()[[1]])
+      
+      period = from:until
+      flag   = is.na(settings$order.roster[period])
+      return (period[! flag])
+    },
+    
+    fortnight.order.counts = function(period = stn:ctn){
+      FDY    = fday(time)[period]
+      t      = tabulate(1 + FDY[which(data$Order[period] > 0)])
+      fc     = c(t[-1], rep(0, 14 - length(t)), t[1])
+      names(fc) = fdlabel
+      return(fc)      
+    },
+
+    ggvis.plot = function(period, figure, width = 760, height = 300){
+      xvar <- prop("x", as.symbol('time'))
+      yvar <- prop("y", as.symbol(figure))
+      
+      xvar_name <- 'Date'
+      yvar_name <- figure
+      
+      # p <- ggvis(to.data.frame(period, figure), x = xvar, y = yvar, key := ~ID)
+      
+      p <- ggvis(to.data.frame(period, figure), x = xvar, y = yvar)
+      p <- layer_points(p, size.hover := 200) %>% scale_datetime("x", nice = "month")
+      if (figure %in% c('Balance', 'Demand', 'Hold.Cost', 'Order.Cost', 'Total.Cost')){p <- layer_paths(p)}
+      p <- p %>% add_axis('x', title = xvar_name)  %>%
+        add_axis('y', title = yvar_name, title_offset = 70)  %>%
+        set_options(width = width, height = height)
+      return(p)
+    },
+    
+    goto.active = function(Time){
+        # Takes you to the given time.num
+        # The given time.num must be in the future. (More than the cur time.num)
+        # This function respects the orders and actual demands set for the dates between curent time and the specified time_num in the future
+        # in calculating the balance
+        # Check if the given time.num is greater than the cur
+        ktn = ctn # keep the current time number in ktn
+        goto(Time)
+        if (ctn > etn){ctn <<- etn}
+        if (ktn >= ctn){
+          data[(ctn + 1):etn,c('Balance', 'Return', 'Hold.Cost', 'Order.Cost', 'Total.Cost')] <<- as.numeric(NA)  
+        } else {
+          for (i in (ktn + 1):ctn){update(i)}  
+        }
+        # forecast[['Demand.Adj']]$train(time[2:ctn], data$Demand[2:ctn], model_type = 'mean')
+        # todo: write method update() to fasten this process
+    },
+
+    jump.active = function(N_int = 1){
+      # jumps to the next <<N.int>> interval
+      goto.active(ctn + N_int)
+    },
+
+    #     predict.demand = function(peri){
+    #       peri.ext = (ctn + 1):min(ctn + max(peri) + settings$nDaysAhead, N.int)
+    #       times    = time[peri.ext]
+    #       if (class(forecast[['Demand.Adj']]) == 'NULL'){forecast[['Demand.Adj']] <<- TSP.MODEL(seasonalities = 'moy')}
+    #       f      = forecast[['Demand.Adj']]
+    #       demdat = data$Demand.Adj[sequence(ctn)]
+    #       findex = which(feasible(demdat))
+    #         
+    #       assert(length(findex) > 7, "Requires at least seven history values for demand!", err_src = match.call()[[1]])
+    #       cat('Predicting usage from ', as.character(times[1]), ' until ',  as.character(times[length(times)]), ' ... ')  
+    #       if (!identical(f$train.time, time[findex])){
+    #         f$train(time = time[findex], data = demdat[findex])  
+    #       }
+    #       res = f$predict(times)
+    #       data$forec[peri.ext] <<- res$pred
+    #       data$fserr[peri.ext] <<- settings$serr.gain*res$serr
+    #       data$forec[peri.ext][data$forec[peri.ext] < 0] <<- 0
+    #       cat('Done! \n')  
+    #       return(data$forec[ctn + peri])
+    #     },
+    # 
+    #     predict.demand.serr = function(peri){
+    #       if (sum(is.na(data$fserr[ctn + peri])) > 0){predict.demand(peri)}
+    #       return(data$fserr[ctn + peri])
+    #     },
+    
+    updateDemandForecast = function(){
+      updateForecast('Demand.Adj')
+      res = predictNext(settings$nDaysAhead, 'Demand.Adj', 'arima')
+      tcx = names(res$pred)
+      data[tcx, 'forec'] <<- res$pred
+      data[tcx, 'fserr'] <<- res$serr*settings$serr.gain
+      data[tcx, 'forec'][data[tcx, 'forec'] < 0] <<- 0
+    },
+    
+    
+    next.order.report.1 = function(N1, N2){
+      # if you want to do the next order the next N1 days:
+      # 1- how much should you replensih if the next replenishment is N2 days after this order
+      # 2- how much is the daily cost until the next replenishment after this order (N1 + N2 days ahead)
+      FD  = data$forec[(ctn+N1):(ctn+N1+N2-1)]
+      FE  = data$fserr[(ctn+N1):(ctn+N1+N2-1)]
+      if (sum(is.na(FD+FE))>0){
+        updateForecast('Demand.Adj')
+        res = predictNext(N1 + N2 + settings$nDaysAhead, 'Demand.Adj', 'arima')
+        tcx = names(res$pred)
+        data[tcx, 'forec'] <<- res$pred
+        data[tcx, 'fserr'] <<- res$serr*settings$serr.gain
+        data[tcx, 'forec'][data[tcx, 'forec'] < 0] <<- 0
+        FD  = data$forec[(ctn+N1):(ctn+N1+N2-1)]
+        FE  = data$fserr[(ctn+N1):(ctn+N1+N2-1)]
+      }  
+      QQ  = sum(FD[1:N2]) + settings$base.stock + 3.0*sqrt(sum(FE[1:N2]^2))
+      out = list(amount = QQ, cost = (sum((QQ - cumulative(FD[1:N2]))*settings$hc.rate) + settings$order.weight[ctn + N1 + N2])/N2)
+      return(out)
+    },
+    
+    next.order.report = function(N1, N2){
+      # if you want to do the next order the next N1 days:
+      # 1- how much should you replensih if the next replenishment is N2 days after this order
+      # 2- how much is the daily cost until the next replenishment after this order (N1 + N2 days ahead)
+      assert(N2 > 0)
+      rr  = c(ard.ratio[ctn+N1], rep(1.0, N2 - 1), 1.0 - ard.ratio[ctn+N1+N2])
+      FD  = rr*data$forec[(ctn+N1):(ctn+N1+N2)]
+      FE  = rr*data$fserr[(ctn+N1):(ctn+N1+N2)]
+      if (sum(is.na(FD+FE))>0){
+        updateForecast('Demand.Adj')
+        res = predictNext(N1 + N2 + settings$nDaysAhead, 'Demand.Adj', 'arima')
+        tcx = names(res$pred)
+        data[tcx, 'forec'] <<- res$pred
+        data[tcx, 'fserr'] <<- res$serr*settings$serr.gain
+        data[tcx, 'forec'][data[tcx, 'forec'] < 0] <<- 0
+        FD  = rr*data$forec[(ctn+N1):(ctn+N1+N2)]
+        FE  = rr*data$fserr[(ctn+N1):(ctn+N1+N2)]
+      }  
+      QQ  = sum(FD) + settings$base.stock + 3*sqrt(sum(FE^2))
+      out = list(amount = QQ, cost = (sum((QQ - cumulative(FD))*settings$hc.rate) + settings$order.weight[ctn + N1 + N2])/N2)
+      return(out)
+    },
+
+    optimal.order.amount = function(N){
+      cost.min = Inf
+      stay     = (ctn + N <= N.int)  # must be True
+      err.N = make.err.msg("No data for the next 'N' intervals!", err_src = match.call()[[1]])
+      assert(stay, err.N)
+      i        = 0
+      optim.Q  = sqrt(2*mean(settings$order.fee, na.rm = T)*mean(data$Demand, na.rm = T)/settings$hc.rate)
+      while ((stay) & (ctn + N + i < N.int)){
+        i   = i + 1
+        res = next.order.report(N, i)
+        if (!is.na(settings$order.roster[ctn + N + i])){
+          # cost = (i*res$cost + settings$order.weight[ctn + N + i])/(i + 1)
+          if (cost.min > res$cost){
+            cost.min = res$cost
+            optim.Q  = res$amount
+            n.raise  = 0
+          } else {
+            n.raise = n.raise + 1
+            stay = n.raise < 15
+          }
+        }
+      }
+      return(optim.Q)
+    },
+
+    minimum.order.amount = function(N){
+      nin = N.int
+      if (ctn + N + settings$lead.time > nin){return(settings$order.capacity)}
+
+      if (is.na(settings$order.roster[ctn + N])){return(NA)} # Is the next N-th day an order day?
+      else{
+        nop = which(!is.na(settings$order.roster[(ctn + N + settings$lead.time):N.int]))[1]
+        if (is.na(nop)){res = next.order.report(N, N.int - ctn - N + 1)} else {res = next.order.report(N, nop + settings$lead.time - 1)}
+      }
+      return (res$amount)
+    },
+
+    required.order.amount = function(N1, N2){
+      # If replenish the next N1 days, how much should be ordered so that next order is N2 days after that
+      if (ctn + N1 + settings$lead.time > N.int){return(50000)}
+      if (ctn + N1 + N2 > N.int){N2 = N.int - ctn - N1}
+
+      # Is the next N1 days an order day?
+      if (is.na(settings$order.roster[ctn + N1])){return(NA)}
+      else {res = next.order.report(N1, N2)}
+      return (res$amount)
+    },
+
+    run.forecast = function(from = 1, jumper = 10, model_type = 'mean'){
+      assert(jumper >= 1)
+      f = forecast[['Demand.Adj']]
+      f$reset()
+      i = from
+      while (i < N.int){
+        j = i + jumper
+        if (j > N.int){j = N.int}
+        f$train(time = time[1:i], data = data$Demand.Adj[1:i], model_type = model_type)
+        res = f$predict(time[(i + 1):j], model_type = model_type)
+        i   = j
+      }
+    },
+    
+    last.order = function(global = F, submitted_only = F){
+      "Returns the time number of the last time in which the store was serviced (replenished)"  
+      if (global){prd = sequence(N.int)} else {prd = sequence(ctn)}
+      fbl = feasible(data$Order[prd], exclude = 0)
+      if (submitted_only){fbl = fbl & data$Submitted[prd]}
+      w   = which(fbl)
+      if (is.empty(w)) {return(0)} else {return(w[length(w)])}
+    },
+    
+    next.order = function(submitted_only = F){
+      "Returns the time number of the next time in which the store will be serviced (replenished)"  
+      prd = (ctn + 1):N.int
+      fbl = feasible(data$Order[prd], exclude = 0)
+      if (submitted_only){fbl = fbl & data$Submitted[prd]}
+      w   = which(fbl)
+      if (is.empty(w)) {return(0)} else {return(ctn + w[1])}
+    },
+    
+    # only_fontial: only for next time interval after lead time
+    recommend.order = function(fixed_roster = FALSE, only_fontial = T){
+      # SECE: Sequential Expected Cost Evaluation is a new method for optimal replenishment order planning 
+      # for store management. It recommends how much and in how many intervals in the future is optimal to replenish the store
+      mu  = mov.avr('Demand')
+      lst = last.order()
+      
+      alt = settings$lead.time  # actual lead time
+      while (is.na(settings$order.roster[ctn + alt]) & (ctn + alt < N.int)){alt = alt + 1}
+      
+      if    (is.na(settings$order.roster[ctn + alt]) & (ctn + alt == N.int)){ # No more order opportunities left
+        # goto(N.int)
+        return(NA)
+      }
+      
+      j         = alt
+      cost.min  = Inf
+      j.min     = 0
+      stay      = (mu > 0)
+      n.raise   = 0
+      while (stay){
+        cost = cost.piuno(Q = settings$order.capacity, N = j) + settings$es.penalty*(j + ctn > settings$max.off.srv + lst)
+        if (!is.na(cost)){
+          if (cost < cost.min){
+            j.min    = j
+            cost.min = cost
+            n.raise  = 0
+            if (only_fontial & (j.min > alt) & !is.na(settings$order.roster[ctn + 1])){return(NULL)}
+          } else{
+            n.raise = n.raise + 1
+            stay    = n.raise < 15
+          }
+        }
+        j    = j + 1
+        stay = stay & (j + ctn < N.int) & (cost.min < settings$es.penalty)
+      }
+      
+      flag = (mu > 0) & (j.min > 0)
+      if ((flag) & (n.raise == 0)){
+        sd    = mov.sd('Demand')
+        ecinr = j.min*futureCostPI(N = j.min, B = current('Balance'), mu = mu, sigma = sd, P = settings$es.penalty, h = settings$hc.rate, base = settings$base.stock)
+        if (j.min > 1){
+          ecir  = (j.min - 1)*futureCostPI(N = j.min - 1 , B = current('Balance'), mu = mu, sigma = sd, settings$es.penalty, settings$hc.rate, base = settings$base.stock)
+        } else {ecir = 0}
+        Qs    = optimal.order.amount(j.min)
+        ecir  = ecir + (Qs - mu)*settings$hc.rate + settings$order.weight[ctn + j.min]
+        flag  = (ecinr > ecir)
+      }
+      # checks future orders
+      if (alt > 1) {flag = flag & (sum(data$Order[(ctn + 1):(ctn + alt - 1)]) == 0)}
+      if (flag){
+        if (fixed_roster){
+          # This code is written for very special case when ordering is permitted but a certain roster
+          # in which the order costs are minimum is preferred. While replenishment in other days are permitted,
+          # the system tries to choose the order amount so that the next replenishment falls on the cheapest 
+          # days or days in the roster
+          
+          a = roster.days(from = ctn + j.min + settings$lead.time, until = N.int)
+          if (length(a) == 0){Qss = round(optimal.order.amount(j.min), -1)} else {
+            counter = 1
+            Q.opt   = min(optimal.order.amount(j.min), settings$order.capacity)
+            Qss     = required.order.amount(j.min, min(settings$max.off.srv, a[1] - ctn - j.min))
+             
+            if (Qss - settings$base.stock - 3*sqrt(sum(data$fserr[(ctn + 1):a[1]]^2)) > settings$order.capacity){
+              a   = free.days(from = ctn + j.min + settings$lead.time, until = N.int)
+              if (length(a) == 0){Qss = round(optimal.order.amount(j.min), -1)} 
+              else {Qss = required.order.amount(j.min, min(settings$max.off.srv, a[1] - ctn - j.min))}
+            }
+            best.Q  = Qss
+            while((Qss <= Q.opt) & (counter < length(a))) {
+              best.Q  = Qss
+              counter = counter + 1
+              Qss     = required.order.amount(j.min, min(settings$max.off.srv, a[counter] - ctn - j.min))
+            }
+            Qss = best.Q
+          }
+        } else {Qss = optimal.order.amount(j.min)}
+        if ((is.na(Qss)) | (Qss <= 0)){Qss = settings$order.capacity}
+        return(list(N.next = j.min, time = time[ctn + j.min], amount = Qss))
+      }
+      return(NA)
+    },
+    
+    jump.optimal = function(until = NULL, fixed_roster = FALSE, show = TRUE, forecast_demand = F, update_forecast = F){
+      if (is.null(until)){until = etn}
+      end.time.num = time.number(until)
+      reset()
+      
+      data$Order[(ctn + settings$lead.time):end.time.num] <<- 0
+      
+      eval = (ctn + 1):N.int
+      if (forecast_demand & !no.missing(data$forec[eval]) & !no.missing(data$fserr[eval])){
+        
+        hist = sequence(ctn)
+        cat('Predicting usage from ', as.character(time[eval[1]]), ' until ',  as.character(time[max(eval)]), ' ... ')  
+        forecast[['Demand.Adj']] <<- TSP.MODEL(seasonalities = c('moy'))
+        # forecast[['Demand.Adj']] <<- TSP.MODEL(seasonalities = character())
+        forecast[['Demand.Adj']]$train(time[hist], data$Demand.Adj[hist], model_type = 'arima')
+        res = forecast[['Demand.Adj']]$predict(time = time[eval], model_type = 'arima')
+        
+        tc = time2Char(time[eval])
+        
+        data$forec[eval] <<- forecast[['Demand.Adj']]$pred[tc]
+        data$fserr[eval] <<- settings$serr.gain*forecast[['Demand.Adj']]$serr[tc]
+        data$forec[eval][data$forec[eval] < 0] <<- 0
+        cat('Done ! \n')  
+        update_forecast = F
+      }  
+      
+      # data$Order[(ctn + 1):end.time.num] <<- 0
+      while (ctn < end.time.num){
+        if (show){cat('Int.No:',ctn,'Time:', as.character(now()),'Bal:',current('Balance'),'\n')}
+        if (!is.na(settings$order.roster[ctn])){
+          if (update_forecast){updateDemandForecast()}
+          res = recommend.order(fixed_roster = fixed_roster, only_fontial = T)
+          if (class(res) == 'list'){set.order(amount = res$amount, N.next = res$N.next)}
+        }
+        jump.active()
+      }  
+    },
+    
+    jump.optimal.1 = function(until = NULL, fixed_roster = FALSE, show = TRUE, forecast_demand = F){
+      if (is.null(until)){until = etn}
+      end.time.num = time.number(until)
+      reset()
+      
+      data$Order[(ctn + settings$lead.time):end.time.num] <<- 0
+      
+      eval = (ctn + 1):N.int
+      if (forecast_demand & !no.missing(data$forec[eval]) & !no.missing(data$fserr[eval])){
+        
+        hist = sequence(ctn)
+        cat('Predicting usage from ', as.character(time[eval[1]]), ' until ',  as.character(time[max(eval)]), ' ... ')  
+        forecast[['Demand.Adj']] <<- TSP.MODEL(seasonalities = c('moy'))
+        forecast[['Demand.Adj']]$train(time[hist], data$Demand.Adj[hist], model_type = 'arima')
+        res = forecast[['Demand.Adj']]$predict(time = time[eval], model_type = 'arima')
+        
+        tc = time2Char(time[eval])
+        
+        data$forec[eval] <<- forecast[['Demand.Adj']]$pred[tc]
+        data$fserr[eval] <<- settings$serr.gain*forecast[['Demand.Adj']]$serr[tc]
+        data$forec[eval][data$forec[eval] < 0] <<- 0
+        cat('Done ! \n')  
+      }  
+      
+      # data$Order[(ctn + 1):end.time.num] <<- 0
+      while (ctn < end.time.num){
+        if (show){cat('Int.No:',ctn,'Time:', as.character(now()),'Bal:',current('Balance'),'\n')}
+        res = recommend.order(fixed_roster = fixed_roster, only_fontial = T)
+        if (class(res) == 'list'){set.order(amount = res$amount, N.next = res$N.next)}
+        jump.active()
+      }  
+    },
+    
+    close.all.orders = function(){
+      # Closes all orders
+      data$Order[(ctn+1):N.int] <<- 0
+    },
+
+    # Accessor functions:
+
+    str = function(){
+      paste("\n",
+            "Time Number :", ctn, "\n",
+            "Time        :", now(), "\n",
+            "Balance     : $", current('Balance'), "\n",
+            "Total Cost  : $", round(holding.cost() + ordering.cost(),2), "\n",
+            "Order Amount: $", data$Order[ctn], "\n",
+            "Return      : $", data$Return[ctn], "\n")
+    },
+    
+    clearFutureForecasts = function(){
+      if (ctn < N.int){
+        data$forec[(ctn + 1):N.int] <<- NA
+        data$fserr[(ctn + 1):N.int] <<- NA
+      }
+    }
+    
+  ))
+
+# Generic Functions
+print.VIRTUAL.STORE = function(obj){
+  cat(obj$str())
+}
+
+
+# coercion method:
+setAs("VIRTUAL.STORE", "data.frame", function(from){
+  return(from$to.data.frame())
+})
