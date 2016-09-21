@@ -1,0 +1,1286 @@
+NIRAGEN:
+
+DESCRIPTION:
+
+Package: niragen
+Title: A library of useful general functions in R
+Import:
+  timeDate
+Version: 1.3.3
+Authors@R: person("Nima", "Ramezani", email = "nima.ramezani@cba.com.au", role = c("aut", "cre"))
+Description: This package provides a useful ensemble of functions in R. There are various functions for working with numerics, characters, vectors, matrices and data.frames plus many functions for conversion, error handling and data verification. It also contains functions to apply plot settings for various plotting packages like googleVis and html widgets.
+Depends:
+    R (>= 3.2.3)
+License: MIT
+LazyData: true
+RoxygenNote: 5.0.1
+Collate:
+    'linalg.R'
+    'visgen.R'
+    'niragen.R'
+
+
+niragen.R:
+
+# Header
+# Filename:     niragen.R
+# Description:  Contains some general functions useful for R programming
+# Author:       Nima Ramezani Taghiabadi
+# Email :       nima.ramezani@gmail.com
+# Start Date:   21 October 2013
+# Last change:  15 September 2016
+# Version:      1.3.3
+
+# Version   Date               Action
+# -----------------------------------
+# 1.2.3     18 July 2016       Function no.missing() added 
+# 1.2.4     18 July 2016       Function prettyDate() added 
+# 1.2.5     19 July 2016       Function yesterday() added 
+# 1.3.0     26 August 2016     Argument 'centralize' added to function extract.seasonality()
+# 1.3.1     07 September 2016  Function verify() modified: Checks class inheritance rather than being exactly the same class specified by argument 'allowed'
+# 1.3.2     08 September 2016  Action operators: %-%, %U% and %^% created for difference, union and intersect of sets.
+# 1.3.3     15 September 2016  Action operator: %<% created for subset.
+
+
+
+#' @import timeDate
+#' @include linalg.R
+#' @include visgen.R
+
+#' @export
+wdlabel  = c(Mon = 'Monday', Tue = 'Tuesday', Wed = 'Wednesday', Thu = 'Thursday', Fri = 'Friday', Sat = 'Saturday', Sun = 'Sunday')
+
+#' @export
+fdlabel  = c(Mon.1 = 'Monday.1'  , Tue.1 = 'Tuesday.1', Wed.1 = 'Wednesday.1', Thu.1 = 'Thursday.1', Fri.1 = 'Friday.1',
+             Sat.2 = 'Saturday.2', Sun.2 = 'Sunday.2' , Mon.2 = 'Monday.2'   , Tue.2 = 'Tuesday.2' , Wed.2 = 'Wednesday.2', 
+             Thu.2 = 'Thursday.2', Fri.2 = 'Friday.2' , Sat.1 = 'Saturday.1' , Sun.1 = 'Sunday.1')
+
+#' @export
+mntlabel = c(Jan = 'January', Feb = 'February' , Mar = 'March',   Apr = 'April',    May = 'May', Jun = 'June', Jul = 'July',
+             Aug = 'August' , Sep = 'September', Oct = 'October', Nov = 'November', Dec = 'December')
+
+#' @export
+valid.colours = c('green', 'purple', 'aqua', 'blue', 'red', 'yellow', 'magenta', 'cyan', 'black', 'grey', 'orange')
+
+#' @export
+valid.time.classes = c("character", "factor", "Date", "POSIXct", "POSIXlt", "POSIXt", "timeDate")
+
+#' @export
+valid.time.formats = c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y %H:%M", "%d/%m/%Y")
+
+#' @export
+valid.time.periods = c('sec' = 1, 'min' = 60, 'hour' = 3600, 'day' = 86400, 'week' = 7*86400, 'fortnight' = 14*86400, 'month' = 86400*365/12, 'quarter' = 86400*365/4, 'year' = 86400*365)
+
+#' Use this function to check if a variable is empty or not
+#'
+#' @param x A variable. Can be a vector,matrix,list or data.frame
+#' @return A boolean: TRUE if argument \code{x} is empty, FALSE otherwise
+#' @examples
+#' a = matrix()
+#' is.empty(a)
+#' [1] TRUE
+#' a = c(2, 4)
+#' is.empty(a)
+#' [1] FALSE
+#'
+#' @export
+is.empty = function(x){
+
+  if (class(x) %in% c('matrix', 'data.frame')){
+    flag = (dim(x)[1] == 0) | (dim(x)[2] == 0) | (sum(!is.na(x)) == 0)
+  } else if (class(x) == 'logical'){
+    flag = is.na(x)
+  } else if (class(x) == "NULL"){
+    flag = T
+  }  else {flag = (length(x) == 0)}
+  return(flag)
+}
+
+#' Rounds \code{x} to the nearest multiple of \code{N}
+#'
+#' @param x A numeric or integer
+#' @param N A numeric or integer
+#' @param adjust A character string:
+#' 'closest': Returns the closest multiple of \code{N}
+#' 'top'   ': Returns the closest multiple of \code{N} that is greater than \code{x}
+#' 'bottom' : Returns the closest multiple of \code{N} that is smaller than \code{x}
+#' @return A numeric
+#' @examples
+#' roundto.multiple(345.45, 1)
+#' [1] 345
+#' roundto.multiple(345.45, 7)
+#' [1] 343
+#' roundto.multiple(345.45, 7.2)/7.2
+#' [1] 48
+#'
+#' @export
+roundto.multiple = function(x, N, adjust = 'closest'){
+  # Check arguments:
+  adjust <- tolower(adjust)
+  verify(adjust, allowed = 'character', range = c('closest', 'top', 'bottom'))
+
+  k = x %/% N
+  switch(adjust,
+         'closest' = {flg    = (x - k*N > 0.5*N)
+                      inc(k[flg])},
+         'top'     = {k = k + 1})
+
+  return (k*N)
+}
+
+inc = function(v, increment = 1){
+  v + increment
+}
+
+#' Terminates the execution with an error message if the given conditional statement is \code{FALSE}
+#'
+#' @param flag A boolean: Condition to be checked
+#' @param err_msg A character string: Message to be displayed
+#' @return NULL
+#' @examples
+#' x = 1
+#' assert(x > 1, "Argument x can not be greater than 1")
+#'
+#' Error in assert(x > 1, "Argument x can not be greater than 1") :
+#'   Argument x can not be greater than 1
+#'
+#' @export
+assert <- function(flag, err_msg = 'Assertion Error !', err_src = NULL){
+  #
+  if (length(flag) > 1){flag = (sum(!flag) == 0)}
+  if (!flag) {
+    if (typeof(err_src) == "language"){err_src = as.character(as.expression(err_src))}
+    if (!is.null(err_src)){err_msg = make.err.msg(err_msg, err_src)}
+    stop(err_msg, call. = F)}
+}
+
+#' Makes a pretty error message to be displayed on the console
+#'
+#' @param err_msg A character string: Message to be displayed
+#' @param err_src A character string: Source from which the error message is issued.
+#' @return A character string containing the modified error message
+#' @examples
+#' stop(make.err.msg(err_msg = "Some error message", err_src = match.call()[[1]]))
+#'
+#' Error:
+#'
+#' Error from: match.call:
+#' ------------------------
+#'
+#' Some error message
+#'
+#' @export
+make.err.msg <- function(err_msg = '', err_src = 'niragen::make.err.msg'){
+  if (typeof(err_src) == "language"){err_src = as.character(as.expression(err_src))}
+  paste0('\n from ', err_src, ':', '\n',
+      repeat.char('-',9 + nchar(err_src)),'\n', '\n',
+      err_msg, '\n', '\n')
+}
+
+#' Verifies that a given isvariable is valid.
+#'
+#' @param var Any variable
+#' @param allowed A vector of characters containing valid classes. For example: c('numeric', 'integer')
+#' @param range Valid range for the given variable. If \code{var} is numeric or integer,
+#'        \code{range} must be a numeric vector of two elements specifying the lower and upper bounds.
+#'        If \code{var} is character or factor, \code{range} is a list of valid values.
+#'        If \code{range} is \code{NULL} (default), range compliance will not be chacked.
+#' @param lengths Valid lengths for the given variable. Only used for vectors
+#'          or classes for which generic function length() is defined.
+#' @param dims Valid dimensions for the given variable. Only used for data.frames and matrices.
+#'       or classes for which generic function dim() is defined.
+#' @param names_domain  A vector of characters specifying valid domain for the names of the given variable.
+#'               Only used for classes for which generic function names() is defined, like vectors, data.frames and matrices.
+#' @param rownames_domain A vector of characters specifying valid domain for the rownames of the given variable.
+#'               Only used for classes for which generic function rownames() is defined, like data.frames and matrices.
+#' @param names_include  A vector of characters specifying names that the given variable must include.
+#'               Only used for classes for which generic function names() is defined, like vectors, data.frames and matrices.
+#' @param names_identical  A vector of characters. Names of the given variable is checked to be identical to this vector.
+#'               Only used for classes for which generic function names() is defined, like vectors, data.frames and matrices.
+#' @param rownames_include  A vector of characters specifying rownames that the given variable must include.
+#'               Only used for classes for which generic function rownames() is defined, like data.frames and matrices.
+#' @param rownames_identical  A vector of characters. Row names of the given variable is checked to be identical to this vector.
+#'               Only used for classes for which generic function rownames() is defined, like data.frames and matrices.
+#' @param err_src A character string specifying the source generating the error if verification fails.
+#' @param err_msg A character string specifying the error message if input if the input variable is the result of a failed operation.
+#'
+#' @export
+verify <- function(var, allowed = NULL, range = NULL, lengths = NULL, dims = NULL,
+                   names_domain = NULL, rownames_domain = NULL,
+                   names_include = NULL, names_identical = NULL, rownames_include = NULL, rownames_identical = NULL,
+                   err_src = 'niragen::verify', err_msg = 'Error in Operation!', default = NULL, varname = ""){
+  if (is.null(var)){return(default)}
+
+  clsv = class(var)
+  fail = (clsv == 'try-error')
+
+  if (sum(fail, na.rm = T) != 0){stop(make.err.msg(err_msg, err_src = err_src))}
+
+  if (!is.null(allowed)){fail = !inherits(var, allowed)}
+
+  if (sum(fail, na.rm = T) != 0){
+    if (is.null(allowed)){s = ""} else {s = "Argument " %+% varname %+% " must be class " %+% paste(allowed, collapse = " or ") %+% "."}
+    err.class.fail  = make.err.msg(paste("Class verification failed!", s, " was class", paste(class(var), collapse = " and ")), err_src = err_src)
+    stop(err.class.fail)
+  }
+
+  if (!is.null(lengths)){
+    fail = !(length(var) %in% lengths)
+    if (sum(fail, na.rm = T) != 0){stop(make.err.msg(paste0("Length verification failed!", " Argument " , varname , " must be of length " , paste(lengths, collapse = " or ") , " was of length " , length(var)), err_src = err_src))}
+  }
+  if (!is.null(names_include)){
+    fail  = !(names_include  %in% names(var))
+    if (sum(fail, na.rm = T) != 0){
+      erstr = paste0("Field inclusion verification failed! Argument ", varname , " must have these fields but it does not: ", paste(names_include[fail], collapse = ", "))
+      stop(make.err.msg(erstr, err_src = err_src))
+    }
+  }
+  if (!is.null(names_domain)){
+    fail = !(names(var) %in% names_domain)
+    if (sum(fail, na.rm = T) != 0){
+      erstr = paste0("Field domain verification failed! Argument ", varname , " must not have these fields but it does: ", paste(names(var)[fail], collapse = ", "))
+      stop(make.err.msg(erstr, err_src = err_src))
+    }
+  }
+  if (!is.null(rownames_domain)){
+    fail = !(rownames(var) %in% rownames_domain)
+    if (sum(fail, na.rm = T) != 0){
+      erstr = paste0("Row-name domain verification failed! Argument ", varname, " must not have these row-names but it does: ", paste(rownames(var)[fail], collapse = " , "))
+      stop(make.err.msg(erstr, err_src = err_src))
+    }
+  }
+  if (!is.null(rownames_include)){
+    fail = !rownames_include  %in%  (rownames(var))
+    if (sum(fail, na.rm = T) != 0){
+      erstr = paste0("Row-name inclusion verification failed! Argument ", varname, " must have these row-names but it does not: ", paste(rownames_include[fail], collapse = " , "))
+      stop(make.err.msg(erstr, err_src = err_src))
+    }
+  }
+  if (!is.null(names_identical)){
+    fail = !identical(sort(names(var)) , sort(as.character(names_identical)))
+    if (sum(fail, na.rm = T) != 0){stop(make.err.msg(paste0("Field verification failed!", "Argument ", varname , " must only have these fields ", paste(names_identical, collapse = ", "), " , but contained these fields: ", paste(names(var), collapse =  ", ")), err_src = err_src))}
+  }
+  if (!is.null(rownames_identical)){
+    fail = !identical(rownames(var), rownames_identical)
+    if (sum(fail, na.rm = T) != 0){stop(make.err.msg(paste0("Row-name verification failed!"), err_src = err_src))}
+  }
+
+  if (!is.null(dims)){
+    fail = !(dim(var) %in% dims)
+    if (sum(fail, na.rm = T) != 0){stop(make.err.msg(paste0("Dimension verification failed!", "Argument ", varname ," must be dim ", paste(dims, collapse = " or "), " was dim c(", paste(dim(var), collapse = ','), ")"), err_src = err_src))}
+  }
+
+  if (!is.null(range)){
+    # assert(class(range) %in% clsv, "Argument 'range' should have the same class as argument 'var'!", err_src = "niragen::verify")
+    if (class(range) %in% c('character', 'factor', 'logical')){fail = !(var %in% range)}
+    else if (class(range) %in% c('numeric', 'integer', valid.time.classes)){fail = (var < range[1]) | (var > range[2])}
+    else {
+      err.range.class = make.err.msg(paste("Argument 'range' is of class",class(range)[1]," which is not supported!"), err_src = 'niragen::verify')
+      stop(err.range.class)
+    }
+
+    if (sum(fail, na.rm = T) != 0) {
+      err.range.fail  = make.err.msg(paste("Range verification failed! \n", "Argument ", varname, " must be in range (", paste(range, collapse = ' , '), ") \n", 
+                                           " Item(s): ", paste(setdiff(var, range), collapse = ' , ') ," were not in range!") , err_src = err_src)
+      stop(err.range.fail)
+    }
+  }
+  return(var)
+}
+
+# if(2 > 1) {stop(lfeed("No", "This is not a good way", "be careful!"))}
+lfeed <- function(...){
+  paste('\n', ..., sep = '\n')
+}
+
+#' Replicates the given charachter to make a longer character string
+#'
+#' @param char a character: Character to be replicated
+#' @param N An integer: number of times \code{char} should be repeated
+#' @return A character string
+#' @examples
+#' repeat.char('X', 3)
+#' [1] "XXX"
+#'
+#' @export
+repeat.char <- function(char, N){
+  s = ''
+  if (N < 1){return(s)}
+  for (i in 1:N){s = paste0(s,char)}
+  s
+}
+
+#' Maps a given vector into a given range
+#'
+#' @param x A numeric vector: Vector to be mapped
+#' @param minimum A numeric scalar: Specifies the lower bound of the output
+#' @param maximum A numeric scalar: Specifies the higher bound of the output
+#' @return A numeric vector
+#' @examples
+#' vect.map(c(1, 2, 3), minimum = 100, maximum = 300)
+#' [1] 100 200 300
+#'
+#' @export
+vect.map = function(x, minimum, maximum){
+  #
+  xl = min(x)
+  xh = max(x)
+  w  = xh - xl
+  return(minimum + (maximum - minimum)*(x - xl)/w)
+}
+
+#' Replaces missing values of a vector by a given value
+#'
+#' @param v vector of any type: Vector containing missing values (\code{NA})
+#' @param x Scalar value same type as \code{v}: The value by which the missing values are replaced (default is \code{0})
+#' @return A vector same type as \code{v}: in which missing values are replaced by \code{x}
+#' @examples
+#' vect.clean(c(1, NA, 3), 2)
+#' [1] 1 2 3
+#'
+#' @export
+vect.clean <- function(v, x = 0){
+  cv = v
+  for (i in 1:length(v)){
+    if (is.na(v[i])){
+      cv[i] = x
+    }
+  }
+  return(cv)
+}
+
+#' @export
+vect.unclean <- function(v, x = 0){
+  cv = v
+  for (i in 1:length(v)){
+    if (v[i] == x){
+      cv[i] = NA
+    }
+  }
+  return(cv)
+}
+
+
+#' @export
+mat.clean <- function(M, x = 0){
+  apply(M, 2, vect.clean, x = x)
+}
+
+#' @export
+mat.unclean <- function(M, x = 0){
+  apply(M, 2, vect.unclean, x = x)
+}
+
+#' @export
+cumulative = function(v){
+  n  = length(v)
+  s  = 0
+  cv = v
+  for (i in 1:n){
+    s     = s + v[i]
+    cv[i] = s
+  }
+  return(cv)
+}
+
+#' @export
+tab.cumulative  = function(v){
+  ct = c()
+  t  = table(v)
+  n  = length(t)
+  s  = 0
+  for (i in 1:n){
+    s  = s + t[i]
+    ct = c(ct, s)
+  }
+  names(ct) = names(t)
+  return(ct)
+}
+
+
+#' @export
+tab.top = function(t, threshold =0.5){
+  tp = sort(t/sum(t), decreasing = TRUE)
+  return(names(tp)[tp > threshold])
+}
+
+#' @export
+tab.top.cumulative = function(t, threshold =0.5){
+  if (sum(t) == 0){return (c())}
+  if (is.null(names(t))){names(t) = as.character(t)}
+  tp = sort(t/sum(t), decreasing = TRUE)
+  i  = 1
+  s  = tp[i]
+  while (s < threshold){
+    i = i + 1
+    s = s + tp[i]
+  }
+  return(names(tp)[1:i])
+}
+
+#' @export
+equal <- function(...){
+  flag = all.equal(...)
+  return(typeof(flag) == 'logical')
+}
+
+#' @export
+vect.dim.equal <- function(v1,v2){
+  #returns TRUE if the two given vectors have the same length
+  n1 = length(v1)
+  n2 = length(v2)
+  return ((n1==n2))
+}
+
+#' @export
+mat.dim.equal <- function(m1,m2){
+  #returns TRUE if the two given matrices have the same dimensions
+  d1 = dim(m1)
+  d2 = dim(m2)
+  return ((d1[1]==d2[1]) & (d1[2]==d2[2]))
+}
+
+#' @export
+high.pass.mean <- function(v, threshold = 0.001, na.rm = T){
+  x = mean(v[v > threshold], na.rm = na.rm)
+  if (is.na(x)){x = 0}
+  return(x)
+}
+
+#' @export
+high.pass.moving.mean <- function(v, threshold = 0.001, weight = 14, na.rm = T){
+  if (na.rm){v = v[!is.na(v)]}
+  x = mean(tail(v[v > threshold], n = weight))
+  if (is.na(x)){x = 0}
+  return(x)
+}
+
+#' @export
+high.pass.moving.sd <- function(v, threshold = 0.001, weight = 14, na.rm = T){
+  if (na.rm){v = v[!is.na(v)]}
+  x = sd(tail(v[v > threshold], n = weight))
+  if (is.na(x)){x = 0}
+  return(x)
+}
+
+#' @export
+high.pass.sd <- function(v, threshold = 0.001, na.rm = T){
+  x = sd(v[v > threshold], na.rm = na.rm)
+  if (is.na(x)){x = 0}
+  return(x)
+}
+
+low.pass.mean <- function(v, threshold, na.rm = T){
+  x = mean(v[v < threshold], na.rm = na.rm)
+  if (is.na(x)){x = 0}
+  return(x)
+}
+
+low.pass.sd <- function(v, threshold, na.rm = T){
+  x = sd(v[v < threshold], na.rm = na.rm)
+  if (is.na(x)){x = 0}
+  return(x)
+}
+
+#' @export
+floorto.precision <- function(a, precision = 0.01){
+  return(floor(a/precision)*precision)
+}
+
+#' @export
+clear.workspace <- function(){
+  rm(list = ls())
+}
+
+## Returns a matrix of zeros
+zeros <- function (m,n){
+  return(matrix(rep(0, m*n), m , n))
+}
+
+#' @export
+mod = function(m, d){
+  return(m - (m %/% d)*d)
+}
+
+#' @export
+mod.seq = function(start, end, num){
+  s = start
+  v = c()
+  for (i in 1:num){
+    v = c(v, s)
+    s = s + 1
+    if (s > end){
+      s = 0
+    }
+  }
+  return (v)
+}
+# todo: convert it to an action
+
+#' @export
+fday.old <- function(t){
+  t.1 = t[1]
+  if ('timeDate' %in% class(t.1)){t.1 = as.POSIXlt(t.1, zone = "GMT")}
+  return(mod.seq(t.1$wday, 13, length(t)))
+} # Returns the fortnight day of the given time, similar to wday that returns the weekday
+
+#' @export
+fday <- function(t, base = '2000-01-01', zone = "GMT"){
+  t = as.POSIXlt(t, tz = zone)
+  b = as.POSIXlt(base, tz = zone)
+  ndif = as.integer(difftime(t, b, units = 'day'))
+  return(t$wday + 7*((ndif %/% 7) %% 2))
+}
+
+#' Returns the fortnight day of the given time
+#' @export
+fortday <- function(time, base = '2000-01-01'){
+  base = timeDate(base)
+  ndif = as.integer(time - base)
+  x    = (ndif %/% 7) %% 2
+  return(fdlabel[dayOfWeek(time) %+% '.'  %+% (x + 1)])
+}
+
+#' Extends the given vector \code{v} to length \code{N}
+#'
+#' @param v A vector of any type
+#' @param N An integer
+#' @return A vector same type as \code{v}
+#' @examples
+#' a = c(1, 2, 3)
+#' vect.extend(a)
+#' [1] 1 2 3 1 2
+#'
+#' @export
+vect.extend <- function(v, N){
+  m = length(v)
+  if (m >= N){
+    return(v[1:N])
+  }
+  ve = v
+  while (N > m + length(ve)){ve = c(ve, v)}
+  return (c(ve, v[sequence(N - length(ve))]))
+}
+
+
+#' Returns the most frequent element of given vector \code{v}
+#' @param v A vector
+#' @return The most frequent element of given vector \code{v}
+most.common <- function(v){
+  tbl = table(v)
+  nms = names(tbl)
+  mc  = nms[order(tbl, decreasing = T)[1]]
+  if (is.null(mc)){mc = NA}
+  return(mc)
+}
+
+
+#' @export
+date.adjust = function(x, t, zone = "GMT"){
+  t = as.POSIXlt(t, tz = zone)
+  err.x.t = make.err.msg("Arguments 'x' and 't' must have the same length", err_src = match.call()[[1]])
+  if (length(x) == 1){return(rep(x, length(t)))} else
+    if (length(x) == 7){
+      aux = t$wday
+      aux[aux == 0] = 7
+      return(x[aux])
+    } else
+      if (length(x) == 14){
+        aux = fday(t)
+        aux[aux == 0] = 14
+        return(x[aux])
+      } else
+        if (length(x) == length(t)){return(x)} else {stop(err.x.t)}
+}
+
+#' Returns if a given value meets a given feasibility condition. The feasibility condition is specified by
+#' a feasibility range and a set of non-feasible values.
+#' @param v A numeric or a vector of numerics or integers
+#' @param range A vector of two numerics containing the lower and upper bounds of the feasibility range.
+#'        If \code{range} is NULL (default), range condition checking is skipped.
+#' @param exclude A vector of numerics containing non-feasible values
+#'        If \code{exclude} is NULL (default), non-feasibility condition checking is skipped.
+#' @return Logical TRUE if the given value is not missing, within the given range and not in \code{exclude},
+#'                 FALSE otherwise.
+#' @export
+feasible = function(v, range = NULL, excludes = NULL){
+  index = !is.na(v)
+  if (!is.null(range)){index = index & (v <= range[2]) & (v >= range[1])}
+  if (!is.null(excludes)){index = index & !(v %in% excludes)}
+  return(index)
+}
+
+#' @export
+first.feasible <- function(...){
+  w = which(feasible(...))
+  if (length(w) == 0){return(NA)} else {return(w[1])}
+}
+
+#' @export
+last.feasible <- function(...){
+  w = which(feasible(...))
+  if (length(w) == 0){return(NA)} else {return(w[length(w)])}
+}
+
+#' @export
+data.frame.na <- function(nrow, ncol, row_names = c(), col_names = c()){
+  M = matrix(NA, nrow, ncol)
+  D = as.data.frame(M)
+  if (!is.empty(col_names)){
+    assert(length(col_names) == ncol, "Argument 'col_names' does not match argument 'ncol'")
+    colnames(D) <- col_names
+  }
+  if (!is.empty(row_names)){
+    assert(length(row_names) == nrow, "Argument 'row_names' does not match argument 'nrow'")
+    rownames(D) <- row_names
+  }
+  return(D)
+}
+
+#' @export
+make.unique = function(v, char_duplicated = '.', char_non_duplicated = '', add_prefix = F){
+  verify(v, allowed = 'character', err_src = 'niragen::make.unique')
+  dup.ind = duplicated(v)
+  while (sum(dup.ind) > 0){
+    if (add_prefix){
+      v[dup.ind]  = paste0(char_duplicated, v[dup.ind], char_duplicated)
+      v[!dup.ind] = paste0(char_non_duplicated, v[!dup.ind], char_non_duplicated)
+    } else {
+      v[dup.ind]  = paste0(v[dup.ind], char_duplicated)
+      v[!dup.ind] = paste0(v[!dup.ind], char_non_duplicated)
+    }
+    dup.ind = duplicated(v)
+  }
+  return(v)
+}
+
+add.equivalent <- function(X, Y){
+  # Inputs (X, Y): data.frame with two columns:
+  #              Column 1 is any type
+  #              Column 2 is numeric contains the values
+  # X and Y should not necessarily have the same number of rows
+  # adds values from Y to their equivalent values in X.
+  # (equivalency is determined by matching values in column 1)
+  Ny = dim(Y)[1]
+  for (k in sequence(Ny)){
+    if (Y[k,2] != 0){
+      j      = which(X[,1] == Y[k, 1])
+      X[j,2] = X[j,2] + Y[k,2]
+    }
+  }
+  return (X)
+} # Transfer to niragen
+
+
+check = function(x = NA, y = NA, z = NA, t = NA, r = NA, s = NA){
+  show(x)
+  show(y)
+  show(z)
+  show(t)
+  show(r)
+  show(s)
+}
+
+# Given a time vector and a seasonal effect, this function
+# applies the seasonal effect on each time interval accordingly"
+#' @export
+distribute.seasonality = function(time, season.values, seasonality = 'dow'){
+  data.seas = rep(0, length(time))
+  switch(seasonality,
+         'dow' = {
+           dow.lbls = dayOfWeek(time)
+           for (x in unique(dow.lbls)){data.seas[x == dow.lbls] = season.values[x ,1]}},
+         'dof' = {
+           dof.lbls = fortday(time)
+           for (x in unique(dof.lbls)){data.seas[x == dof.lbls] = season.values[x ,1]}},
+         'moy' = {
+           moy.lbls = mntlabel[months(time)]
+           for (x in unique(moy.lbls)){data.seas[x == moy.lbls] = season.values[x ,1]}},
+         'doy' = {
+           tt = as.POSIXlt(time)
+           # doy.lbls = tt$mon*31 + tt$mday
+           doy.lbls = paste(tt$mday, tt$mon)
+           for (x in unique(doy.lbls)){data.seas[x == doy.lbls] = season.values[x ,1]}}
+  )
+  data.seas[is.na(data.seas)] <- 0
+  return(data.seas)
+}
+
+#' @export
+add = function(x,y){
+  if (is.na(x)){x = 0}
+  if (is.na(y)){y = 0}
+  return(x+y)
+}
+
+#' @export
+repeat.row <- function(v, n){
+  # Returns a matrix in which vector v repeats as multiple rows
+  R = c()
+  for (i in sequence(n)){
+    R = rbind(R, v)
+  }
+  return(R)
+}
+
+#' @export
+repeat.col <- function(v, n){
+  # Returns a matrix in which vector v repeats as multiple columns
+  R = c()
+  for (i in sequence(n)){
+    R = cbind(R, v)
+  }
+  return(R)
+}
+
+#' @export
+'%+%' = function(obj1, obj2){
+  paste0(obj1, obj2)
+}
+
+#' @export
+'%-%' = function(obj1, obj2){
+  setdiff(obj1, obj2)
+}
+
+# subset
+#' @export
+'%<%' = function(obj1, obj2){
+  sum(!(obj1 %in% obj2)) == 0
+}
+
+
+#' @export
+'%U%' = function(obj1, obj2){
+  unique(c(obj1, obj2)) 
+}
+
+#' @export
+'%^%' = function(obj1, obj2){
+  intersect(obj1, obj2)
+}
+
+
+#' @export
+as.time = function(timeset, target_class = "timeDate", format = NULL, ...){
+  if (inherits(timeset, target_class)) {return(timeset)}
+
+  if (inherits(timeset, 'factor')){tt = as.character(timeset)}
+  if (target_class == 'character'){tt = time2Char(timeset)}
+  else if (target_class == 'factor'){tt = as.factor(time2Char(timeset))}
+  else if (target_class == "timeDate"){tt <- try(as.timeDate(timeset, ...), silent = T)} else {tt <- try(as(timeset, target_class, ...), silent = T)}
+
+  if (inherits(tt,target_class) & (sum(is.na(tt)) == 0)){return(tt)}
+
+  tt <- try(strptimeDate(timeset, format = format), silent = T)
+  tt <- try(as(tt, target_class), silent = T)
+  if ((class(tt) == target_class) & (sum(is.na(tt)) == 0)){return(tt)}
+  assert(F, "Given timeset can not be converted to a timeDate object. Check the class of timeset and the format!", match.call()[[1]])
+}
+
+#' @export
+extract.seasonality = function(time, data, seasonality = 'dow', centralize = F){
+  # Verifications
+  assert(seasonality %in% c('dow', 'moy', 'doy'), err_msg = "Unknown value for argument 'seasonality'. Must be in c('dow', 'moy', 'doy')", match.call()[[1]])
+  assert(length(time) == length(data), "Arguments 'time' and 'data' must have the same lengths", match.call()[[1]])
+  time = try(as.timeDate(time), silent = T)
+  verify(time, err_msg = "Argument 'time' can not be converted to 'timeDate' object")
+
+  switch(seasonality,
+         'dow' = {
+           S   <- aggregate(data, by = list(dayOfWeek(time)), FUN = mean)
+           if (centralize){S$x   = S$x - mean(S$x)}
+           rownames(S) = S[, 1]
+           S           = S[,-1, drop = F]
+         },
+         'moy' = {
+           mlb   = mntlabel[months(time)]
+           S     = aggregate(data, by = list(mlb), FUN = mean)
+           if (centralize){S$x   = S$x - mean(S$x)}
+           rownames(S) = S[, 1]
+           S           = S[,-1, drop = F]
+         },
+         'doy' = {
+           tt    = as.POSIXlt(time)
+           dylb  = paste(tt$mday, tt$mon)
+           # dylb  = tt$mon*31 + tt$mday
+           S     = aggregate(data, by = list(dylb), FUN = mean)
+           if (centralize){S$x   = S$x - mean(S$x)}
+           rownames(S) = S[, 1]
+           S   = S[,-1, drop = F]
+         })
+  return(S)
+}
+
+#' @export
+char2Date = function(timechar, formats = valid.time.formats){
+  nf    = sequence(length(timechar))
+  dates = as.Date(rep(NA, length(nf)))
+  i = 1
+  while ((length(nf) > 0) & (i <= length(formats))){
+    dates[nf] = as.Date(timechar[nf], format = formats[i])
+    nf        = which(is.na(dates))
+    i         = i + 1
+  }
+  return(dates)
+}
+
+#' @export
+char2Time = function(timechar, formats = valid.time.formats){
+  nf    = sequence(length(timechar))
+  times = as.POSIXlt(rep(NA, length(nf)))
+  i     = 1
+  while ((length(nf) > 0) & (i <= length(formats))){
+    times[nf] = strptime(timechar[nf], format = formats[i])
+    nf        = which(is.na(times))
+    i         = i + 1
+  }
+  return(times)
+}
+
+#' @export
+time2Char = function(time, make_unique = F){
+  tc     <- as.character(time)
+  change <- substr(tc, 12, 19) == "00:00:00"
+  tc[change] <- substr(tc[change], 1, 10)
+  if (make_unique){tc = make.unique(tc)}
+  return(tc)
+}
+
+#' @export
+# todo: Should change function name to time2DateChar see where this function is used!
+time2Date = function(time, make_unique = F){
+  ds <- as.character(as.Date(time))
+  if (make_unique){ds = make.unique(ds)}
+  return(ds)
+}
+
+# Example:
+# script.list.fields(list.str = "default.dygraphs.tsline.settings", sublist.str = 'RangeSelector')
+#' @export
+script.list.fields = function(list.str, sublist.str){
+  nms = eval(parse(text = paste0("names(" , list.str , "[['", sublist.str, "']])")))
+  lst = nms[length(nms)]
+  scr = ""
+  for (p in nms){
+    scr = paste0(scr , p, " = ", list.str , "$" , sublist.str, "$", p)
+    if (p != lst){scr = scr %+% ', '}
+  }
+  return(scr)
+}
+
+#' @export
+list2Json = function(L = list(), fields = names(L), fields_remove = c(), quotations = F){
+  verify(L, "list")
+  verify(fields, 'character', range = names(L))
+  verify(fields_remove, 'character', range = fields)
+  fields = setdiff(fields, fields_remove)
+
+  scr  = "{"
+  N    = length(fields)
+  for (i in sequence(N)){
+    x = fields[i]
+    u = L[[x]]
+    if (!is.null(u)){
+      if (quotations){scr = paste0(scr,"'", x, "': ")} else {scr = paste0(scr, x, ": ")}
+      
+      if      (class(u) == 'list')     {scr = scr %+% list2Json(u, quotations = quotations)}
+      else if (class(u) == 'character'){scr = paste0(scr, "'", u, "'")}
+      else if (class(u) == 'logical')  {scr = scr %+% ifelse(u, 'true', 'false')}
+      else                             {scr = scr %+% as.character(u)}
+      if (i != N){
+        scr = scr %+% ", "
+      }
+    }
+  }
+  scr = scr %+% "}"
+  return(scr)
+}
+
+#' @export
+list2Script = function(l, fields = NULL, fields_remove = NULL, arguments = NULL){
+  if (is.null(fields)){fields = names(l)}
+  if (  is.null(arguments)  |  !identical(names(arguments), fields)){
+    assert(sum(!names(arguments) %in% fields) == 0, "fields must include names of argument 'arguments'!")
+    args = fields
+    names(args) <- fields
+    if (! is.null(arguments)){
+      for (j in names(arguments)){
+        args[[j]] <- arguments[[j]]
+      }
+    }
+    arguments <- args
+  }
+
+  fields = setdiff(intersect(fields, names(l)), fields_remove)
+
+  scr = ""
+  for (i in fields){
+    if (inherits(l[[i]], "character")){
+      if (length(l[[i]]) > 1){
+        scr <- paste0(scr, arguments[i], " = c(", paste("'" %+% l[[i]] %+% "'", collapse = ', '), "), ")
+      } else if (length(l[[i]]) == 1){scr <- paste0(scr, arguments[i], " = '", paste(l[[i]], collapse = ', '), "', ")}
+    }
+    else if (inherits(l[[i]], "list")){scr = paste0(scr, arguments[i], " = ", 'list(', list2Script(l[[i]]), '), ')}
+    else if (class(l[[i]]) %in% c('interger', 'numeric', 'logical')){
+      if (length(l[[i]]) > 1){
+        scr <- paste0(scr, arguments[i], " = c(", paste(l[[i]], collapse = ', '), "), ")
+      } else if (length(l[[i]]) == 1){scr <- paste0(scr, arguments[i], " = ", paste(l[[i]], collapse = ', '), ", ")}
+    }
+  }
+  scr = substr(scr, 1, nchar(scr) - 2)
+  return(scr)
+}
+
+#' @export
+today      = function(){as.Date(timeDate())}
+
+#' @export
+yesterday  = function(){as.Date(timeDate()) - 1}
+
+
+#' @export
+today.char = function(){time.to.char(today())}
+
+#' returns TRUE if none of the elements of given argument v is missing 
+#' @export
+no.missing = function(v){
+  return(sum(is.na(v)) == 0)
+}
+
+#' @export
+prettyDate = function(x){
+  if (!inherits(x, 'Date')){x = as.Date(x)}
+  # paste(weekdays(x), mday(x), months(x), year(x))
+  paste(weekdays(x), as.POSIXlt(x)$mday, months(x), as.numeric(format(x,'%Y')))
+}
+
+visgen.R
+
+
+# general functions to support visualization
+
+#' This function gets a dygraph plot and dygraph configuration as input and
+#' Returns the modified plot affected by given configuration
+#' @export
+dygraphs.tsline.apply.settings = function(plt, config){
+  if (!is.null(config$legend)){
+    plt = plt %>% dyLegend(show = config$legend$show, width = config$legend$width, showZeroValues = config$legend$showZeroValues, labelsDiv = config$legend$labelsDiv, labelsSeparateLines = config$legend$labelsSeparateLines, hideOnMouseOut = config$legend$hideOnMouseOut)
+  }
+  if (!is.null(config$RangeSelector)){
+    plt = plt %>% dyRangeSelector(dateWindow = config$RangeSelector$dateWindow, height = config$RangeSelector$height, fillColor = config$RangeSelector$fillColor, strokeColor = config$RangeSelector$strokeColor, keepMouseZoom = config$RangeSelector$keepMouseZoom, retainDateWindow = config$RangeSelector$retainDateWindow)
+  }
+  if (!is.null(config$Roller)){
+    plt = plt %>% dyRoller(showRoller = config$Roller$showRoller, rollPeriod = config$Roller$rollPeriod)
+  }
+  return(plt)
+}
+
+
+#' @export
+rAmCharts.gauge.apply.settings = function(plt, config){
+  props2bSet = c('fontSize', 'adjustSize')
+  eval(parse(text = paste0('plt %>% setProperties(', list2Script(config, fields = props2bSet, fields_remove = 'colorder'), ')')))
+  eval(parse(text = paste0('plt %>% amOptions(', list2Script(config, fields_remove = c('colorder', props2bSet)), ')')))
+  return(plt)
+}
+
+# this function returns a java script code to be given to
+# If the output of this function is given to argument 'gvis.listener.jscode',
+# then clicking on the plot, returns the closest row number in the data as a shiny input with id specified as 'input_id
+#' @export
+gglvis.click.jscript = function(input_id){
+  "var row = chart.getSelection()[0].row + 1;" %+%
+    "Shiny.onInputChange('" %+% input_id %+% "', row)"
+}
+
+#' @export
+dygraphs.click.jscript = function(input_id){
+  "function(e, x, points){
+    var row = points[0].idx + 1;" %+%
+    "Shiny.onInputChange('" %+% input_id %+% "', row)}"
+}
+
+linalg.R:
+
+# Header
+# Filename:      linalg.R
+# Description:   Contains some functions useful for working with vectors and matrices
+# Author:        Nima Ramezani Taghiabadi
+# Email :        N.RamezaniTaghiabadi@uws.edu.au
+# Date:          11 September 2013
+# Last Revision: 24 May 2016
+# Version:       1.1
+
+
+
+column.shift.up <- function(A, col, k=1, keep.rows=FALSE){
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+  A[1:(n-k), col] = A[(k + 1):n, col]
+  if (keep.rows){
+    A[(n-k+1):n,col]=NA
+    return(A)
+  } else {
+    return(A[(-n+k-1):(-n),])
+  }
+}
+
+column.shift.down <- function(A, col, k=1, keep.rows=FALSE){
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+  A[(k + 1):n, col] = A[1:(n-k), col]
+  if (keep.rows){
+    A[1:k, col] = NA
+    return(A)
+  } else {
+    return(A[(-1):(-k),])
+  }
+}
+
+vect.shift.down <- function(v, k=1, keep.rows=FALSE){
+  n = length(v)
+  v[(k + 1):n] = v[1:(n-k)]
+  if (keep.rows){
+    v[1:k] = NA
+    return(v)
+  } else {
+    return(v[(-1):(-k)])
+  }
+}
+
+column.average.down <- function(A, col=1:dim(A)[2], k=1, keep.rows=FALSE){
+  # For column(s) given as "col", each row is replaced by the moving average among
+  # that row and "K" rows before that.
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+  V = A
+  for (j in col){
+    for (i in (k+1):n){
+      V[i, j] = mean(A[(i-k):i, j])
+    }
+  }
+
+  if (keep.rows){
+    V[1:k, col] = NA
+    return(V)
+  } else {
+    return(V[(-1):(-k),])
+  }
+}
+
+regslope <- function(y){
+  # Fits a line over the vector data and returns the slope of the regression line
+  N      = length(y)
+  x      = sequence(N)
+  x.bar  = (N+1)/2
+  x2.bar = x.bar*(2*N+1)/3
+  y.bar  = mean(y)
+  xy.bar = mean(x*y)
+  return ((xy.bar - x.bar*y.bar)/(x2.bar - x.bar^2))
+}
+
+column.regslope.down <- function(A, col=1:dim(A)[2], k=1, keep.rows=FALSE){
+  # For column(s) given as "col", each row is replaced by the slope of the lease squares (regression) line among
+  # that row and "K" rows before that.
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+  V = A
+  for (j in col){
+    for (i in (k+1):n){
+      V[i, j] = regslope(A[(i-k):i, j])
+    }
+  }
+
+  if (keep.rows){
+    V[1:k, col] = NA
+    return(V)
+  } else {
+    return(V[(-1):(-k),])
+  }
+}
+
+column.delta.up <- function(A, col=1:dim(A)[2], k=1, keep.rows=FALSE){
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+
+  V=A[,col]
+  if (length(col)==1){V[1:(n-k)] = A[(k + 1):n, col]}
+  else{V[1:(n-k),] = A[(k + 1):n, col]}
+  A[,col] = A[,col] - V
+  if (keep.rows){
+    A[(n-k+1):n,col]=NA
+    return(A)
+  } else {
+    return(A[(-n+k-1):(-n),])
+  }
+}
+
+column.average.up <- function(A, col=1:dim(A)[2], k=1, keep.rows=FALSE){
+  # For column(s) given as "col", each row is replaced by the moving average among
+  # that row and "K" rows after that.
+
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+
+  V <- A
+  for (j in col){
+    for (i in 1:(n-k)){
+      V[i,j] = mean(A[i:(k + i), j])
+    }
+  }
+  if (keep.rows){
+    V[(n-k+1):n,col]=NA
+    return(V)
+  } else {
+    return(V[(-n+k-1):(-n),])
+  }
+}
+
+mat.standardize <- function(M, byrow = FALSE){
+  # Standardizes each column and returns a matrix of the same dimention as the given matrix where
+  # all the columns are standardized (centralized and divided by standard deviation)
+  # if byrow is TRUE, then each row is considered as a vector and will be standardized
+  if (byrow){return(t(scale(t(M))))} else {return(scale(M))}
+}
+
+vect.centralize <- function(v){
+  # This function centralizes the given vector
+  # Each element is subtracted by the mean of vector
+  # x_i <- x_i - mean(x)
+  v_bar=mean(v)
+  return(v - v_bar)
+}
+
+vect.standardize <- function(v, cent = TRUE){
+  # This function returns the z factors of given vector v
+  return(sacle(v))
+}
+
+#' Normalizes the given vector by dividing each element by the vector magnitude
+#'
+#' @param v a vector of numerics to be normalized
+#' @param cent A logical. Should the vector be also centralized?
+#' @return A numeric vector containing the normalized values. Sum of squares of elements of the output vector will be 1.0.
+#' @examples
+#' vect.normalize(c(3, 4))
+#' [1] 0.6 0.8
+#'
+#' @export
+vect.normalize <- function(v, cent = FALSE){
+  # This function normalizes the given vector
+  # and returns a unit vector parallel to the given vector
+  if (cent){v=vect.centralize(v)}
+  l = sqrt(sum(v*v))
+  if (l==0.0){return(v)}
+  else {return(v/l)}
+}
+
+mat.normalize <- function(M, dimension = 2){
+  assert(dimension %in% c(1,2), 'Error: dimension must be 1 or 2')
+  S = apply(M, dimension, vect.normalize)
+  if (dimension == 1){S = t(S)}
+  return (S)
+
+}
+
+#' @export
+vect.normalise <- function(v){
+  # This function normalises the given vector by dividing all its elements by sum of elements
+  # and returns a vector parallel to the given vector so that sum of all its elements is one.
+  l = sum(v)
+  if (l==0.0){
+    print("vect.normalise Error: Sum of elements of the given matrix is zero. Given argument returned")
+    return(v)}
+  else {return(v/l)}
+}
+
+column.delta.down <- function(A, col=1:dim(A)[2], k=1, keep.rows=FALSE){
+  # This function gets matrix "A" as input and finds the difference between its column(s) given
+  # by argument "col" and its shifted down column(s)
+
+  d=dim(A)
+  n = d[1]
+  m = d[2]
+
+  V=A[,col]
+  if (length(col)==1){V[(k + 1):n] = A[1:(n-k), col]}
+  else{V[(k + 1):n, ] = A[1:(n-k), col]}
+
+  A[,col] = A[,col] - V
+  if (keep.rows){
+    A[1:k, col] = NA
+    return(A)
+  } else {
+    return(A[(-1):(-k),])
+  }
+}
+
+# spherical.dist = cosine.dissimilarity (Reflects the angle between the vectors)
+#' @export
+spherical.dist <- function(u,v){
+  # Finds the cosine of the angle between two vectors and Returns the dissimilarity
+  # of two vectors as 1-cos(u,v). The output is between 0 and 2
+  u.mod   = sqrt(sum(u^2))
+  v.mod   = sqrt(sum(v^2))
+  uv.prod = sum(u*v)
+
+  cos.theta = uv.prod/(u.mod*v.mod)
+  return(1 - cos.theta)
+}
+
+#' @export
+difference <- function (v1, v2) {
+  # Returns the euclidean distance between two given vectors v1 & v2
+  d = v1 - v2
+  return (sqrt(sum(d^2)))
+}
+
+#' @export
+vect.extend <- function(v, n){
+  m = length(v)
+  if (m >= n){
+    return(v[1:n])
+  }
+  ve = v
+  while (n > m + length(ve)){ve = c(ve, v)}
+  return (c(ve, v[sequence(n - length(ve))]))
+}
+
+#' @export
+mat.extend <- function(M, n, on_rows = T){
+  if (on_rows){m = nrow(M)}else{m = ncol(M)}
+  if (m >= n){
+    if (on_rows){return(M[1:n,, drop = F])}else{return(M[,1:n, drop = F])}
+  }
+  Me = M
+  if (on_rows){
+    while (n > m + nrow(Me)){Me = rbind(Me, M)}
+    return (rbind(Me, M[sequence(n - nrow(Me)),, drop = F]))
+  } else{
+    while (n > m + ncol(Me)){Me = cbind(Me, M)}
+    return (cbind(Me, M[,sequence(n - ncol(Me)), drop = F]))
+  }
+}
+
+#' @export
+vect.dist <- function(v1, v2, metric = 'euclidean'){
+  n1 = length(v1)
+  n2 = length(v2)
+  assert(n1 == n2, 'Error: Given vectors must have the same length')
+  if      (metric == 'euclidean'){return(difference(v1, v2))}
+  else if (metric == 'spherical'){return(spherical.dist(v1, v2))}
+  else if (metric == 'binary'){return(mean(xor(v1, v2)))}
+  else if (metric == 'manhattan'){return(sum(abs(v1 - v2)))}
+  else if (metric == 'canberra'){return(sum(abs(v1 - v2)/abs(v1 + v2), na.rm = TRUE))}
+  else if (metric == 'maximum'){return(max(abs(v1 - v2)))}
+  else {print('Error: Given metric is not recognized!')}
+}
+
+
