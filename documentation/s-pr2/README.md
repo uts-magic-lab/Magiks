@@ -46,7 +46,7 @@ The existing package:
 We introduced a comprehensive kinematic control software package for the PR2 robot, 
 which is based on an analytic inverse kinematic solution and addresses all the aforementioned issues.
 S-PR2 generates more effective robot motion plans, 
-hence it can be used to produce morereliable robot behaviours. 
+hence it can be used to produce more reliable robot behaviours. 
 In S-PR2, the method used for redundancy resolution exploits the advantage of the existence of an analytic IK solution for 
 improving an iterative redundancy optimization in terms of reliability, accuracy, and computational cost where 
 closed-form IK equations are used to reduce dimensionality and complexity of the objective function. 
