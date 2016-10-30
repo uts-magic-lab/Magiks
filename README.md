@@ -4,7 +4,7 @@
 The **Manipulator General Inverse Kinematic Solver (_MAGIKS_)**
 is a numerical iterative Inverse Kinematic solver developed in Python 
 which is presented as a developer's package containing various functions, classes and methods 
-for the calculation of various kinematic properties of a general chained-link manipulaor 
+for the calculation of various kinematic properties of a general chained-link manipulator 
 with arbitrary geometry and degrees of freedom. 
 
 *MAGIKS* is developed by *Nima Ramezani* in the Magic-Lab in the Faculty of Engineering and Information Technology (FEIT), University of Technology Sydney (UTS).
